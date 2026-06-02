@@ -59,6 +59,32 @@
           </execution>
         </executions>
       </plugin>
+      <!--
+        Maven Central can't resolve the private multi-module parent POM, so
+        flatten the published POM to inline inherited fields (groupId, version,
+        licenses, scm, developers, etc.). `ossrh` mode keeps the metadata
+        Central requires and drops <parent>, <build>, <modules>, etc.
+      -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>flatten-maven-plugin</artifactId>
+        <version>1.6.0</version>
+        <configuration>
+          <flattenMode>ossrh</flattenMode>
+        </configuration>
+        <executions>
+          <execution>
+            <id>flatten</id>
+            <phase>process-resources</phase>
+            <goals><goal>flatten</goal></goals>
+          </execution>
+          <execution>
+            <id>flatten.clean</id>
+            <phase>clean</phase>
+            <goals><goal>clean</goal></goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 
