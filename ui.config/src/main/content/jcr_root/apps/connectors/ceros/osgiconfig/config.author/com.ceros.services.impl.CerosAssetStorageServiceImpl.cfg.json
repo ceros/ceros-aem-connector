@@ -1,0 +1,5 @@
+{
+    "httpTimeoutSeconds:Integer": 30,
+    "damBasePath": "/content/dam/ceros",
+    "mediaCdnBaseUrl": "https://media.cdn.ceros.site/"
+}

@@ -1,0 +1,168 @@
+<sly data-sly-use.clientlib="core/wcm/components/commons/v1/templates/clientlib.html"
+     data-sly-call="${clientlib.css @ categories='ceros.cerosflex.site'}"/>
+<sly data-sly-use.model="com.ceros.models.CerosFlexModel">
+
+    <!--/* Placeholder when not configured */-->
+    <div class="cmp-cerosflex__placeholder"
+         data-sly-test="${!model.configured}"
+         style="display:flex; flex-direction:column; align-items:center; justify-content:center;
+                gap:12px; padding:40px 24px; min-height:120px;
+                border:2px dashed #b3b3b3; border-radius:8px;
+                background:#f5f5f5; color:#505050; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+                text-align:center;">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2"/>
+            <path d="M8 21h8"/><path d="M12 17v4"/>
+            <path d="M7 9l3 2 4-3 3 2"/>
+        </svg>
+        <div>
+            <p style="margin:0 0 4px; font-size:15px; font-weight:600; color:#333;">Ceros Flex</p>
+            <p style="margin:0; font-size:13px; color:#707070;">Open the component dialog to enter a Ceros experience URL.</p>
+        </div>
+    </div>
+
+    <!--/* Store mode: URL set but manifest not yet fetched */-->
+    <div class="cmp-cerosflex__placeholder"
+         data-sly-test="${model.configured && model.storeMode && !model.hasContent}"
+         style="display:flex; flex-direction:column; align-items:center; justify-content:center;
+                gap:12px; padding:40px 24px; min-height:120px;
+                border:2px dashed #e6a23c; border-radius:8px;
+                background:#fdf6ec; color:#505050; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+                text-align:center;">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#e6a23c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 9v4"/><path d="M12 17h.01"/>
+            <circle cx="12" cy="12" r="10"/>
+        </svg>
+        <div>
+            <p style="margin:0 0 4px; font-size:15px; font-weight:600; color:#333;">Ceros Flex — Store Mode</p>
+            <p style="margin:0; font-size:13px; color:#707070;">Open the dialog and click <strong>Fetch</strong> to load the experience.</p>
+        </div>
+    </div>
+
+    <!--/* Fetch mode: URL set but live fetch failed (no content) */-->
+    <div class="cmp-cerosflex__placeholder"
+         data-sly-test="${model.configured && !model.storeMode && !model.embedMode && !model.hasContent}"
+         style="display:flex; flex-direction:column; align-items:center; justify-content:center;
+                gap:12px; padding:40px 24px; min-height:120px;
+                border:2px dashed #d9534f; border-radius:8px;
+                background:#fdf2f2; color:#505050; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+                text-align:center;">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d9534f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 9v4"/><path d="M12 17h.01"/>
+            <circle cx="12" cy="12" r="10"/>
+        </svg>
+        <div>
+            <p style="margin:0 0 4px; font-size:15px; font-weight:600; color:#333;">Ceros Flex — Fetch Failed</p>
+            <p style="margin:0; font-size:13px; color:#707070;">Could not load the Ceros manifest. Switch to <strong>Store</strong> mode and click <strong>Fetch</strong>, or verify the URL is reachable.</p>
+        </div>
+    </div>
+
+    <!--/* Author/edit mode: iframe preview for store and fetch modes */-->
+    <sly data-sly-test="${model.configured && model.hasContent && !model.embedMode && !wcmmode.disabled}">
+        <style>
+            .cmp-cerosflex__author-preview {
+                position: relative;
+                height: 600px;
+                overflow: hidden;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+            }
+            .cmp-cerosflex__author-preview iframe {
+                width: 100%;
+                height: 100%;
+                border: none;
+            }
+        </style>
+        <div class="cmp-cerosflex__author-preview">
+            <div style="position:absolute; top:8px; right:8px; z-index:10; background:rgba(0,0,0,0.6);
+                        color:#fff; padding:4px 10px; border-radius:4px; font-size:11px; font-family:sans-serif;
+                        pointer-events:none;">
+                Edit mode preview</div>
+            <sly data-sly-test="${model.storeMode && model.prefetchedAt}">
+                <div style="position:absolute; top:8px; left:8px; z-index:10; background:rgba(0,0,0,0.6);
+                            color:#fff; padding:4px 10px; border-radius:4px; font-size:11px; font-family:sans-serif;
+                            pointer-events:none;">
+                    Stored: ${model.prefetchedAt}</div>
+            </sly>
+            <iframe src="${model.experienceUrl}?ceros-analytics=disabled" title="Ceros experience preview"></iframe>
+        </div>
+    </sly>
+
+    <!--/* Publish/preview mode: full render with all scripts */-->
+    <sly data-sly-test="${model.configured && model.hasContent && !model.embedMode && wcmmode.disabled}">
+
+        <sly data-sly-repeat.css="${model.cssLinks}">
+            <link data-sly-test="${!css.sameOrigin}" rel="stylesheet"
+                  href="${css.url}"
+                  integrity="${css.integrity}"
+                  crossorigin="anonymous"/>
+            <link data-sly-test="${css.sameOrigin}" rel="stylesheet"
+                  href="${css.url}"/>
+        </sly>
+
+        <sly data-sly-repeat.script="${model.headScripts}">
+            <script data-sly-test="${script.inline && script.contentType}"
+                    type="${script.contentType}"
+                    id="${script.scriptId}">${script.content @ context='unsafe'}</script>
+            <script data-sly-test="${script.inline && !script.contentType}"
+                    id="${script.scriptId}">${script.content @ context='unsafe'}</script>
+        </sly>
+
+        <div class="cmp-cerosflex__content"
+             data-sly-test="${model.htmlContent}"
+             data-flex-manifest-url="${model.manifestUrl}"
+             data-sly-text="${model.htmlContent @ context='unsafe'}"></div>
+
+        <sly data-sly-repeat.script="${model.bodyScripts}">
+            <script data-sly-test="${script.inline}"
+                    id="${script.scriptId}">${script.content @ context='unsafe'}</script>
+            <script data-sly-test="${script.src && script.sameOrigin && script.module}"
+                    src="${script.url}"
+                    type="module"
+                    defer></script>
+            <script data-sly-test="${script.src && script.sameOrigin && !script.module}"
+                    src="${script.url}"
+                    defer></script>
+            <script data-sly-test="${script.src && !script.sameOrigin}"
+                    src="${script.url}"
+                    defer></script>
+        </sly>
+
+    </sly>
+
+    <!--/* Client-side embed: author/edit mode — iframe preview */-->
+    <sly data-sly-test="${model.configured && model.embedMode && !wcmmode.disabled}">
+        <style>
+            .cmp-cerosflex__embed-preview {
+                position: relative;
+                height: 600px;
+                overflow: hidden;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+            }
+            .cmp-cerosflex__embed-preview iframe {
+                width: 100%;
+                height: 100%;
+                border: none;
+            }
+        </style>
+        <div class="cmp-cerosflex__embed-preview">
+            <div style="position:absolute; top:8px; right:8px; z-index:10; background:rgba(0,0,0,0.6);
+                        color:#fff; padding:4px 10px; border-radius:4px; font-size:11px; font-family:sans-serif;
+                        pointer-events:none;">
+                Client-side embed preview</div>
+            <iframe src="${model.experienceUrl}?ceros-analytics=disabled" title="${model.embedTitle}"></iframe>
+        </div>
+    </sly>
+
+    <!--/* Client-side embed: publish/preview mode — inject Ceros embed snippet */-->
+    <sly data-sly-test="${model.configured && model.embedMode && wcmmode.disabled}">
+        <div data-embed-width="100%"
+             data-embed-height="auto"
+             data-ceros-experience="${model.experienceUrl}"
+             data-embed-title="${model.embedTitle}"></div>
+        <script data-sly-test="${model.embedScriptUrl}" src="${model.embedScriptUrl}"></script>
+        <script data-sly-test="${!model.embedScriptUrl}" src="https://assets.ceros.site/js/embed.v1.js"></script>
+    </sly>
+
+</sly>

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jcr:root xmlns:sling="http://sling.apache.org/jcr/sling/1.0" xmlns:cq="http://www.day.com/jcr/cq/1.0" xmlns:jcr="http://www.jcp.org/jcr/1.0" xmlns:nt="http://www.jcp.org/jcr/nt/1.0"
+    jcr:primaryType="nt:unstructured"
+    jcr:title="Properties"
+    sling:resourceType="cq/gui/components/authoring/dialog"
+    extraClientlibs="[ceros.cerosflex.authoring]">
+    <content
+        jcr:primaryType="nt:unstructured"
+        sling:resourceType="granite/ui/components/coral/foundation/fixedcolumns">
+        <items jcr:primaryType="nt:unstructured">
+            <column
+                jcr:primaryType="nt:unstructured"
+                sling:resourceType="granite/ui/components/coral/foundation/container">
+                <items jcr:primaryType="nt:unstructured">
+
+                    <cerosMode
+                        jcr:primaryType="nt:unstructured"
+                        sling:resourceType="granite/ui/components/coral/foundation/form/select"
+                        fieldLabel="Delivery Mode"
+                        fieldDescription="Server-side (Always Fetch): loads manifest on every page render. Server-side (Store): fetches once and saves to JCR. Client-side (Iframe embed): injects the Ceros embed script for client-side rendering."
+                        name="./cerosMode">
+                        <items jcr:primaryType="nt:unstructured">
+                            <fetch
+                                jcr:primaryType="nt:unstructured"
+                                text="Server-side (Always Fetch)"
+                                value="fetch"
+                                selected="{Boolean}true"/>
+                            <store
+                                jcr:primaryType="nt:unstructured"
+                                text="Server-side (Store)"
+                                value="store"/>
+                            <embed
+                                jcr:primaryType="nt:unstructured"
+                                text="Client-side (Iframe embed)"
+                                value="embed"/>
+                        </items>
+                    </cerosMode>
+
+                    <manifestUrl
+                        jcr:primaryType="nt:unstructured"
+                        sling:resourceType="granite/ui/components/coral/foundation/form/textfield"
+                        fieldLabel="Ceros Experience URL"
+                        fieldDescription="Paste the full https:// URL to the published Ceros experience"
+                        pattern="^https://[^\s/]+(?::\d+)?/.+$"
+                        name="./manifestUrl"/>
+
+                    <lastFetched
+                        jcr:primaryType="nt:unstructured"
+                        sling:resourceType="granite/ui/components/coral/foundation/form/textfield"
+                        disabled="{Boolean}true"
+                        fieldLabel="Last Fetched"
+                        name="./cerosPrefetchedAt"/>
+
+                </items>
+            </column>
+        </items>
+    </content>
+</jcr:root>
