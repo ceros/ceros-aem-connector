@@ -47,8 +47,8 @@ All five blocks were missing; all five are now in place in the parent POM.
 
 In parent `pom.xml`, add a `<profile id="release">` containing:
 
-- [ ] `maven-gpg-plugin` 3.2.4 — signs the content-package zip + POM in the `verify` phase.
-- [ ] `central-publishing-maven-plugin` 0.5.0 (Sonatype, not the deprecated `nexus-staging-maven-plugin`) with `<publishingServerId>central</publishingServerId>` and `<autoPublish>false</autoPublish>` for manual promotion first time.
+- [x] `maven-gpg-plugin` 3.2.4 — signs the content-package zip + POM in the `verify` phase.
+- [x] `central-publishing-maven-plugin` 0.5.0 (Sonatype, not the deprecated `nexus-staging-maven-plugin`) with `<publishingServerId>central</publishingServerId>` and `<autoPublish>false</autoPublish>` for manual promotion first time.
 
 **Content-package specifics**: `-sources.jar` and `-javadoc.jar` are **not required** for `content-package` / `zip` artifacts on Central — validators only enforce them for `jar` packaging. Adobe Core Components publishes its `.all` package this way. No source/javadoc plugins needed.
 
@@ -56,17 +56,17 @@ In parent `pom.xml`, add a `<profile id="release">` containing:
 
 For `core/pom.xml`, `ui.apps/pom.xml`, `ui.config/pom.xml`:
 
-- [ ] Add `<skipPublishing>true</skipPublishing>` under the `central-publishing-maven-plugin` configuration in each module — or scope the release profile activation so it only applies to `all/`.
+- [x] Add `<skipPublishing>true</skipPublishing>` under the `central-publishing-maven-plugin` configuration in each module — applied via a `release` profile override in `core/pom.xml`, `ui.apps/pom.xml`, and `ui.config/pom.xml`.
 
 ## 6. Settings + CI wiring
 
-- [ ] Add `~/.m2/settings.xml` (or CI equivalent) with a `<server id="central">` entry containing the Central Portal token credentials.
-- [ ] Add GitHub Actions release workflow that:
-  - [ ] Triggers on git tag matching `v*`.
-  - [ ] Imports GPG private key from secret.
-  - [ ] Runs `mvn -P release deploy -pl all -am` (deploys `all` and builds its dependencies).
-  - [ ] Reports the staging deployment ID.
-- [ ] Add a `RELEASING.md` documenting the manual steps (tag, push, monitor CI, promote staging on Central Portal).
+- [x] Add `~/.m2/settings.xml` (or CI equivalent) with a `<server id="central">` entry containing the Central Portal token credentials — handled in CI by `actions/setup-java` with `server-id: central`.
+- [x] Add GitHub Actions release workflow that:
+  - [x] Triggers on GitHub Release creation with tag matching `release-X.Y.Z` (draft = dry run, published = real deploy).
+  - [x] Imports GPG private key from secret.
+  - [x] Runs `mvn -P release deploy -pl all -am` (deploys `all` and builds its dependencies).
+  - [x] Reports outcome in the job summary.
+- [x] Add a `RELEASING.md` documenting the manual steps (draft, publish, monitor CI, promote staging on Central Portal).
 
 ## 7. Dry run + first publish
 
@@ -79,6 +79,6 @@ For `core/pom.xml`, `ui.apps/pom.xml`, `ui.config/pom.xml`:
 ## 8. Post-release hygiene
 
 - [x] Add `CHANGELOG.md` documenting `0.0.1` as the initial release.
-- [ ] Tag the commit (`git tag v0.0.1 && git push --tags`).
+- [ ] Cut the GitHub Release with tag `release-0.0.1` (draft for dry run, then publish).
 - [ ] Update README with the Maven coordinates and an example `<subPackage>` snippet so customers know how to embed in their Cloud Manager build.
 - [ ] Bump version to next `-SNAPSHOT` for ongoing development.

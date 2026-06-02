@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  release:
+    types: [created, published]
+
+jobs:
+  release:
+    # Skip the redundant `created` event when a non-draft release is created directly
+    # (GitHub fires both `created` and `published` in that case — we only act on `published`).
+    if: ${{ github.event.action == 'published' || github.event.release.draft }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate tag format
+        run: |
+          tag="${{ github.event.release.tag_name }}"
+          if [[ ! "$tag" =~ ^release-[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Release tag '$tag' must match 'release-X.Y.Z'"
+            exit 1
+          fi
+          echo "version=${tag#release-}" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+          server-id: central
+          server-username: CENTRAL_USERNAME
+          server-password: CENTRAL_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+
+      - name: Verify POM version matches tag
+        run: |
+          pom_version=$(mvn -B -q -Dexpression=project.version -DforceStdout help:evaluate)
+          if [[ "$pom_version" != "$version" ]]; then
+            echo "::error::POM version '$pom_version' does not match tag version '$version'"
+            exit 1
+          fi
+
+      - name: Dry run (draft release)
+        if: ${{ github.event.release.draft }}
+        env:
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: mvn -B -P release verify -pl all -am
+
+      - name: Deploy to Maven Central staging (published release)
+        if: ${{ !github.event.release.draft }}
+        env:
+          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: mvn -B -P release deploy -pl all -am
+
+      - name: Summary
+        run: |
+          if [[ "${{ github.event.release.draft }}" == "true" ]]; then
+            {
+              echo "### Dry run complete for \`$version\`"
+              echo "Signed artifacts built locally; nothing uploaded."
+              echo "Publish the GitHub release to trigger the real deploy."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "### Deployed \`$version\` to Central Portal staging"
+              echo "Log in to https://central.sonatype.com to validate and promote the staged deployment."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
