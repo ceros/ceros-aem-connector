@@ -81,15 +81,16 @@ jobs:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: mvn -B -P release verify -pl all -am
 
-      # Build & install non-publishable modules first so `all` can embed them,
-      # then deploy only `all` — keeps `core` / `ui.apps` / `ui.config` out of
-      # the Central staging bundle (which would fail validation as JAR modules
-      # missing sources / javadocs).
-      - name: Build & install dependency modules
+      # Two-stage so only `all` ends up in the Central staging bundle.
+      # Stage 1: install everything (parent POM + core / ui.apps / ui.config + all)
+      # locally — release profile OFF, so the central-publishing extension isn't
+      # loaded and nothing is staged for upload.
+      # Stage 2: deploy only `all` with the release profile ON — central-publishing
+      # extension sees a single-module reactor and only `all`'s content-package
+      # zip (exempt from sources/javadocs) goes to Central.
+      - name: Build & install all modules locally
         if: ${{ steps.mode.outputs.mode == 'deploy' }}
-        env:
-          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: mvn -B install -pl core,ui.apps,ui.config
+        run: mvn -B install -DskipTests
 
       - name: Deploy `all` to Maven Central staging
         if: ${{ steps.mode.outputs.mode == 'deploy' }}
