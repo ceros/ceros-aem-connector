@@ -1,13 +1,13 @@
 # Releasing
 
-How to cut a new release of **`ceros-aem-connector-all`** to Maven Central. The release is automated via the GitHub Actions workflow triggered by GitHub Releases tagged `release-X.Y.Z` — most of the work happens in CI. The manual steps below are the bookends: prep, draft, promote, and final publish on the Central Portal.
+How to cut a new release of **`ceros-aem-connector-all`** to Maven Central. The release is automated via the GitHub Actions workflow in `.github/workflows/release.yml`. The flow:
 
-The workflow distinguishes draft vs. published GitHub Releases:
+- **Push to a `release/X.Y.Z` branch** → CI runs `mvn -P release verify -pl all -am` (signs artifacts locally; uploads nothing). This is the dry run.
+- **Publish a GitHub Release tagged `release-X.Y.Z`** → CI runs `mvn -P release deploy -pl all -am` (uploads signed artifacts to Central Portal staging).
 
-- **Draft release** → CI runs `mvn -P release verify -pl all -am` (signs artifacts locally; uploads nothing). Use this as a dry run.
-- **Published release** → CI runs `mvn -P release deploy -pl all -am` (uploads signed artifacts to Central Portal staging).
+GitHub Releases marked as **drafts do not trigger any workflow events** — drafts are not used for the dry run. The release branch is.
 
-For the one-time setup (Sonatype account, GPG key, POM metadata, release profile, CI secrets), see [MAVEN_CENTRAL_RELEASE.md](MAVEN_CENTRAL_RELEASE.md).
+For one-time setup (Sonatype account, GPG key, POM metadata, release profile, CI secrets), see [MAVEN_CENTRAL_RELEASE.md](MAVEN_CENTRAL_RELEASE.md).
 
 ---
 
@@ -15,8 +15,8 @@ For the one-time setup (Sonatype account, GPG key, POM metadata, release profile
 
 Confirm these are in place before starting:
 
-- You have write access to the `ceros/ceros-aem-connector` repo and permission to push tags.
-- The following repo secrets exist in GitHub Actions:
+- You have write access to the `ceros/ceros-aem-connector` repo and permission to push branches and create releases.
+- The `maven-central` GitHub Environment has these four secrets:
   - `CENTRAL_USERNAME` — Central Portal user token username
   - `CENTRAL_PASSWORD` — Central Portal user token password
   - `GPG_PRIVATE_KEY` — armored private key (`gpg --armor --export-secret-keys <KEY_ID>`)
@@ -27,75 +27,75 @@ Confirm these are in place before starting:
 
 - [ ] `main` is green in CI and contains everything you intend to ship.
 - [ ] `CHANGELOG.md` has an entry for the new version with a dated release header.
-- [ ] All four POMs (`pom.xml`, `core/pom.xml`, `ui.apps/pom.xml`, `ui.config/pom.xml`, `all/pom.xml`) are on the version you're about to release (no `-SNAPSHOT`).
-- [ ] Local dry run passes:
+- [ ] Optional local sanity check:
   ```sh
   mvn -P release verify -pl all -am
   ```
   Inspect `all/target/` for `ceros-aem-connector-all-<version>.zip` and the matching `.asc` signature.
 
-## 2. Bump the version (if needed)
+## 2. Cut a `release/X.Y.Z` branch with the release version
 
-If `main` is currently on a `-SNAPSHOT`, bump to the release version first.
+Branch from `main`, set the POM version (no `-SNAPSHOT`), commit, and push.
 
 ```sh
+git checkout -b release/<X.Y.Z>
 mvn versions:set -DnewVersion=<X.Y.Z> -DprocessAllModules
 mvn versions:commit
 git commit -am "Release <X.Y.Z>"
-git push origin main
+git push -u origin release/<X.Y.Z>
 ```
 
-## 3. Create a draft GitHub Release (dry run)
+The push fires the **Release** workflow in dry-run mode. Watch it:
 
-Create the Release as a **draft** with tag `release-<X.Y.Z>` targeting `main`. The workflow will run `mvn -P release verify -pl all -am` to confirm the artifact builds and signs cleanly without uploading anything.
+```sh
+gh run watch
+# or: https://github.com/ceros/ceros-aem-connector/actions
+```
+
+The dry-run workflow:
+1. Validates the branch name matches `release/X.Y.Z`.
+2. Checks out the branch and imports the GPG key.
+3. Verifies the POM version matches the branch.
+4. Runs `mvn -P release verify -pl all -am` — produces a signed content-package zip in `all/target/`.
+
+If it fails, fix forward on the branch and push again.
+
+## 3. Publish the GitHub Release (real deploy)
+
+Once the dry run is green, create a published GitHub Release with tag `release-<X.Y.Z>` against the release branch. **Do not use draft** — drafts don't fire workflow events.
 
 ```sh
 gh release create release-<X.Y.Z> \
-  --draft \
-  --target main \
+  --target release/<X.Y.Z> \
   --title "release-<X.Y.Z>" \
   --notes-file CHANGELOG.md
 ```
 
-Follow the **Release** workflow run:
+Or via the UI: **Releases → Draft a new release** with the tag, target the release branch, and click **Publish release** (skip "Save draft").
 
-```sh
-gh run watch
-# or open: https://github.com/ceros/ceros-aem-connector/actions
-```
+Publishing fires the `release: published` event and CI runs `mvn -P release deploy -pl all -am`, uploading signed artifacts to the Central Portal staging area.
 
-If the dry run fails, fix forward on `main`, delete the draft release (`gh release delete release-<X.Y.Z>`), and recreate it.
+The deploy workflow:
+1. Validates the tag matches `release-X.Y.Z`.
+2. Checks out the tagged commit and imports the GPG key.
+3. Verifies the POM version matches the tag.
+4. Runs `mvn -P release deploy -pl all -am`.
+5. Prints a confirmation in the job summary.
 
-## 4. Publish the release (real deploy)
+If the deploy fails, fix forward — delete the release and tag (`gh release delete release-<X.Y.Z> --cleanup-tag`), push more commits to the release branch, and start step 3 again.
 
-Once the dry run is green, publish the draft. Publishing fires the `release: published` event and CI runs `mvn -P release deploy -pl all -am`, uploading signed artifacts to the Central Portal staging area.
-
-```sh
-gh release edit release-<X.Y.Z> --draft=false
-```
-
-Or click **Publish release** in the GitHub UI.
-
-The workflow will:
-1. Check out the tagged commit and import the GPG key.
-2. Run `mvn -P release deploy -pl all -am`.
-3. Upload the signed content-package zip to the Central Portal **staging** area.
-4. Print a confirmation in the job summary.
-
-If the deploy fails, fix forward — delete the release and tag (`gh release delete release-<X.Y.Z> --cleanup-tag`), land the fix on `main`, and start again at step 3.
-
-## 5. Promote on Central Portal
+## 4. Promote on Central Portal
 
 Because we publish with `autoPublish=false`, the deployment lands in staging and waits for manual promotion.
 
 1. Log into [central.sonatype.com](https://central.sonatype.com).
-2. Open **Deployments** and find the staging entry matching your version (ID from the CI summary).
+2. Open **Deployments** and find the staging entry matching your version.
 3. Verify validation passed (signatures, POM metadata, no errors).
 4. Click **Publish** to promote to the public Maven Central index.
 
 Once published, the version is **immutable** — there is no unpublish.
 
-## 6. Verify the artifact
+## 5. Verify the artifact
 
 Indexing onto `repo1.maven.org` typically takes 15 minutes to a few hours (worst case 24h).
 
@@ -105,9 +105,9 @@ curl -I https://repo1.maven.org/maven2/com/ceros/ceros-aem-connector-all/<X.Y.Z>
 
 Spot check by adding the dependency to a scratch project and resolving it.
 
-## 7. Post-release
+## 6. Post-release
 
-- [ ] Create a GitHub Release from the tag, pasting the relevant `CHANGELOG.md` section as the body.
+- [ ] Merge the `release/<X.Y.Z>` branch back into `main` (or fast-forward if no commits diverged).
 - [ ] Bump versions on `main` to the next `-SNAPSHOT`:
   ```sh
   mvn versions:set -DnewVersion=<X.Y.Z+1>-SNAPSHOT -DprocessAllModules
@@ -122,3 +122,4 @@ Spot check by adding the dependency to a scratch project and resolving it.
 - **GPG signing fails in CI**: check that `GPG_PRIVATE_KEY` is the *armored* export and that `GPG_PASSPHRASE` matches. The key must not be expired.
 - **Central Portal rejects the upload**: usually a POM-metadata issue (`url`, `licenses`, `scm`, `developers`, `organization`). Re-validate locally with `mvn -P release verify -pl all -am` and compare against the rules at [central.sonatype.org/publish/requirements](https://central.sonatype.org/publish/requirements/).
 - **Wrong version went out**: you cannot republish the same coordinates. Bump to the next patch version and release again.
+- **Draft release didn't trigger the workflow**: by design — GitHub does not fire `release` events for drafts. Use a `release/X.Y.Z` branch for the dry run instead.
