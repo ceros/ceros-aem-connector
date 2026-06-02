@@ -71,6 +71,10 @@ dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
 
+# flatten-maven-plugin output (generated; deployed POM only)
+.flattened-pom.xml
+**/.flattened-pom.xml
+
 
 ### Vault ###
 .vlt

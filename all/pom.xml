@@ -88,23 +88,32 @@
     </plugins>
   </build>
 
+  <!--
+    Sub-module deps are marked optional because they are embedded inside
+    this artifact's content-package zip at build time (see <embeddeds> above)
+    and are NOT published to Maven Central. Consumers should depend on this
+    artifact alone — Maven won't try to resolve the sub-modules transitively.
+  -->
   <dependencies>
     <dependency>
       <groupId>com.ceros</groupId>
       <artifactId>ceros-aem-connector-core</artifactId>
       <version>${project.version}</version>
+      <optional>true</optional>
     </dependency>
     <dependency>
       <groupId>com.ceros</groupId>
       <artifactId>ceros-aem-connector-ui.apps</artifactId>
       <version>${project.version}</version>
       <type>zip</type>
+      <optional>true</optional>
     </dependency>
     <dependency>
       <groupId>com.ceros</groupId>
       <artifactId>ceros-aem-connector-ui.config</artifactId>
       <version>${project.version}</version>
       <type>zip</type>
+      <optional>true</optional>
     </dependency>
   </dependencies>
 </project>
