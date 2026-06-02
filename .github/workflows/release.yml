@@ -10,6 +10,7 @@ jobs:
     # (GitHub fires both `created` and `published` in that case — we only act on `published`).
     if: ${{ github.event.action == 'published' || github.event.release.draft }}
     runs-on: ubuntu-latest
+    environment: maven-central
 
     steps:
       - name: Validate tag format
