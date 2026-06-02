@@ -5,6 +5,7 @@ on:
     branches: ['release/*']
   release:
     types: [published]
+  workflow_dispatch:
 
 jobs:
   release:
@@ -15,29 +16,37 @@ jobs:
       - name: Determine mode
         id: mode
         run: |
-          if [[ "${{ github.event_name }}" == "release" ]]; then
-            tag="${{ github.event.release.tag_name }}"
-            if [[ ! "$tag" =~ ^release-[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo "::error::Release tag '$tag' must match 'release-X.Y.Z'"
+          case "${{ github.event_name }}" in
+            release)
+              tag="${{ github.event.release.tag_name }}"
+              if [[ ! "$tag" =~ ^release-[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                echo "::error::Release tag '$tag' must match 'release-X.Y.Z'"
+                exit 1
+              fi
+              echo "mode=deploy" >> "$GITHUB_OUTPUT"
+              echo "ref=$tag" >> "$GITHUB_OUTPUT"
+              echo "expected_version=${tag#release-}" >> "$GITHUB_OUTPUT"
+              ;;
+            push)
+              branch="${GITHUB_REF#refs/heads/}"
+              if [[ ! "$branch" =~ ^release/[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                echo "::error::Release branch '$branch' must match 'release/X.Y.Z'"
+                exit 1
+              fi
+              echo "mode=dry-run" >> "$GITHUB_OUTPUT"
+              echo "ref=$branch" >> "$GITHUB_OUTPUT"
+              echo "expected_version=${branch#release/}" >> "$GITHUB_OUTPUT"
+              ;;
+            workflow_dispatch)
+              echo "mode=dry-run" >> "$GITHUB_OUTPUT"
+              echo "ref=${GITHUB_REF#refs/heads/}" >> "$GITHUB_OUTPUT"
+              # No expected_version — use whatever the POM says.
+              ;;
+            *)
+              echo "::error::Unexpected event '${{ github.event_name }}'"
               exit 1
-            fi
-            {
-              echo "mode=deploy"
-              echo "ref=$tag"
-              echo "version=${tag#release-}"
-            } >> "$GITHUB_OUTPUT"
-          else
-            branch="${GITHUB_REF#refs/heads/}"
-            if [[ ! "$branch" =~ ^release/[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo "::error::Release branch '$branch' must match 'release/X.Y.Z'"
-              exit 1
-            fi
-            {
-              echo "mode=dry-run"
-              echo "ref=$branch"
-              echo "version=${branch#release/}"
-            } >> "$GITHUB_OUTPUT"
-          fi
+              ;;
+          esac
 
       - uses: actions/checkout@v4
         with:
@@ -55,13 +64,16 @@ jobs:
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
 
-      - name: Verify POM version matches ref
+      - name: Resolve version
+        id: version
         run: |
           pom_version=$(mvn -B -q -Dexpression=project.version -DforceStdout help:evaluate)
-          if [[ "$pom_version" != "${{ steps.mode.outputs.version }}" ]]; then
-            echo "::error::POM version '$pom_version' does not match '${{ steps.mode.outputs.version }}'"
+          expected="${{ steps.mode.outputs.expected_version }}"
+          if [[ -n "$expected" && "$pom_version" != "$expected" ]]; then
+            echo "::error::POM version '$pom_version' does not match '$expected'"
             exit 1
           fi
+          echo "version=$pom_version" >> "$GITHUB_OUTPUT"
 
       - name: Dry run
         if: ${{ steps.mode.outputs.mode == 'dry-run' }}
@@ -79,7 +91,7 @@ jobs:
 
       - name: Summary
         run: |
-          version="${{ steps.mode.outputs.version }}"
+          version="${{ steps.version.outputs.version }}"
           if [[ "${{ steps.mode.outputs.mode }}" == "dry-run" ]]; then
             {
               echo "### Dry run complete for \`$version\`"

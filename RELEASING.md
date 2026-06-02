@@ -2,10 +2,11 @@
 
 How to cut a new release of **`ceros-aem-connector-all`** to Maven Central. The release is automated via the GitHub Actions workflow in `.github/workflows/release.yml`. The flow:
 
-- **Push to a `release/X.Y.Z` branch** → CI runs `mvn -P release verify -pl all -am` (signs artifacts locally; uploads nothing). This is the dry run.
+- **Push to a `release/X.Y.Z` branch** → CI runs `mvn -P release verify -pl all -am` (signs artifacts locally; uploads nothing). This is the canonical dry run.
+- **Manual run** via **Actions → Release → Run workflow** (`workflow_dispatch`) → same dry run against whatever ref you pick. Useful for re-running the dry run against `main`, a draft's target ref, or any commit.
 - **Publish a GitHub Release tagged `release-X.Y.Z`** → CI runs `mvn -P release deploy -pl all -am` (uploads signed artifacts to Central Portal staging).
 
-GitHub Releases marked as **drafts do not trigger any workflow events** — drafts are not used for the dry run. The release branch is.
+GitHub Releases marked as **drafts do not trigger any workflow events** — to dry-run a draft, use the `workflow_dispatch` manual run against the draft's target ref.
 
 For one-time setup (Sonatype account, GPG key, POM metadata, release profile, CI secrets), see [MAVEN_CENTRAL_RELEASE.md](MAVEN_CENTRAL_RELEASE.md).
 
