@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.2] - 2026-06-02
+
+### Changed
+- `ceros-aem-connector-all`'s published POM marks `core` / `ui.apps` / `ui.config` sub-module dependencies as `<optional>true</optional>`. Consumers can now depend on `ceros-aem-connector-all` without an `<exclusions>` block — the sub-modules are embedded inside the content-package zip and are not published to Maven Central.
+
 ## [0.0.1] - 2026-06-02
 
 Initial release.
@@ -24,5 +29,6 @@ Initial release.
 - OSGi configuration support (timeouts, HTTP scheme allowlist, local-address allowlist) via `CerosManifestServiceImpl.cfg.json`.
 - Authenticated browsing of Ceros Flex experiences in the authoring dialog via `CerosAuthenticatedApiService`.
 
-[Unreleased]: https://github.com/ceros/ceros-aem-connector/compare/v0.0.1...HEAD
-[0.0.1]: https://github.com/ceros/ceros-aem-connector/releases/tag/v0.0.1
+[Unreleased]: https://github.com/ceros/ceros-aem-connector/compare/release-0.0.2...HEAD
+[0.0.2]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-0.0.2
+[0.0.1]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-0.0.1
