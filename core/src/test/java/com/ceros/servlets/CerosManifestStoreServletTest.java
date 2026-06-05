@@ -1,6 +1,7 @@
 package com.ceros.servlets;
 
 import com.ceros.models.cerosflex.CerosManifestV0;
+import com.ceros.models.cerosflex.StoredManifestBundle;
 import com.ceros.services.CerosAssetStorageService;
 import com.ceros.services.CerosManifestService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -55,6 +56,20 @@ class CerosManifestStoreServletTest {
         f.set(servlet, value);
     }
 
+    private static CerosManifestV0 parse(String json) throws IOException {
+        return MAPPER.readValue(json, CerosManifestV0.class);
+    }
+
+    private static StoredManifestBundle singlePageBundle(String pageSlug, String html) throws IOException {
+        LinkedHashMap<String, CerosManifestV0> pages = new LinkedHashMap<>();
+        pages.put(pageSlug, parse(""
+                + "{\"experience\":{\"slug\":\"e\",\"pageSlug\":" + MAPPER.writeValueAsString(pageSlug) + "},"
+                + "\"assets\":[{\"type\":\"html-body\",\"src\":{\"type\":\"inline\",\"content\":" + MAPPER.writeValueAsString(html) + "}}]}"));
+        return new StoredManifestBundle(pageSlug, pages);
+    }
+
+    // ---- Input validation ----
+
     @Test
     void doPostReturnsBadRequestWhenNoManifestUrl() throws Exception {
         when(request.getParameter("manifestUrl")).thenReturn(null);
@@ -73,7 +88,7 @@ class CerosManifestStoreServletTest {
     @Test
     void doPostReturnsBadGatewayOnFetchFailure() throws Exception {
         when(request.getParameter("manifestUrl")).thenReturn("https://example.com/exp");
-        when(manifestService.fetchPublicManifestFromUrl(anyString())).thenThrow(new IOException("connection refused"));
+        when(manifestService.fetchManifestBundle(anyString())).thenThrow(new IOException("connection refused"));
 
         servlet.doPost(request, response);
 
@@ -82,152 +97,76 @@ class CerosManifestStoreServletTest {
     }
 
     @Test
-    void doPostAppendsManifestJsonToUrl() throws Exception {
+    void doPostReturnsBadRequestWhenServiceRejectsUrl() throws Exception {
         when(request.getParameter("manifestUrl")).thenReturn("https://example.com/exp");
-
-        CerosManifestV0 manifest = MAPPER.readValue("{}", CerosManifestV0.class);
-        when(manifestService.fetchPublicManifestFromUrl("https://example.com/exp/manifest.v0.json")).thenReturn(manifest);
+        when(manifestService.fetchManifestBundle(anyString())).thenThrow(new IllegalArgumentException("bad scheme"));
 
         servlet.doPost(request, response);
 
-        verify(manifestService).fetchPublicManifestFromUrl("https://example.com/exp/manifest.v0.json");
+        verify(response).setStatus(SlingHttpServletResponse.SC_BAD_REQUEST);
+        assertTrue(responseWriter.toString().contains("bad scheme"));
+    }
+
+    // ---- URL normalisation ----
+
+    @Test
+    void doPostAppendsManifestJsonWhenAbsent() throws Exception {
+        when(request.getParameter("manifestUrl")).thenReturn("https://example.com/exp");
+        when(manifestService.fetchManifestBundle("https://example.com/exp/manifest.v0.json"))
+                .thenReturn(singlePageBundle("home", "<p>1</p>"));
+
+        servlet.doPost(request, response);
+
+        verify(manifestService).fetchManifestBundle("https://example.com/exp/manifest.v0.json");
         assertTrue(responseWriter.toString().contains("\"status\":\"ok\""));
     }
 
     @Test
-    void doPostDoesNotAppendManifestJsonIfAlreadyPresent() throws Exception {
+    void doPostLeavesExistingManifestJsonUrl() throws Exception {
         when(request.getParameter("manifestUrl")).thenReturn("https://example.com/exp/manifest.json");
-
-        CerosManifestV0 manifest = MAPPER.readValue("{}", CerosManifestV0.class);
-        when(manifestService.fetchPublicManifestFromUrl("https://example.com/exp/manifest.json")).thenReturn(manifest);
+        when(manifestService.fetchManifestBundle("https://example.com/exp/manifest.json"))
+                .thenReturn(singlePageBundle("home", "<p>1</p>"));
 
         servlet.doPost(request, response);
 
-        verify(manifestService).fetchPublicManifestFromUrl("https://example.com/exp/manifest.json");
+        verify(manifestService).fetchManifestBundle("https://example.com/exp/manifest.json");
     }
 
     @Test
-    void doPostAppendsSlashBeforeManifestJson() throws Exception {
-        when(request.getParameter("manifestUrl")).thenReturn("https://example.com/exp");
-
-        CerosManifestV0 manifest = MAPPER.readValue("{}", CerosManifestV0.class);
-        when(manifestService.fetchPublicManifestFromUrl("https://example.com/exp/manifest.v0.json")).thenReturn(manifest);
+    void doPostPreservesVersionedManifestJsonUrl() throws Exception {
+        when(request.getParameter("manifestUrl")).thenReturn("https://example.com/exp/manifest.v0.1.json");
+        when(manifestService.fetchManifestBundle("https://example.com/exp/manifest.v0.1.json"))
+                .thenReturn(singlePageBundle("home", "<p>1</p>"));
 
         servlet.doPost(request, response);
-        verify(manifestService).fetchPublicManifestFromUrl("https://example.com/exp/manifest.v0.json");
+
+        verify(manifestService).fetchManifestBundle("https://example.com/exp/manifest.v0.1.json");
     }
 
+    // ---- Asset upload ----
+
     @Test
-    void doPostUploadsAssets() throws Exception {
+    void doPostUploadsAssetsForEveryPageInBundle() throws Exception {
         when(request.getParameter("manifestUrl")).thenReturn("https://example.com/exp/manifest.json");
 
-        CerosManifestV0 manifest = MAPPER.readValue(
-                "{\"deliveryModes\":{\"ssr\":{\"styles\":[{\"url\":\"https://cdn/style.css\"}]}}}",
-                CerosManifestV0.class);
-        when(manifestService.fetchPublicManifestFromUrl(anyString())).thenReturn(manifest);
+        LinkedHashMap<String, CerosManifestV0> pages = new LinkedHashMap<>();
+        pages.put("home", parse("{\"deliveryModes\":{\"ssr\":{\"styles\":[{\"url\":\"https://cdn/home.css\"}]}}}"));
+        pages.put("about", parse("{\"deliveryModes\":{\"ssr\":{\"styles\":[{\"url\":\"https://cdn/about.css\"}]}}}"));
+        when(manifestService.fetchManifestBundle(anyString())).thenReturn(new StoredManifestBundle("home", pages));
 
-        Map<String, String> urlMap = new LinkedHashMap<>();
-        urlMap.put("https://cdn/style.css", "/content/dam/ceros/exp/style.css");
-        when(assetStorageService.uploadAssets(any(), any())).thenReturn(urlMap);
+        when(assetStorageService.uploadAssets(any(), any())).thenReturn(Map.of());
 
         servlet.doPost(request, response);
 
-        verify(assetStorageService).uploadAssets(any(), eq(resolver));
-        assertTrue(responseWriter.toString().contains("\"status\":\"ok\""));
-    }
-
-    @Test
-    void doPostCallsStoreManifestWhenComponentPathProvided() throws Exception {
-        when(request.getParameter("manifestUrl")).thenReturn("https://example.com/exp/manifest.json");
-        when(request.getParameter("componentPath")).thenReturn("/content/mysite/jcr:content/root/cerosflex");
-        when(manifestService.storeManifest(any(), anyString(), anyString(), any(CerosManifestV0.class), any()))
-                .thenReturn(true);
-
-        CerosManifestV0 manifest = MAPPER.readValue("{}", CerosManifestV0.class);
-        when(manifestService.fetchPublicManifestFromUrl(anyString())).thenReturn(manifest);
-
-        servlet.doPost(request, response);
-
-        verify(manifestService).storeManifest(eq(resolver),
-                eq("/content/mysite/jcr:content/root/cerosflex"),
-                eq("https://example.com/exp/manifest.json"),
-                any(CerosManifestV0.class), any());
-        assertTrue(responseWriter.toString().contains("\"saved\":true"));
-    }
-
-    @Test
-    void doPostReplacesJcrContentInComponentPath() throws Exception {
-        when(request.getParameter("manifestUrl")).thenReturn("https://example.com/exp/manifest.json");
-        when(request.getParameter("componentPath")).thenReturn("/content/mysite/_jcr_content/root/cerosflex");
-        when(manifestService.storeManifest(any(), anyString(), anyString(), any(CerosManifestV0.class), any()))
-                .thenReturn(true);
-
-        CerosManifestV0 manifest = MAPPER.readValue("{}", CerosManifestV0.class);
-        when(manifestService.fetchPublicManifestFromUrl(anyString())).thenReturn(manifest);
-
-        servlet.doPost(request, response);
-
-        verify(manifestService).storeManifest(any(),
-                eq("/content/mysite/jcr:content/root/cerosflex"),
-                anyString(), any(CerosManifestV0.class), any());
-    }
-
-    @Test
-    void doPostSkipsSaveWhenComponentPathContainsWildcard() throws Exception {
-        when(request.getParameter("manifestUrl")).thenReturn("https://example.com/exp/manifest.json");
-        when(request.getParameter("componentPath")).thenReturn("/content/*/test");
-
-        CerosManifestV0 manifest = MAPPER.readValue("{}", CerosManifestV0.class);
-        when(manifestService.fetchPublicManifestFromUrl(anyString())).thenReturn(manifest);
-
-        servlet.doPost(request, response);
-
-        verify(manifestService, never()).storeManifest(any(), anyString(), anyString(), any(CerosManifestV0.class), any());
-        assertTrue(responseWriter.toString().contains("\"saved\":false"));
-    }
-
-    @Test
-    void doPostSkipsSaveWhenNoComponentPath() throws Exception {
-        when(request.getParameter("manifestUrl")).thenReturn("https://example.com/exp/manifest.json");
-        when(request.getParameter("componentPath")).thenReturn(null);
-
-        CerosManifestV0 manifest = MAPPER.readValue("{}", CerosManifestV0.class);
-        when(manifestService.fetchPublicManifestFromUrl(anyString())).thenReturn(manifest);
-
-        servlet.doPost(request, response);
-
-        assertTrue(responseWriter.toString().contains("\"saved\":false"));
-    }
-
-    @Test
-    void doPostPassesUrlMapToStoreManifest() throws Exception {
-        when(request.getParameter("manifestUrl")).thenReturn("https://example.com/exp/manifest.json");
-        when(request.getParameter("componentPath")).thenReturn("/content/mysite/jcr:content/root/cerosflex");
-        when(manifestService.storeManifest(any(), anyString(), anyString(), any(CerosManifestV0.class), any()))
-                .thenReturn(true);
-
-        CerosManifestV0 manifest = MAPPER.readValue("{}", CerosManifestV0.class);
-        when(manifestService.fetchPublicManifestFromUrl(anyString())).thenReturn(manifest);
-
-        Map<String, String> urlMap = new LinkedHashMap<>();
-        urlMap.put("https://cdn/a.css", "/dam/a.css");
-        urlMap.put("https://cdn/b.js", "/dam/b.js");
-        when(assetStorageService.uploadAssets(any(), any())).thenReturn(urlMap);
-
-        servlet.doPost(request, response);
-
-        verify(manifestService).storeManifest(any(), anyString(), anyString(),
-                any(CerosManifestV0.class), eq(urlMap));
+        verify(assetStorageService, times(2)).uploadAssets(any(), eq(resolver));
+        assertTrue(responseWriter.toString().contains("\"pages\":2"));
     }
 
     @Test
     void doPostReturnsErrorOnAssetUploadFailure() throws Exception {
         when(request.getParameter("manifestUrl")).thenReturn("https://example.com/exp/manifest.json");
-
-        CerosManifestV0 manifest = MAPPER.readValue("{}", CerosManifestV0.class);
-        when(manifestService.fetchPublicManifestFromUrl(anyString())).thenReturn(manifest);
-        when(assetStorageService.uploadAssets(any(), any()))
-                .thenThrow(new RuntimeException("DAM error"));
+        when(manifestService.fetchManifestBundle(anyString())).thenReturn(singlePageBundle("home", "<p>1</p>"));
+        when(assetStorageService.uploadAssets(any(), any())).thenThrow(new RuntimeException("DAM error"));
 
         servlet.doPost(request, response);
 
@@ -235,27 +174,95 @@ class CerosManifestStoreServletTest {
         assertTrue(responseWriter.toString().contains("Failed to upload assets to DAM"));
     }
 
-    @Test
-    void doPostPreservesV01ManifestUrl() throws Exception {
-        when(request.getParameter("manifestUrl")).thenReturn("https://example.com/exp/manifest.v0.1.json");
+    // ---- Bundle persistence ----
 
-        CerosManifestV0 manifest = MAPPER.readValue("{}", CerosManifestV0.class);
-        when(manifestService.fetchPublicManifestFromUrl("https://example.com/exp/manifest.v0.1.json")).thenReturn(manifest);
+    @Test
+    void doPostPersistsBundleWhenComponentPathProvided() throws Exception {
+        when(request.getParameter("manifestUrl")).thenReturn("https://example.com/exp/manifest.json");
+        when(request.getParameter("componentPath")).thenReturn("/content/mysite/jcr:content/root/cerosflex");
+        StoredManifestBundle bundle = singlePageBundle("home", "<p>1</p>");
+        when(manifestService.fetchManifestBundle(anyString())).thenReturn(bundle);
+        when(manifestService.storeManifestBundle(any(), anyString(), anyString(), eq(bundle), anyMap()))
+                .thenReturn(true);
 
         servlet.doPost(request, response);
 
-        verify(manifestService).fetchPublicManifestFromUrl("https://example.com/exp/manifest.v0.1.json");
-        assertTrue(responseWriter.toString().contains("\"status\":\"ok\""));
+        verify(manifestService).storeManifestBundle(eq(resolver),
+                eq("/content/mysite/jcr:content/root/cerosflex"),
+                eq("https://example.com/exp/manifest.json"),
+                eq(bundle), anyMap());
+        assertTrue(responseWriter.toString().contains("\"saved\":true"));
     }
 
     @Test
-    void doPostDoesNotAppendManifestJsonToV01Url() throws Exception {
-        when(request.getParameter("manifestUrl")).thenReturn("https://example.com/exp/manifest.v0.1.json");
-
-        CerosManifestV0 manifest = MAPPER.readValue("{}", CerosManifestV0.class);
-        when(manifestService.fetchPublicManifestFromUrl("https://example.com/exp/manifest.v0.1.json")).thenReturn(manifest);
+    void doPostReplacesEncodedJcrContentInComponentPath() throws Exception {
+        when(request.getParameter("manifestUrl")).thenReturn("https://example.com/exp/manifest.json");
+        when(request.getParameter("componentPath")).thenReturn("/content/mysite/_jcr_content/root/cerosflex");
+        when(manifestService.fetchManifestBundle(anyString())).thenReturn(singlePageBundle("home", "<p>1</p>"));
+        when(manifestService.storeManifestBundle(any(), anyString(), anyString(), any(), anyMap())).thenReturn(true);
 
         servlet.doPost(request, response);
-        verify(manifestService).fetchPublicManifestFromUrl("https://example.com/exp/manifest.v0.1.json");
+
+        verify(manifestService).storeManifestBundle(any(),
+                eq("/content/mysite/jcr:content/root/cerosflex"),
+                anyString(), any(), anyMap());
+    }
+
+    @Test
+    void doPostSkipsSaveWhenComponentPathContainsWildcard() throws Exception {
+        when(request.getParameter("manifestUrl")).thenReturn("https://example.com/exp/manifest.json");
+        when(request.getParameter("componentPath")).thenReturn("/content/*/test");
+        when(manifestService.fetchManifestBundle(anyString())).thenReturn(singlePageBundle("home", "<p>1</p>"));
+
+        servlet.doPost(request, response);
+
+        verify(manifestService, never()).storeManifestBundle(any(), anyString(), anyString(), any(), anyMap());
+        assertTrue(responseWriter.toString().contains("\"saved\":false"));
+    }
+
+    @Test
+    void doPostSkipsSaveWhenComponentPathTraversesParent() throws Exception {
+        when(request.getParameter("manifestUrl")).thenReturn("https://example.com/exp/manifest.json");
+        when(request.getParameter("componentPath")).thenReturn("/content/../etc");
+        when(manifestService.fetchManifestBundle(anyString())).thenReturn(singlePageBundle("home", "<p>1</p>"));
+
+        servlet.doPost(request, response);
+
+        verify(manifestService, never()).storeManifestBundle(any(), anyString(), anyString(), any(), anyMap());
+    }
+
+    @Test
+    void doPostSkipsSaveWhenNoComponentPath() throws Exception {
+        when(request.getParameter("manifestUrl")).thenReturn("https://example.com/exp/manifest.json");
+        when(request.getParameter("componentPath")).thenReturn(null);
+        when(manifestService.fetchManifestBundle(anyString())).thenReturn(singlePageBundle("home", "<p>1</p>"));
+
+        servlet.doPost(request, response);
+
+        verify(manifestService, never()).storeManifestBundle(any(), anyString(), anyString(), any(), anyMap());
+        assertTrue(responseWriter.toString().contains("\"saved\":false"));
+    }
+
+    @Test
+    void doPostForwardsCombinedUrlMapToStore() throws Exception {
+        when(request.getParameter("manifestUrl")).thenReturn("https://example.com/exp/manifest.json");
+        when(request.getParameter("componentPath")).thenReturn("/content/mysite/jcr:content/root/cerosflex");
+
+        LinkedHashMap<String, CerosManifestV0> pages = new LinkedHashMap<>();
+        pages.put("home", parse("{}"));
+        pages.put("about", parse("{}"));
+        when(manifestService.fetchManifestBundle(anyString())).thenReturn(new StoredManifestBundle("home", pages));
+
+        Map<String, String> first = Map.of("https://cdn/a.css", "/dam/a.css");
+        Map<String, String> second = Map.of("https://cdn/b.js", "/dam/b.js");
+        when(assetStorageService.uploadAssets(any(), any())).thenReturn(first, second);
+        when(manifestService.storeManifestBundle(any(), anyString(), anyString(), any(), anyMap())).thenReturn(true);
+
+        servlet.doPost(request, response);
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.putAll(first);
+        expected.putAll(second);
+        verify(manifestService).storeManifestBundle(any(), anyString(), anyString(), any(), eq(expected));
     }
 }

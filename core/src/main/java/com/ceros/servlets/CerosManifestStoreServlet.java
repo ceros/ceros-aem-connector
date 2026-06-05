@@ -2,8 +2,11 @@ package com.ceros.servlets;
 
 import com.ceros.CerosConstants;
 import com.ceros.models.cerosflex.CerosManifestV0;
+import com.ceros.models.cerosflex.StoredManifestBundle;
 import com.ceros.services.CerosAssetStorageService;
 import com.ceros.services.CerosManifestService;
+import com.ceros.util.ServletUtils;
+
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.api.SlingHttpServletRequest;
 import org.apache.sling.api.SlingHttpServletResponse;
@@ -15,9 +18,16 @@ import org.slf4j.LoggerFactory;
 
 import javax.servlet.Servlet;
 import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+/**
+ * Authoring endpoint hit by the dialog's "Fetch" button. Fetches the primary
+ * manifest plus every linked page's manifest, uploads every page's assets to
+ * DAM, and persists the resulting {@link StoredManifestBundle} on the
+ * component so the SSR router can serve any page fully offline.
+ */
 @Component(
     service = Servlet.class,
     property = {
@@ -40,7 +50,6 @@ public class CerosManifestStoreServlet extends SlingAllMethodsServlet {
     @Override
     protected void doPost(SlingHttpServletRequest request, SlingHttpServletResponse response)
             throws IOException {
-
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
@@ -52,9 +61,9 @@ public class CerosManifestStoreServlet extends SlingAllMethodsServlet {
         }
         manifestUrl = normaliseManifestUrl(manifestUrl);
 
-        CerosManifestV0 manifest;
+        StoredManifestBundle bundle;
         try {
-            manifest = cerosManifestService.fetchPublicManifestFromUrl(manifestUrl);
+            bundle = cerosManifestService.fetchManifestBundle(manifestUrl);
         } catch (IllegalArgumentException e) {
             // URL failed the service-level allowlist (scheme/host policy).
             log.warn("Rejected manifest URL {}: {}", manifestUrl, e.getMessage());
@@ -66,11 +75,9 @@ public class CerosManifestStoreServlet extends SlingAllMethodsServlet {
             return;
         }
 
-  
         Map<String, String> urlMap;
         try {
-            urlMap = cerosAssetStorageService.uploadAssets(manifest, request.getResourceResolver());
-        
+            urlMap = uploadAllPageAssets(bundle, request);
         } catch (Exception e) {
             log.error("Asset upload to DAM failed: {}", e.getMessage(), e);
             ServletUtils.writeError(response, SlingHttpServletResponse.SC_INTERNAL_SERVER_ERROR,
@@ -78,20 +85,40 @@ public class CerosManifestStoreServlet extends SlingAllMethodsServlet {
             return;
         }
 
-        // Sling encodes jcr:content as _jcr_content in URLs since colons aren't URL-safe
-        String componentPath = StringUtils.trimToNull(request.getParameter("componentPath"));
-        if (componentPath != null) {
-            componentPath = componentPath.replace("_jcr_content", "jcr:content");
-        }
-
-        boolean saved = false;
-        if (componentPath != null && isComponentPathValid(componentPath)) {
-            saved = cerosManifestService.storeManifest(
-                    request.getResourceResolver(), componentPath, manifestUrl, manifest, urlMap);
-        }
+        boolean saved = persistBundleIfRequested(request, manifestUrl, bundle, urlMap);
 
         String fetchedAt = java.time.Instant.now().toString();
-        ServletUtils.writeJson(response, Map.of("status", "ok", "fetchedAt", fetchedAt, "saved", saved));
+        ServletUtils.writeJson(response, Map.of(
+                "status", "ok",
+                "fetchedAt", fetchedAt,
+                "saved", saved,
+                "pages", bundle.getPagesBySlug().size()));
+    }
+
+    private Map<String, String> uploadAllPageAssets(StoredManifestBundle bundle,
+                                                    SlingHttpServletRequest request) throws IOException {
+        Map<String, String> combined = new LinkedHashMap<>();
+        for (CerosManifestV0 manifest : bundle.getPagesBySlug().values()) {
+            combined.putAll(cerosAssetStorageService.uploadAssets(manifest, request.getResourceResolver()));
+        }
+        return combined;
+    }
+
+    private boolean persistBundleIfRequested(SlingHttpServletRequest request,
+                                             String manifestUrl,
+                                             StoredManifestBundle bundle,
+                                             Map<String, String> urlMap) {
+        // Sling encodes jcr:content as _jcr_content in URLs since colons aren't URL-safe.
+        String componentPath = StringUtils.trimToNull(request.getParameter("componentPath"));
+        if (componentPath == null) {
+            return false;
+        }
+        componentPath = componentPath.replace("_jcr_content", "jcr:content");
+        if (!isComponentPathValid(componentPath)) {
+            return false;
+        }
+        return cerosManifestService.storeManifestBundle(
+                request.getResourceResolver(), componentPath, manifestUrl, bundle, urlMap);
     }
 
     private boolean isComponentPathValid(String path) {
@@ -109,5 +136,4 @@ public class CerosManifestStoreServlet extends SlingAllMethodsServlet {
         }
         return manifestUrl;
     }
-
 }

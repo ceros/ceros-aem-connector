@@ -1,6 +1,8 @@
 package com.ceros.servlets;
 
 import com.ceros.services.CerosAuthenticatedApiService;
+import com.ceros.util.ServletUtils;
+
 import org.apache.sling.api.SlingHttpServletRequest;
 import org.apache.sling.api.SlingHttpServletResponse;
 import org.apache.sling.api.servlets.SlingAllMethodsServlet;

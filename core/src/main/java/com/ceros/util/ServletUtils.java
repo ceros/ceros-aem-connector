@@ -1,4 +1,4 @@
-package com.ceros.servlets;
+package com.ceros.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.sling.api.SlingHttpServletResponse;

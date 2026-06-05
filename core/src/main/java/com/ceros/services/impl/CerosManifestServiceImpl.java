@@ -1,8 +1,10 @@
 package com.ceros.services.impl;
 
 import com.ceros.models.cerosflex.CerosManifestV0;
+import com.ceros.models.cerosflex.StoredManifestBundle;
 import com.ceros.services.CerosManifestService;
 import com.ceros.util.HttpUtils;
+import com.ceros.util.ManifestUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.osgi.service.component.annotations.Activate;
@@ -18,6 +20,7 @@ import javax.jcr.Node;
 import javax.jcr.Session;
 import java.io.IOException;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Component(service = CerosManifestService.class)
@@ -75,12 +78,41 @@ public class CerosManifestServiceImpl implements CerosManifestService {
     }
 
     @Override
-    public boolean storeManifest(ResourceResolver resolver, String componentPath,
-                                  String manifestUrl,
-                                  CerosManifestV0 manifest,
-                                  Map<String, String> urlMap) {
+    public StoredManifestBundle fetchManifestBundle(String manifestUrl) throws IOException {
+        CerosManifestV0 primary = fetchPublicManifestFromUrl(manifestUrl);
+
+        LinkedHashMap<String, CerosManifestV0> pages = new LinkedHashMap<>();
+        String primarySlug = ManifestUtils.primarySlugOf(primary);
+        pages.put(primarySlug != null ? primarySlug : "", primary);
+
+        for (CerosManifestV0.PageRef page : primary.getPages()) {
+            String slug = page.getSlug();
+            if (slug == null || slug.isEmpty() || page.isCurrent() || pages.containsKey(slug)) {
+                continue;
+            }
+            String pageManifestUrl = page.getManifestUrl();
+            if (pageManifestUrl == null || pageManifestUrl.isEmpty()) {
+                log.warn("Skipping page {}: no manifestUrl", slug);
+                continue;
+            }
+            try {
+                pages.put(slug, fetchPublicManifestFromUrl(pageManifestUrl));
+            } catch (IOException | IllegalArgumentException e) {
+                log.warn("Failed to fetch manifest for page {} ({}); skipping: {}",
+                        slug, pageManifestUrl, e.getMessage());
+            }
+        }
+
+        return new StoredManifestBundle(primarySlug, pages);
+    }
+
+    @Override
+    public boolean storeManifestBundle(ResourceResolver resolver, String componentPath,
+                                       String manifestUrl,
+                                       StoredManifestBundle bundle,
+                                       Map<String, String> urlMap) {
         try {
-            String manifestJson = objectMapper.writeValueAsString(manifest);
+            String bundleJson = bundle.toJson();
             String fetchedAt = Instant.now().toString();
 
             Session session = resolver.adaptTo(Session.class);
@@ -91,19 +123,20 @@ public class CerosManifestServiceImpl implements CerosManifestService {
             Node node = session.getNode(componentPath);
             node.setProperty("manifestUrl", manifestUrl);
             node.setProperty("cerosMode", "store");
-            node.setProperty("cerosPrefetchedManifestJson", manifestJson);
+            node.setProperty("cerosPrefetchedManifestJson", bundleJson);
             node.setProperty("cerosPrefetchedAt", fetchedAt);
 
-            if (!urlMap.isEmpty()) {
+            if (urlMap != null && !urlMap.isEmpty()) {
                 node.setProperty("cerosAssetReferences",
                         urlMap.values().toArray(new String[0]));
             }
 
             session.save();
-            log.info("Stored Ceros manifest for {} at {}", componentPath, fetchedAt);
+            log.info("Stored Ceros manifest bundle for {} ({} page(s)) at {}",
+                    componentPath, bundle.getPagesBySlug().size(), fetchedAt);
             return true;
         } catch (Exception e) {
-            log.warn("Could not save manifest to JCR at {}: {}", componentPath, e.getMessage());
+            log.warn("Could not save manifest bundle to JCR at {}: {}", componentPath, e.getMessage());
             return false;
         }
     }
