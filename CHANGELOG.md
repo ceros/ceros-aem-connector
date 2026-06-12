@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.3] - 2026-06-12
+
+### Added
+- Multi-page store mode: store deliveries now persist a `StoredManifestBundle` (primary + per-page manifests) so any deep-linked page can be served fully offline. `CerosManifestService` gains `fetchManifestBundle` / `storeManifestBundle`.
+- README documents how to consume the published plugin from Maven Central (Cloud Manager / filevault `subPackage` embedding and manual CRX install).
+
+### Changed
+- Delivery layer refactor: per-mode dispatch extracted into `com.ceros.delivery` (`DeliveryResult`, `ManifestRenderer`, `DeepLinkResolver`) and `com.ceros.delivery.modes` (Fetch / Store / Embed handlers, `DeliveryHandler.forMode` factory).
+- `CerosFlexModel` split into a data POJO and a `CerosFlexView` Sling Model; delivery orchestration moved to the new `CerosFlexDeliveryService`. HTL binds `CerosFlexView`.
+- `ServletUtils` moved to `com.ceros.util`; added `ManifestUtils.primarySlugOf`.
+
+### Removed
+- Inline shared-services stub and the legacy single-manifest parse fallback in `StoredManifestBundle`.
+
 ## [0.0.2] - 2026-06-02
 
 ### Changed
@@ -29,6 +43,7 @@ Initial release.
 - OSGi configuration support (timeouts, HTTP scheme allowlist, local-address allowlist) via `CerosManifestServiceImpl.cfg.json`.
 - Authenticated browsing of Ceros Flex experiences in the authoring dialog via `CerosAuthenticatedApiService`.
 
-[Unreleased]: https://github.com/ceros/ceros-aem-connector/compare/release-0.0.2...HEAD
+[Unreleased]: https://github.com/ceros/ceros-aem-connector/compare/release-0.0.3...HEAD
+[0.0.3]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-0.0.3
 [0.0.2]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-0.0.2
 [0.0.1]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-0.0.1
