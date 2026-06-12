@@ -3,6 +3,7 @@ package com.ceros.services.impl;
 import com.ceros.delivery.DeliveryResult;
 import com.ceros.delivery.modes.DeliveryHandler;
 import com.ceros.models.CerosFlexModel;
+import com.ceros.services.CerosAssetStorageService;
 import com.ceros.services.CerosFlexDeliveryService;
 import com.ceros.services.CerosManifestService;
 import org.apache.sling.api.SlingHttpServletRequest;
@@ -16,6 +17,9 @@ public class CerosFlexDeliveryServiceImpl implements CerosFlexDeliveryService {
     @Reference
     private CerosManifestService manifestService;
 
+    @Reference
+    private CerosAssetStorageService assetStorageService;
+
     @Override
     public DeliveryResult deliver(CerosFlexModel model,
                                   SlingHttpServletRequest request,
@@ -28,6 +32,6 @@ public class CerosFlexDeliveryServiceImpl implements CerosFlexDeliveryService {
                 model.getCerosPrefetchedManifestJson(),
                 request,
                 resource);
-        return DeliveryHandler.forMode(model.getCerosMode(), manifestService).handle(ctx);
+        return DeliveryHandler.forMode(model.getCerosMode(), manifestService, assetStorageService).handle(ctx);
     }
 }

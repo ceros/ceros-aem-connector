@@ -24,4 +24,22 @@ public interface CerosAssetStorageService {
      * @throws IOException if a critical download or storage operation fails
      */
     Map<String, String> uploadAssets(CerosManifestV1 manifest, ResourceResolver resolver) throws IOException;
+
+    /**
+     * Writes {@code manifest} as a JSON DAM asset under the standard per-page
+     * path ({@code <damBasePath>/<experienceSlug>/<pageSlug>/manifest.json}) so
+     * the in-browser SPA router can fetch it directly via AEM's built-in DAM
+     * delivery — no custom servlet, no auth, anonymous-safe on publish.
+     *
+     * @return the DAM path where the manifest was written, or {@code null} if
+     *         the manifest lacks the slugs needed to build the path
+     */
+    String uploadManifest(CerosManifestV1 manifest, ResourceResolver resolver) throws IOException;
+
+    /**
+     * Computes the DAM path where {@link #uploadManifest} would write the
+     * manifest for the given slugs. Exposed so render-time code can build
+     * sibling-page URLs without re-deriving the convention.
+     */
+    String damPathForManifest(String experienceSlug, String pageSlug);
 }

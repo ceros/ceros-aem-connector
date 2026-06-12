@@ -3,9 +3,9 @@ package com.ceros.delivery.modes;
 import com.ceros.delivery.DeepLinkResolver;
 import com.ceros.delivery.DeliveryResult;
 import com.ceros.delivery.ManifestRenderer;
-import com.ceros.delivery.DeliveryResult.Builder;
 import com.ceros.models.cerosflex.CerosManifestV1;
 import com.ceros.models.cerosflex.StoredManifestBundle;
+import com.ceros.services.CerosAssetStorageService;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +22,12 @@ public final class StoreDeliveryHandler implements DeliveryHandler {
     public static final String MODE = "store";
 
     private static final Logger log = LoggerFactory.getLogger(StoreDeliveryHandler.class);
+
+    private final CerosAssetStorageService assetStorageService;
+
+    public StoreDeliveryHandler(CerosAssetStorageService assetStorageService) {
+        this.assetStorageService = assetStorageService;
+    }
 
     @Override
     public String mode() {
@@ -54,10 +60,16 @@ public final class StoreDeliveryHandler implements DeliveryHandler {
             return DeliveryResult.EMPTY;
         }
 
-        String url = manifestUrlFor(primary, served, context.manifestUrl);
+        // The bundle on the component keeps original CDN URLs in pages[] — those
+        // drive `experienceUrl`, which the iframe preview in author mode loads
+        // from the public Ceros host. `manifestUrl` is a DAM path so the
+        // in-browser SPA router fetches the stored manifest locally and chains
+        // through pages[] (themselves rewritten to DAM paths in the DAM copy).
+        String cdnManifestUrl = manifestUrlFor(primary, served, context.manifestUrl);
+        String damManifestUrl = damManifestUrlFor(served, cdnManifestUrl);
         DeliveryResult.Builder b = DeliveryResult.builder()
-                .manifestUrl(url)
-                .experienceUrl(DeliveryResult.deriveExperienceUrl(url));
+                .manifestUrl(damManifestUrl)
+                .experienceUrl(DeliveryResult.deriveExperienceUrl(cdnManifestUrl));
         ManifestRenderer.renderInto(b, served);
         return b.build();
     }
@@ -82,5 +94,17 @@ public final class StoreDeliveryHandler implements DeliveryHandler {
             }
         }
         return fallback;
+    }
+
+    private String damManifestUrlFor(CerosManifestV1 served, String fallback) {
+        if (assetStorageService == null || served.getExperience() == null) {
+            return fallback;
+        }
+        String expSlug = served.getExperience().getSlug();
+        String pageSlug = served.getExperience().getPageSlug();
+        if (StringUtils.isBlank(expSlug) || StringUtils.isBlank(pageSlug)) {
+            return fallback;
+        }
+        return assetStorageService.damPathForManifest(expSlug, pageSlug);
     }
 }

@@ -173,6 +173,19 @@ public class CerosManifestServiceImpl implements CerosManifestService {
             progress.onPageProgress(processed, total);
         }
 
+        // After every page's assets are in DAM, rewrite each manifest's
+        // pages[].manifestUrl to point at the sibling DAM-stored manifests, then
+        // write each manifest itself to DAM. This is what `data-flex-manifest-url`
+        // resolves to in store mode — the in-browser SPA router fetches the
+        // current page's manifest from DAM and uses its (now-local) pages[] for
+        // sibling navigation, so a click never reaches the external CDN.
+        for (CerosManifestV1 manifest : bundle.getPagesBySlug().values()) {
+            String damPath = cerosAssetStorageService.uploadManifest(manifest, resolver);
+            if (damPath != null) {
+                urlMap.put(damPath, damPath);
+            }
+        }
+
         boolean saved = false;
         String fetchedAt = Instant.now().toString();
         if (componentPath != null) {

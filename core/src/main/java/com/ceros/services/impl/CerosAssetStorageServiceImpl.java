@@ -6,6 +6,7 @@ import com.ceros.models.cerosflex.CerosManifestV1;
 import com.ceros.services.CerosAssetStorageService;
 import com.ceros.util.FileUtils;
 import com.ceros.util.HttpUtils;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.osgi.service.component.annotations.Activate;
@@ -59,6 +60,8 @@ public class CerosAssetStorageServiceImpl implements CerosAssetStorageService {
                         + "All URLs starting with this prefix will be extracted, downloaded, and uploaded to DAM.")
         String mediaCdnBaseUrl() default "https://media.cdn.ceros.site/";
     }
+
+    private static final ObjectMapper MANIFEST_MAPPER = new ObjectMapper();
 
     private int httpTimeoutMillis;
     private String damBasePath;
@@ -169,6 +172,49 @@ public class CerosAssetStorageServiceImpl implements CerosAssetStorageService {
                 uploadFile(baseUrl, damPath, mimeType, assetManager, urlMap, resolver);
             }
         }
+    }
+
+    @Override
+    public String uploadManifest(CerosManifestV1 manifest, ResourceResolver resolver) throws IOException {
+        if (manifest == null || manifest.getExperience() == null) {
+            return null;
+        }
+        String slug = manifest.getExperience().getSlug();
+        String pageSlug = manifest.getExperience().getPageSlug();
+        if (StringUtils.isBlank(slug) || StringUtils.isBlank(pageSlug)) {
+            return null;
+        }
+        AssetManager assetManager = resolver.adaptTo(AssetManager.class);
+        if (assetManager == null) {
+            log.warn("Could not obtain AssetManager, skipping manifest upload for {}/{}", slug, pageSlug);
+            return null;
+        }
+
+        // Deep-clone via JSON round-trip so the caller's manifest (still
+        // referenced by the bundle persisted on the component) keeps its
+        // original pages[].manifestUrl values — those are the CDN URLs we
+        // need at render time to derive experienceUrl for the author iframe
+        // preview. Only the DAM copy has its pages[] rewritten to DAM URLs.
+        byte[] originalJson = MANIFEST_MAPPER.writeValueAsBytes(manifest);
+        CerosManifestV1 forDam = MANIFEST_MAPPER.readValue(originalJson, CerosManifestV1.class);
+        for (CerosManifestV1.PageRef page : forDam.getPages()) {
+            if (StringUtils.isNotBlank(page.getSlug())) {
+                page.setManifestUrl(damPathForManifest(slug, page.getSlug()));
+            }
+        }
+
+        String damPath = damPathForManifest(slug, pageSlug);
+        byte[] json = MANIFEST_MAPPER.writeValueAsBytes(forDam);
+        createOrReplaceAsset(assetManager, damPath,
+                new ByteArrayInputStream(json), "application/json", resolver);
+        resolver.commit();
+        log.info("Uploaded manifest to DAM: {}", damPath);
+        return damPath;
+    }
+
+    @Override
+    public String damPathForManifest(String experienceSlug, String pageSlug) {
+        return damBasePath + "/" + experienceSlug + "/" + pageSlug + "/manifest.json";
     }
 
     private void createOrReplaceAsset(AssetManager assetManager, String path,

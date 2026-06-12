@@ -540,5 +540,7 @@ public class CerosManifestV1 {
         public String getManifestUrl() { return manifestUrl; }
         public boolean isFirst() { return isFirst; }
         public boolean isCurrent() { return current; }
+
+        public void setManifestUrl(String manifestUrl) { this.manifestUrl = manifestUrl; }
     }
 }

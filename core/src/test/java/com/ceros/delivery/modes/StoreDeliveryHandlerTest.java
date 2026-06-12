@@ -23,7 +23,7 @@ class StoreDeliveryHandlerTest {
 
     @Mock private SlingHttpServletRequest request;
 
-    private final StoreDeliveryHandler handler = new StoreDeliveryHandler();
+    private final StoreDeliveryHandler handler = new StoreDeliveryHandler(null);
 
     private DeliveryHandler.DeliveryContext ctx(String manifestUrl, String bundleJson) {
         return new DeliveryHandler.DeliveryContext(manifestUrl, bundleJson, request, null);

@@ -1,6 +1,7 @@
 package com.ceros.delivery.modes;
 
 import com.ceros.delivery.DeliveryResult;
+import com.ceros.services.CerosAssetStorageService;
 import com.ceros.services.CerosManifestService;
 import org.apache.sling.api.SlingHttpServletRequest;
 import org.apache.sling.api.resource.Resource;
@@ -27,12 +28,14 @@ public interface DeliveryHandler {
      * unknown or blank modes so legacy components without an explicit mode keep
      * working.
      */
-    static DeliveryHandler forMode(String mode, CerosManifestService manifestService) {
+    static DeliveryHandler forMode(String mode,
+                                   CerosManifestService manifestService,
+                                   CerosAssetStorageService assetStorageService) {
         if (EmbedDeliveryHandler.MODE.equals(mode)) {
             return new EmbedDeliveryHandler();
         }
         if (StoreDeliveryHandler.MODE.equals(mode)) {
-            return new StoreDeliveryHandler();
+            return new StoreDeliveryHandler(assetStorageService);
         }
         return new FetchDeliveryHandler(manifestService);
     }
