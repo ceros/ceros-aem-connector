@@ -1,7 +1,7 @@
 package com.ceros.services.impl;
 
 import com.adobe.granite.asset.api.AssetManager;
-import com.ceros.models.cerosflex.CerosManifestV0;
+import com.ceros.models.cerosflex.CerosManifestV1;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,7 +44,7 @@ class CerosAssetStorageServiceImplTest {
 
     @Test
     void uploadAssetsReturnsEmptyMapForNoSlug() throws Exception {
-        CerosManifestV0 manifest = MAPPER.readValue("{}", CerosManifestV0.class);
+        CerosManifestV1 manifest = MAPPER.readValue("{}", CerosManifestV1.class);
         Map<String, String> result = service.uploadAssets(manifest, resolver);
         assertTrue(result.isEmpty());
     }
@@ -53,8 +53,8 @@ class CerosAssetStorageServiceImplTest {
     void uploadAssetsWithNoAssetsInManifest() throws Exception {
         when(resolver.adaptTo(AssetManager.class)).thenReturn(assetManager);
 
-        CerosManifestV0 manifest = MAPPER.readValue(
-                "{\"experience\":{\"slug\":\"my-exp\",\"pageSlug\":\"page-1\"}}", CerosManifestV0.class);
+        CerosManifestV1 manifest = MAPPER.readValue(
+                "{\"experience\":{\"slug\":\"my-exp\",\"pageSlug\":\"page-1\"}}", CerosManifestV1.class);
         Map<String, String> result = service.uploadAssets(manifest, resolver);
         assertTrue(result.isEmpty());
         verify(resolver).commit();
@@ -64,8 +64,8 @@ class CerosAssetStorageServiceImplTest {
     void uploadAssetsReturnsEmptyMapWhenAssetManagerUnavailable() throws Exception {
         when(resolver.adaptTo(AssetManager.class)).thenReturn(null);
 
-        CerosManifestV0 manifest = MAPPER.readValue(
-                "{\"experience\":{\"slug\":\"my-exp\",\"pageSlug\":\"page-1\"}}", CerosManifestV0.class);
+        CerosManifestV1 manifest = MAPPER.readValue(
+                "{\"experience\":{\"slug\":\"my-exp\",\"pageSlug\":\"page-1\"}}", CerosManifestV1.class);
         Map<String, String> result = service.uploadAssets(manifest, resolver);
         assertTrue(result.isEmpty());
     }

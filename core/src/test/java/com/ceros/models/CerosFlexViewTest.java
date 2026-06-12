@@ -1,6 +1,6 @@
 package com.ceros.models;
 
-import com.ceros.models.cerosflex.CerosManifestV0;
+import com.ceros.models.cerosflex.CerosManifestV1;
 import com.ceros.services.CerosFlexDeliveryService;
 import com.ceros.services.CerosManifestService;
 import com.ceros.services.impl.CerosFlexDeliveryServiceImpl;
@@ -81,9 +81,9 @@ class CerosFlexViewTest {
     @Test
     void defaultsToFetchModeWhenCerosModeUnset() throws Exception {
         setModelField("manifestUrl", "https://example.ceros.site/exp/manifest.json");
-        CerosManifestV0 manifest = MAPPER.readValue(
+        CerosManifestV1 manifest = MAPPER.readValue(
                 "{\"assets\":[{\"type\":\"html-body\",\"src\":{\"type\":\"inline\",\"content\":\"<p>x</p>\"}}]}",
-                CerosManifestV0.class);
+                CerosManifestV1.class);
         when(manifestService.fetchPublicManifestFromUrl(anyString())).thenReturn(manifest);
 
         initView();
@@ -96,7 +96,7 @@ class CerosFlexViewTest {
 
     @Test
     void embedModeProducesEmbedTitleAndExperienceUrl() throws Exception {
-        setModelField("manifestUrl", "https://example.ceros.site/my-exp/manifest.v0.json");
+        setModelField("manifestUrl", "https://example.ceros.site/my-exp/manifest.v1.json");
         setModelField("cerosMode", "embed");
         initView();
 

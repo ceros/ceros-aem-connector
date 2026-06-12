@@ -90,7 +90,7 @@ class CerosManifestStoreServletTest {
         servlet.doPost(request, response);
 
         ArgumentCaptor<Map<String, Object>> payload = captureJobPayload();
-        assertEquals("https://example.com/exp/manifest.v0.json",
+        assertEquals("https://example.com/exp/manifest.v1.json",
                 payload.getValue().get(CerosFetchManifestJobConsumer.PROP_MANIFEST_URL));
     }
 

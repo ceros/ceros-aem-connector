@@ -19,7 +19,7 @@ class EmbedDeliveryHandlerTest {
 
     @Test
     void derivesExperienceUrlAndTitleFromManifestUrl() {
-        DeliveryResult r = run("https://example.ceros.site/my-exp/manifest.v0.json");
+        DeliveryResult r = run("https://example.ceros.site/my-exp/manifest.v1.json");
 
         assertEquals("https://example.ceros.site/my-exp", r.getExperienceUrl());
         assertEquals("my exp", r.getEmbedTitle());

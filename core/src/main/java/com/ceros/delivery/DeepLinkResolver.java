@@ -1,6 +1,6 @@
 package com.ceros.delivery;
 
-import com.ceros.models.cerosflex.CerosManifestV0;
+import com.ceros.models.cerosflex.CerosManifestV1;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.api.SlingHttpServletRequest;
 
@@ -29,7 +29,7 @@ public final class DeepLinkResolver {
      * or {@code null} if none is present.
      */
     public static String requestedSlug(SlingHttpServletRequest request,
-                                       CerosManifestV0.Experience experience) {
+                                       CerosManifestV1.Experience experience) {
         if (request == null || experience == null || StringUtils.isBlank(experience.getSlug())) {
             return null;
         }

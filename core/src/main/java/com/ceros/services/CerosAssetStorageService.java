@@ -1,6 +1,6 @@
 package com.ceros.services;
 
-import com.ceros.models.cerosflex.CerosManifestV0;
+import com.ceros.models.cerosflex.CerosManifestV1;
 import org.apache.sling.api.resource.ResourceResolver;
 
 import java.io.IOException;
@@ -23,5 +23,5 @@ public interface CerosAssetStorageService {
      * @return a map of original CDN URLs to their new DAM paths
      * @throws IOException if a critical download or storage operation fails
      */
-    Map<String, String> uploadAssets(CerosManifestV0 manifest, ResourceResolver resolver) throws IOException;
+    Map<String, String> uploadAssets(CerosManifestV1 manifest, ResourceResolver resolver) throws IOException;
 }

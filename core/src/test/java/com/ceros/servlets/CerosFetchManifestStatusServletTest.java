@@ -78,7 +78,7 @@ class CerosFetchManifestStatusServletTest {
         props.put("phase", "uploading-assets");
         props.put("pagesProcessed", 3L);
         props.put("pagesTotal", 7L);
-        props.put("manifestUrl", "https://example.com/exp/manifest.v0.json");
+        props.put("manifestUrl", "https://example.com/exp/manifest.v1.json");
         ValueMap valueMap = new ValueMapDecorator(props);
         when(resource.getValueMap()).thenReturn(valueMap);
 

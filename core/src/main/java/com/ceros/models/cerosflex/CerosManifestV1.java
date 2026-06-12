@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class CerosManifestV0 {
+public class CerosManifestV1 {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -73,8 +73,8 @@ public class CerosManifestV0 {
         return null;
     }
 
-    public static CerosManifestV0 parseManifest(String json) throws IOException {
-        return MAPPER.readValue(json, CerosManifestV0.class);
+    public static CerosManifestV1 parseManifest(String json) throws IOException {
+        return MAPPER.readValue(json, CerosManifestV1.class);
     }
 
     // ---- Experience ----

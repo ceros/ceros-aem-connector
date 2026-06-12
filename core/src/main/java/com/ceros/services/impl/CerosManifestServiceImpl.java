@@ -1,6 +1,6 @@
 package com.ceros.services.impl;
 
-import com.ceros.models.cerosflex.CerosManifestV0;
+import com.ceros.models.cerosflex.CerosManifestV1;
 import com.ceros.models.cerosflex.StoredManifestBundle;
 import com.ceros.services.CerosAssetStorageService;
 import com.ceros.services.CerosManifestService;
@@ -69,7 +69,7 @@ public class CerosManifestServiceImpl implements CerosManifestService {
     }
 
     @Override
-    public CerosManifestV0 fetchPublicManifestFromUrl(String manifestUrl) throws IOException {
+    public CerosManifestV1 fetchPublicManifestFromUrl(String manifestUrl) throws IOException {
         if (manifestUrl != null) {
             manifestUrl = manifestUrl.trim();
         }
@@ -80,7 +80,7 @@ public class CerosManifestServiceImpl implements CerosManifestService {
 
         String json = HttpUtils.fetchString(manifestUrl, httpTimeoutMillis,
                 Map.of("Accept", "application/json"));
-        return objectMapper.readValue(json, CerosManifestV0.class);
+        return objectMapper.readValue(json, CerosManifestV1.class);
     }
 
     @Override
@@ -92,13 +92,13 @@ public class CerosManifestServiceImpl implements CerosManifestService {
 
     @Override
     public StoredManifestBundle fetchManifestBundle(String manifestUrl) throws IOException {
-        CerosManifestV0 primary = fetchPublicManifestFromUrl(manifestUrl);
+        CerosManifestV1 primary = fetchPublicManifestFromUrl(manifestUrl);
 
-        LinkedHashMap<String, CerosManifestV0> pages = new LinkedHashMap<>();
+        LinkedHashMap<String, CerosManifestV1> pages = new LinkedHashMap<>();
         String primarySlug = ManifestUtils.primarySlugOf(primary);
         pages.put(primarySlug != null ? primarySlug : "", primary);
 
-        for (CerosManifestV0.PageRef page : primary.getPages()) {
+        for (CerosManifestV1.PageRef page : primary.getPages()) {
             String slug = page.getSlug();
             if (slug == null || slug.isEmpty() || page.isCurrent() || pages.containsKey(slug)) {
                 continue;
@@ -167,7 +167,7 @@ public class CerosManifestServiceImpl implements CerosManifestService {
 
         Map<String, String> urlMap = new LinkedHashMap<>();
         int processed = 0;
-        for (CerosManifestV0 manifest : bundle.getPagesBySlug().values()) {
+        for (CerosManifestV1 manifest : bundle.getPagesBySlug().values()) {
             urlMap.putAll(cerosAssetStorageService.uploadAssets(manifest, resolver));
             processed++;
             progress.onPageProgress(processed, total);

@@ -1,6 +1,6 @@
 package com.ceros.delivery;
 
-import com.ceros.models.cerosflex.CerosManifestV0;
+import com.ceros.models.cerosflex.CerosManifestV1;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.sling.api.SlingHttpServletRequest;
 import org.junit.jupiter.api.Test;
@@ -20,11 +20,11 @@ class DeepLinkResolverTest {
     @Mock
     private SlingHttpServletRequest request;
 
-    private CerosManifestV0.Experience experience(String slug, String accountSlug) throws Exception {
+    private CerosManifestV1.Experience experience(String slug, String accountSlug) throws Exception {
         return MAPPER.readValue(
                 "{\"slug\":" + MAPPER.writeValueAsString(slug)
                         + ",\"accountSlug\":" + MAPPER.writeValueAsString(accountSlug) + "}",
-                CerosManifestV0.Experience.class);
+                CerosManifestV1.Experience.class);
     }
 
     @Test

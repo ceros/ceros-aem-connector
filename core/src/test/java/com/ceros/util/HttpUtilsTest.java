@@ -10,21 +10,21 @@ class HttpUtilsTest {
     @Test
     void validateOutboundUrl_acceptsHttps() {
         assertDoesNotThrow(() ->
-                HttpUtils.validateOutboundUrl("https://cdn.ceros.com/exp/manifest.v0.json",
+                HttpUtils.validateOutboundUrl("https://cdn.ceros.com/exp/manifest.v1.json",
                         false, false));
     }
 
     @Test
     void validateOutboundUrl_rejectsHttpByDefault() {
         assertThrows(IllegalArgumentException.class, () ->
-                HttpUtils.validateOutboundUrl("http://cdn.ceros.com/exp/manifest.v0.json",
+                HttpUtils.validateOutboundUrl("http://cdn.ceros.com/exp/manifest.v1.json",
                         false, false));
     }
 
     @Test
     void validateOutboundUrl_acceptsHttpWhenAllowed() {
         assertDoesNotThrow(() ->
-                HttpUtils.validateOutboundUrl("http://cdn.ceros.com/exp/manifest.v0.json",
+                HttpUtils.validateOutboundUrl("http://cdn.ceros.com/exp/manifest.v1.json",
                         true, false));
     }
 
@@ -38,31 +38,31 @@ class HttpUtilsTest {
     @Test
     void validateOutboundUrl_rejectsIpv6Literal() {
         assertThrows(IllegalArgumentException.class, () ->
-                HttpUtils.validateOutboundUrl("https://[::1]/manifest.v0.json",
+                HttpUtils.validateOutboundUrl("https://[::1]/manifest.v1.json",
                         false, false));
     }
 
     @Test
     void validateOutboundUrl_rejectsLocalhost() {
         assertThrows(IllegalArgumentException.class, () ->
-                HttpUtils.validateOutboundUrl("https://localhost/manifest.v0.json",
+                HttpUtils.validateOutboundUrl("https://localhost/manifest.v1.json",
                         false, false));
     }
 
     @Test
     void validateOutboundUrl_rejectsLocalhostAlias() {
         assertThrows(IllegalArgumentException.class, () ->
-                HttpUtils.validateOutboundUrl("https://ceros-qa.localhost/manifest.v0.json",
+                HttpUtils.validateOutboundUrl("https://ceros-qa.localhost/manifest.v1.json",
                         false, false));
     }
 
     @Test
     void validateOutboundUrl_acceptsLocalAddressesWhenAllowed() {
         assertDoesNotThrow(() ->
-                HttpUtils.validateOutboundUrl("http://ceros-qa.localhost:8900/exp/manifest.v0.json",
+                HttpUtils.validateOutboundUrl("http://ceros-qa.localhost:8900/exp/manifest.v1.json",
                         true, true));
         assertDoesNotThrow(() ->
-                HttpUtils.validateOutboundUrl("http://127.0.0.1:8900/exp/manifest.v0.json",
+                HttpUtils.validateOutboundUrl("http://127.0.0.1:8900/exp/manifest.v1.json",
                         true, true));
     }
 
@@ -101,7 +101,7 @@ class HttpUtilsTest {
     @Test
     void validateOutboundUrl_rejectsMissingScheme() {
         assertThrows(IllegalArgumentException.class, () ->
-                HttpUtils.validateOutboundUrl("//cdn.ceros.com/exp/manifest.v0.json",
+                HttpUtils.validateOutboundUrl("//cdn.ceros.com/exp/manifest.v1.json",
                         false, false));
     }
 }

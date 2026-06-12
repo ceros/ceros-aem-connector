@@ -27,13 +27,13 @@ public class StoredManifestBundle {
     private String primarySlug;
 
     @JsonProperty("pagesBySlug")
-    private LinkedHashMap<String, CerosManifestV0> pagesBySlug;
+    private LinkedHashMap<String, CerosManifestV1> pagesBySlug;
 
     public StoredManifestBundle() {
         // Jackson
     }
 
-    public StoredManifestBundle(String primarySlug, LinkedHashMap<String, CerosManifestV0> pagesBySlug) {
+    public StoredManifestBundle(String primarySlug, LinkedHashMap<String, CerosManifestV1> pagesBySlug) {
         this.primarySlug = primarySlug;
         this.pagesBySlug = pagesBySlug;
     }
@@ -42,7 +42,7 @@ public class StoredManifestBundle {
         return primarySlug;
     }
 
-    public Map<String, CerosManifestV0> getPagesBySlug() {
+    public Map<String, CerosManifestV1> getPagesBySlug() {
         return pagesBySlug != null ? pagesBySlug : Collections.emptyMap();
     }
 
@@ -50,13 +50,13 @@ public class StoredManifestBundle {
      * Returns the manifest for {@code slug}, falling back to the primary page
      * when {@code slug} is blank or unknown.
      */
-    public CerosManifestV0 manifestFor(String slug) {
-        Map<String, CerosManifestV0> pages = getPagesBySlug();
+    public CerosManifestV1 manifestFor(String slug) {
+        Map<String, CerosManifestV1> pages = getPagesBySlug();
         if (pages.isEmpty()) {
             return null;
         }
         if (slug != null && !slug.isEmpty()) {
-            CerosManifestV0 m = pages.get(slug);
+            CerosManifestV1 m = pages.get(slug);
             if (m != null) {
                 return m;
             }

@@ -1,7 +1,7 @@
 package com.ceros.delivery.modes;
 
 import com.ceros.delivery.DeliveryResult;
-import com.ceros.models.cerosflex.CerosManifestV0;
+import com.ceros.models.cerosflex.CerosManifestV1;
 import com.ceros.models.cerosflex.StoredManifestBundle;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.sling.api.SlingHttpServletRequest;
@@ -29,19 +29,19 @@ class StoreDeliveryHandlerTest {
         return new DeliveryHandler.DeliveryContext(manifestUrl, bundleJson, request, null);
     }
 
-    private CerosManifestV0 page(String slug, String html) throws Exception {
+    private CerosManifestV1 page(String slug, String html) throws Exception {
         return MAPPER.readValue(""
                 + "{"
                 + "  \"experience\":{\"slug\":\"my-exp\",\"accountSlug\":\"acme\",\"pageSlug\":" + MAPPER.writeValueAsString(slug) + "},"
                 + "  \"assets\":[{\"type\":\"html-body\",\"src\":{\"type\":\"inline\",\"content\":" + MAPPER.writeValueAsString(html) + "}}]"
-                + "}", CerosManifestV0.class);
+                + "}", CerosManifestV1.class);
     }
 
     /**
      * Builds a primary manifest that also exposes the pages[] index — exactly what
      * the servlet would persist for the primary slug entry.
      */
-    private CerosManifestV0 primaryWithPages(String html) throws Exception {
+    private CerosManifestV1 primaryWithPages(String html) throws Exception {
         return MAPPER.readValue(""
                 + "{"
                 + "  \"experience\":{\"slug\":\"my-exp\",\"accountSlug\":\"acme\",\"pageSlug\":\"page-1\"},"
@@ -50,12 +50,12 @@ class StoreDeliveryHandlerTest {
                 + "    {\"slug\":\"page-1\",\"manifestUrl\":\"https://example.ceros.site/exp/page-1/manifest.json\",\"current\":true},"
                 + "    {\"slug\":\"page-2\",\"manifestUrl\":\"https://example.ceros.site/exp/page-2/manifest.json\"}"
                 + "  ]"
-                + "}", CerosManifestV0.class);
+                + "}", CerosManifestV1.class);
     }
 
-    private String bundleJson(String primarySlug, CerosManifestV0... pages) throws Exception {
-        LinkedHashMap<String, CerosManifestV0> map = new LinkedHashMap<>();
-        for (CerosManifestV0 p : pages) {
+    private String bundleJson(String primarySlug, CerosManifestV1... pages) throws Exception {
+        LinkedHashMap<String, CerosManifestV1> map = new LinkedHashMap<>();
+        for (CerosManifestV1 p : pages) {
             map.put(p.getExperience().getPageSlug(), p);
         }
         return new StoredManifestBundle(primarySlug, map).toJson();

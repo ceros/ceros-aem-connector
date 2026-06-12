@@ -5,7 +5,7 @@ import com.ceros.delivery.DeepLinkResolver;
 import com.ceros.delivery.DeliveryResult;
 import com.ceros.delivery.ManifestRenderer;
 import com.ceros.delivery.DeliveryResult.Builder;
-import com.ceros.models.cerosflex.CerosManifestV0;
+import com.ceros.models.cerosflex.CerosManifestV1;
 import com.ceros.services.CerosManifestService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +43,7 @@ public final class FetchDeliveryHandler implements DeliveryHandler {
         }
         String url = normaliseManifestUrl(context.manifestUrl);
         try {
-            CerosManifestV0 manifest = manifestService.fetchPublicManifestFromUrl(url);
+            CerosManifestV1 manifest = manifestService.fetchPublicManifestFromUrl(url);
             ResolvedPage resolved = resolveDeepLinkedPage(manifest, url, context);
             return toResult(resolved);
         } catch (IOException | IllegalArgumentException e) {
@@ -52,7 +52,7 @@ public final class FetchDeliveryHandler implements DeliveryHandler {
         }
     }
 
-    private ResolvedPage resolveDeepLinkedPage(CerosManifestV0 manifest,
+    private ResolvedPage resolveDeepLinkedPage(CerosManifestV1 manifest,
                                                String requestedUrl,
                                                DeliveryContext context) {
         String requestedSlug = manifest != null
@@ -61,7 +61,7 @@ public final class FetchDeliveryHandler implements DeliveryHandler {
         if (requestedSlug == null || manifest == null) {
             return new ResolvedPage(manifest, requestedUrl);
         }
-        for (CerosManifestV0.PageRef page : manifest.getPages()) {
+        for (CerosManifestV1.PageRef page : manifest.getPages()) {
             if (!requestedSlug.equals(page.getSlug())) {
                 continue;
             }
@@ -107,10 +107,10 @@ public final class FetchDeliveryHandler implements DeliveryHandler {
     }
 
     private static final class ResolvedPage {
-        final CerosManifestV0 manifest;
+        final CerosManifestV1 manifest;
         final String url;
 
-        ResolvedPage(CerosManifestV0 manifest, String url) {
+        ResolvedPage(CerosManifestV1 manifest, String url) {
             this.manifest = manifest;
             this.url = url;
         }

@@ -2,7 +2,7 @@ package com.ceros.services.impl;
 
 import com.adobe.granite.asset.api.Asset;
 import com.adobe.granite.asset.api.AssetManager;
-import com.ceros.models.cerosflex.CerosManifestV0;
+import com.ceros.models.cerosflex.CerosManifestV1;
 import com.ceros.services.CerosAssetStorageService;
 import com.ceros.util.FileUtils;
 import com.ceros.util.HttpUtils;
@@ -77,7 +77,7 @@ public class CerosAssetStorageServiceImpl implements CerosAssetStorageService {
     }
 
     @Override
-    public Map<String, String> uploadAssets(CerosManifestV0 manifest, ResourceResolver resolver) throws IOException {
+    public Map<String, String> uploadAssets(CerosManifestV1 manifest, ResourceResolver resolver) throws IOException {
         String slug = manifest.getExperience() != null ? manifest.getExperience().getSlug() : null;
         if (StringUtils.isBlank(slug)) {
             log.warn("No experience slug in manifest, skipping asset upload");
@@ -104,14 +104,14 @@ public class CerosAssetStorageServiceImpl implements CerosAssetStorageService {
         return urlMap;
     }
 
-    private void handleDeliveryModeAssets(CerosManifestV0 manifest, AssetManager assetManager,
+    private void handleDeliveryModeAssets(CerosManifestV1 manifest, AssetManager assetManager,
                                             String basePath, Map<String, String> urlMap,
                                             ResourceResolver resolver) {
-        CerosManifestV0.DeliveryMode ssr = manifest.getDeliveryMode("ssr");
+        CerosManifestV1.DeliveryMode ssr = manifest.getDeliveryMode("ssr");
         if (ssr == null) {
             return;
         }
-        for (CerosManifestV0.Style style : ssr.getStyles()) {
+        for (CerosManifestV1.Style style : ssr.getStyles()) {
             if (style.getUrl() != null) {
                 String damPath = basePath + "/" + FileUtils.extractFilename(style.getUrl());
                 uploadFile(style.getUrl(), damPath, "text/css", assetManager, urlMap, resolver);
@@ -120,7 +120,7 @@ public class CerosAssetStorageServiceImpl implements CerosAssetStorageService {
                 }
             }
         }
-        for (CerosManifestV0.Script script : ssr.getScripts()) {
+        for (CerosManifestV1.Script script : ssr.getScripts()) {
             if (script.getUrl() != null) {
                 String damPath = basePath + "/" + FileUtils.extractFilename(script.getUrl());
                 uploadFile(script.getUrl(), damPath, "application/javascript", assetManager, urlMap, resolver);
@@ -131,10 +131,10 @@ public class CerosAssetStorageServiceImpl implements CerosAssetStorageService {
         }
     }
 
-    private void handleWebfonts(CerosManifestV0 manifest, AssetManager assetManager,
+    private void handleWebfonts(CerosManifestV1 manifest, AssetManager assetManager,
                                  String basePath, Map<String, String> urlMap,
                                  ResourceResolver resolver) {
-        for (CerosManifestV0.AssetEntry entry : manifest.getAssets()) {
+        for (CerosManifestV1.AssetEntry entry : manifest.getAssets()) {
             if ("webfont".equals(entry.getType()) && entry.getSrc() != null
                     && entry.getSrc().getUrl() != null) {
                 uploadWebfont(entry.getSrc().getUrl(), basePath + "/fonts", assetManager, urlMap, resolver);
@@ -146,11 +146,11 @@ public class CerosAssetStorageServiceImpl implements CerosAssetStorageService {
         }
     }
 
-    private void handleMedia(CerosManifestV0 manifest, AssetManager assetManager,
+    private void handleMedia(CerosManifestV1 manifest, AssetManager assetManager,
                               String basePath, Map<String, String> urlMap,
                               ResourceResolver resolver) {
         Set<String> seen = new LinkedHashSet<>();
-        for (CerosManifestV0.MediaEntry entry : manifest.getMedia()) {
+        for (CerosManifestV1.MediaEntry entry : manifest.getMedia()) {
             if (entry.getUrl() == null) {
                 continue;
             }
@@ -271,12 +271,12 @@ public class CerosAssetStorageServiceImpl implements CerosAssetStorageService {
         }
     }
 
-    private void rewriteInlineContent(CerosManifestV0 manifest, Map<String, String> urlMap) {
+    private void rewriteInlineContent(CerosManifestV1 manifest, Map<String, String> urlMap) {
         if (urlMap.isEmpty()) {
             return;
         }
 
-        CerosManifestV0.AssetEntry htmlBody = manifest.getHtmlBodyAsset();
+        CerosManifestV1.AssetEntry htmlBody = manifest.getHtmlBodyAsset();
         if (htmlBody != null && htmlBody.getSrc() != null
                 && htmlBody.getSrc().getContent() != null) {
             String html = htmlBody.getSrc().getContent();
@@ -286,7 +286,7 @@ public class CerosAssetStorageServiceImpl implements CerosAssetStorageService {
             htmlBody.getSrc().setContent(html);
         }
 
-        for (CerosManifestV0.AssetEntry entry : manifest.getAssets()) {
+        for (CerosManifestV1.AssetEntry entry : manifest.getAssets()) {
             if ("script".equals(entry.getType()) && entry.getSrc() != null
                     && "inline".equals(entry.getSrc().getType())
                     && entry.getSrc().getContent() != null) {

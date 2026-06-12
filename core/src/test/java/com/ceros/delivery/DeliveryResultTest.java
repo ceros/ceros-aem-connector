@@ -1,6 +1,6 @@
 package com.ceros.delivery;
 
-import com.ceros.models.cerosflex.CerosManifestV0;
+import com.ceros.models.cerosflex.CerosManifestV1;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +13,7 @@ class DeliveryResultTest {
     @Test
     void deriveExperienceUrlStripsManifestV0Suffix() {
         assertEquals("https://x.ceros.site/exp",
-                DeliveryResult.deriveExperienceUrl("https://x.ceros.site/exp/manifest.v0.json"));
+                DeliveryResult.deriveExperienceUrl("https://x.ceros.site/exp/manifest.v1.json"));
     }
 
     @Test
@@ -36,7 +36,7 @@ class DeliveryResultTest {
     @Test
     void isManifestJsonUrlMatchesVersionedAndPlain() {
         assertTrue(DeliveryResult.isManifestJsonUrl("https://x/manifest.json"));
-        assertTrue(DeliveryResult.isManifestJsonUrl("https://x/manifest.v0.json"));
+        assertTrue(DeliveryResult.isManifestJsonUrl("https://x/manifest.v1.json"));
         assertTrue(DeliveryResult.isManifestJsonUrl("https://x/manifest.v0.1.json"));
         assertFalse(DeliveryResult.isManifestJsonUrl("https://x/exp"));
         assertFalse(DeliveryResult.isManifestJsonUrl(null));
@@ -84,10 +84,10 @@ class DeliveryResultTest {
 
     @Test
     void scriptRefFromInlineAssetEntry() throws Exception {
-        CerosManifestV0.AssetEntry entry = MAPPER.readValue(
+        CerosManifestV1.AssetEntry entry = MAPPER.readValue(
                 "{\"type\":\"script\",\"name\":\"head-data\","
                         + "\"src\":{\"type\":\"inline\",\"content\":\"var x=1;\",\"mimeType\":\"application/json\"}}",
-                CerosManifestV0.AssetEntry.class);
+                CerosManifestV1.AssetEntry.class);
 
         DeliveryResult.ScriptRef ref = new DeliveryResult.ScriptRef(entry);
 
@@ -100,10 +100,10 @@ class DeliveryResultTest {
 
     @Test
     void scriptRefFromExternalAssetEntry() throws Exception {
-        CerosManifestV0.AssetEntry entry = MAPPER.readValue(
+        CerosManifestV1.AssetEntry entry = MAPPER.readValue(
                 "{\"type\":\"script\","
                         + "\"src\":{\"type\":\"external\",\"url\":\"https://cdn/x.js\",\"integrity\":\"sha-y\"}}",
-                CerosManifestV0.AssetEntry.class);
+                CerosManifestV1.AssetEntry.class);
 
         DeliveryResult.ScriptRef ref = new DeliveryResult.ScriptRef(entry);
 
@@ -116,18 +116,18 @@ class DeliveryResultTest {
 
     @Test
     void scriptRefFromLocalAssetEntryIsSameOrigin() throws Exception {
-        CerosManifestV0.AssetEntry entry = MAPPER.readValue(
+        CerosManifestV1.AssetEntry entry = MAPPER.readValue(
                 "{\"type\":\"script\",\"src\":{\"type\":\"external\",\"url\":\"/content/dam/ceros/app.js\"}}",
-                CerosManifestV0.AssetEntry.class);
+                CerosManifestV1.AssetEntry.class);
 
         assertTrue(new DeliveryResult.ScriptRef(entry).isSameOrigin());
     }
 
     @Test
     void scriptRefFromScript() throws Exception {
-        CerosManifestV0.Script script = MAPPER.readValue(
+        CerosManifestV1.Script script = MAPPER.readValue(
                 "{\"url\":\"https://cdn/app.js\",\"integrity\":\"sha-x\",\"module\":true,\"loadStrategy\":\"defer\"}",
-                CerosManifestV0.Script.class);
+                CerosManifestV1.Script.class);
 
         DeliveryResult.ScriptRef ref = new DeliveryResult.ScriptRef(script);
 
@@ -139,15 +139,15 @@ class DeliveryResultTest {
 
     @Test
     void scriptRefScriptDefaultsLoadStrategyToDefer() throws Exception {
-        CerosManifestV0.Script script = MAPPER.readValue("{\"url\":\"https://cdn/x.js\"}", CerosManifestV0.Script.class);
+        CerosManifestV1.Script script = MAPPER.readValue("{\"url\":\"https://cdn/x.js\"}", CerosManifestV1.Script.class);
         assertEquals("defer", new DeliveryResult.ScriptRef(script).getLoadStrategy());
     }
 
     @Test
     void scriptRefScriptExplicitNonDeferLoadStrategy() throws Exception {
-        CerosManifestV0.Script script = MAPPER.readValue(
+        CerosManifestV1.Script script = MAPPER.readValue(
                 "{\"url\":\"https://cdn/x.js\",\"module\":false,\"loadStrategy\":\"async\"}",
-                CerosManifestV0.Script.class);
+                CerosManifestV1.Script.class);
         DeliveryResult.ScriptRef ref = new DeliveryResult.ScriptRef(script);
         assertFalse(ref.isModule());
         assertEquals("async", ref.getLoadStrategy());
@@ -155,9 +155,9 @@ class DeliveryResultTest {
 
     @Test
     void scriptRefAssetEntryDefaultsModuleTrue() throws Exception {
-        CerosManifestV0.AssetEntry entry = MAPPER.readValue(
+        CerosManifestV1.AssetEntry entry = MAPPER.readValue(
                 "{\"type\":\"script\",\"src\":{\"type\":\"external\",\"url\":\"https://cdn/x.js\"}}",
-                CerosManifestV0.AssetEntry.class);
+                CerosManifestV1.AssetEntry.class);
         assertTrue(new DeliveryResult.ScriptRef(entry).isModule());
     }
 

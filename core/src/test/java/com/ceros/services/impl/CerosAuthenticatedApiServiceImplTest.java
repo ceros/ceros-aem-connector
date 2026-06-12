@@ -93,7 +93,7 @@ class CerosAuthenticatedApiServiceImplTest {
         assertEquals(1, exps.size());
         assertEquals("exp-1", exps.get(0).get("resourceId").asText());
         assertEquals("Test Experience", exps.get(0).get("name").asText());
-        assertEquals("https://myaccount.ceros.site/test-exp/manifest.v0.json",
+        assertEquals("https://myaccount.ceros.site/test-exp/manifest.v1.json",
                 exps.get(0).get("manifestUrl").asText());
 
         ArrayNode kids = (ArrayNode) result.get("children");
@@ -237,12 +237,12 @@ class CerosAuthenticatedApiServiceImplTest {
 
         setField("viewBaseUrl", "https://ceros.site");
         ObjectNode result = (ObjectNode) processFolder.invoke(service, folderNode, "company");
-        assertEquals("https://company.ceros.site/my-experience/manifest.v0.json",
+        assertEquals("https://company.ceros.site/my-experience/manifest.v1.json",
                 result.get("experiences").get(0).get("manifestUrl").asText());
 
         setField("viewBaseUrl", "http://ceros.site");
         result = (ObjectNode) processFolder.invoke(service, folderNode, "company");
-        assertEquals("http://company.ceros.site/my-experience/manifest.v0.json",
+        assertEquals("http://company.ceros.site/my-experience/manifest.v1.json",
                 result.get("experiences").get(0).get("manifestUrl").asText());
     }
 }

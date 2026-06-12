@@ -4,7 +4,7 @@ import com.ceros.delivery.DeepLinkResolver;
 import com.ceros.delivery.DeliveryResult;
 import com.ceros.delivery.ManifestRenderer;
 import com.ceros.delivery.DeliveryResult.Builder;
-import com.ceros.models.cerosflex.CerosManifestV0;
+import com.ceros.models.cerosflex.CerosManifestV1;
 import com.ceros.models.cerosflex.StoredManifestBundle;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -45,11 +45,11 @@ public final class StoreDeliveryHandler implements DeliveryHandler {
             return DeliveryResult.EMPTY;
         }
 
-        CerosManifestV0 primary = bundle.manifestFor(bundle.getPrimarySlug());
+        CerosManifestV1 primary = bundle.manifestFor(bundle.getPrimarySlug());
         String requestedSlug = primary != null
                 ? DeepLinkResolver.requestedSlug(context.request, primary.getExperience())
                 : null;
-        CerosManifestV0 served = bundle.manifestFor(requestedSlug);
+        CerosManifestV1 served = bundle.manifestFor(requestedSlug);
         if (served == null) {
             return DeliveryResult.EMPTY;
         }
@@ -68,7 +68,7 @@ public final class StoreDeliveryHandler implements DeliveryHandler {
      * from {@code primary.pages[]} so {@code data-flex-manifest-url} on the
      * client matches the page that was rendered.
      */
-    private static String manifestUrlFor(CerosManifestV0 primary, CerosManifestV0 served, String fallback) {
+    private static String manifestUrlFor(CerosManifestV1 primary, CerosManifestV1 served, String fallback) {
         if (primary == served || primary == null || served == null) {
             return fallback;
         }
@@ -76,7 +76,7 @@ public final class StoreDeliveryHandler implements DeliveryHandler {
         if (servedSlug == null) {
             return fallback;
         }
-        for (CerosManifestV0.PageRef page : primary.getPages()) {
+        for (CerosManifestV1.PageRef page : primary.getPages()) {
             if (servedSlug.equals(page.getSlug()) && StringUtils.isNotBlank(page.getManifestUrl())) {
                 return page.getManifestUrl();
             }

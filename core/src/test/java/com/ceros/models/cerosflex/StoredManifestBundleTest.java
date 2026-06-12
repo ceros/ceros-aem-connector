@@ -11,13 +11,13 @@ class StoredManifestBundleTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private static CerosManifestV0 parse(String json) throws Exception {
-        return MAPPER.readValue(json, CerosManifestV0.class);
+    private static CerosManifestV1 parse(String json) throws Exception {
+        return MAPPER.readValue(json, CerosManifestV1.class);
     }
 
     @Test
     void manifestForReturnsRequestedSlug() throws Exception {
-        LinkedHashMap<String, CerosManifestV0> pages = new LinkedHashMap<>();
+        LinkedHashMap<String, CerosManifestV1> pages = new LinkedHashMap<>();
         pages.put("page-1", parse("{\"assets\":[{\"type\":\"html-body\",\"src\":{\"type\":\"inline\",\"content\":\"<p>1</p>\"}}]}"));
         pages.put("page-2", parse("{\"assets\":[{\"type\":\"html-body\",\"src\":{\"type\":\"inline\",\"content\":\"<p>2</p>\"}}]}"));
         StoredManifestBundle bundle = new StoredManifestBundle("page-1", pages);
@@ -27,7 +27,7 @@ class StoredManifestBundleTest {
 
     @Test
     void manifestForFallsBackToPrimaryWhenSlugMissing() throws Exception {
-        LinkedHashMap<String, CerosManifestV0> pages = new LinkedHashMap<>();
+        LinkedHashMap<String, CerosManifestV1> pages = new LinkedHashMap<>();
         pages.put("page-1", parse("{\"assets\":[{\"type\":\"html-body\",\"src\":{\"type\":\"inline\",\"content\":\"<p>1</p>\"}}]}"));
         pages.put("page-2", parse("{\"assets\":[{\"type\":\"html-body\",\"src\":{\"type\":\"inline\",\"content\":\"<p>2</p>\"}}]}"));
         StoredManifestBundle bundle = new StoredManifestBundle("page-1", pages);
@@ -46,7 +46,7 @@ class StoredManifestBundleTest {
 
     @Test
     void parseRoundTripsBundleJson() throws Exception {
-        LinkedHashMap<String, CerosManifestV0> pages = new LinkedHashMap<>();
+        LinkedHashMap<String, CerosManifestV1> pages = new LinkedHashMap<>();
         pages.put("page-1", parse("{\"experience\":{\"slug\":\"e\",\"pageSlug\":\"page-1\"}}"));
         StoredManifestBundle original = new StoredManifestBundle("page-1", pages);
 

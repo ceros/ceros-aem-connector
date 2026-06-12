@@ -1,6 +1,6 @@
 package com.ceros.services;
 
-import com.ceros.models.cerosflex.CerosManifestV0;
+import com.ceros.models.cerosflex.CerosManifestV1;
 import com.ceros.models.cerosflex.StoredManifestBundle;
 import org.apache.sling.api.resource.ResourceResolver;
 
@@ -17,7 +17,7 @@ public interface CerosManifestService {
      *
      * <p>Used by the live "fetch" delivery mode (render-time call).</p>
      */
-    CerosManifestV0 fetchPublicManifestFromUrl(String manifestUrl) throws IOException;
+    CerosManifestV1 fetchPublicManifestFromUrl(String manifestUrl) throws IOException;
 
     /**
      * Fetches the manifest at {@code manifestUrl} <em>and</em> every linked

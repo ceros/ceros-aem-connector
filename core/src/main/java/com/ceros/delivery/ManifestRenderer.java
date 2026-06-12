@@ -2,13 +2,13 @@ package com.ceros.delivery;
 
 import com.ceros.delivery.DeliveryResult.CssLink;
 import com.ceros.delivery.DeliveryResult.ScriptRef;
-import com.ceros.models.cerosflex.CerosManifestV0;
+import com.ceros.models.cerosflex.CerosManifestV1;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Turns a parsed {@link CerosManifestV0} into the view state HTL needs.
+ * Turns a parsed {@link CerosManifestV1} into the view state HTL needs.
  * Shared by the fetch and store delivery handlers so both produce identical
  * output for the same input manifest.
  */
@@ -23,7 +23,7 @@ public final class ManifestRenderer {
      * script URL derived from {@code manifest}.
      */
     public static void renderInto(DeliveryResult.Builder builder,
-                                  CerosManifestV0 manifest) {
+                                  CerosManifestV1 manifest) {
         if (manifest == null) {
             return;
         }
@@ -33,14 +33,14 @@ public final class ManifestRenderer {
 
         List<CssLink> css = new ArrayList<>();
         List<ScriptRef> bodyScripts = new ArrayList<>();
-        CerosManifestV0.DeliveryMode ssr = manifest.getDeliveryMode("ssr");
+        CerosManifestV1.DeliveryMode ssr = manifest.getDeliveryMode("ssr");
         if (ssr != null) {
-            for (CerosManifestV0.Style style : ssr.getStyles()) {
+            for (CerosManifestV1.Style style : ssr.getStyles()) {
                 if (style.getUrl() != null) {
                     css.add(new CssLink(style.getUrl(), style.getIntegrity()));
                 }
             }
-            for (CerosManifestV0.Script script : ssr.getScripts()) {
+            for (CerosManifestV1.Script script : ssr.getScripts()) {
                 if (script.getUrl() != null) {
                     bodyScripts.add(new ScriptRef(script));
                 }
@@ -49,7 +49,7 @@ public final class ManifestRenderer {
 
         // Web fonts are prepended so they preload before any SSR style.
         List<CssLink> fonts = new ArrayList<>();
-        for (CerosManifestV0.AssetEntry entry : manifest.getAssets()) {
+        for (CerosManifestV1.AssetEntry entry : manifest.getAssets()) {
             if ("webfont".equals(entry.getType())
                     && entry.getSrc() != null
                     && entry.getSrc().getUrl() != null) {
@@ -64,14 +64,14 @@ public final class ManifestRenderer {
         builder.bodyScripts(bodyScripts);
 
         List<ScriptRef> headScripts = new ArrayList<>();
-        for (CerosManifestV0.AssetEntry entry : manifest.getAssets()) {
+        for (CerosManifestV1.AssetEntry entry : manifest.getAssets()) {
             if ("script".equals(entry.getType())) {
                 headScripts.add(new ScriptRef(entry));
             }
         }
         builder.headScripts(headScripts);
 
-        CerosManifestV0.DeliveryMode iframe = manifest.getDeliveryMode("iframe");
+        CerosManifestV1.DeliveryMode iframe = manifest.getDeliveryMode("iframe");
         if (iframe != null && !iframe.getScripts().isEmpty()) {
             builder.embedScriptUrl(iframe.getScripts().get(0).getUrl());
         }

@@ -1,6 +1,6 @@
 package com.ceros.services.impl;
 
-import com.ceros.models.cerosflex.CerosManifestV0;
+import com.ceros.models.cerosflex.CerosManifestV1;
 import com.ceros.models.cerosflex.StoredManifestBundle;
 import com.ceros.services.CerosAssetStorageService;
 import com.ceros.services.FetchProgress;
@@ -38,8 +38,8 @@ class CerosManifestServiceImplTest {
         f.set(target, value);
     }
 
-    private static CerosManifestV0 parse(String json) throws IOException {
-        return MAPPER.readValue(json, CerosManifestV0.class);
+    private static CerosManifestV1 parse(String json) throws IOException {
+        return MAPPER.readValue(json, CerosManifestV1.class);
     }
 
     @Test
@@ -58,7 +58,7 @@ class CerosManifestServiceImplTest {
         CerosManifestServiceImpl spy = spy(new CerosManifestServiceImpl());
         setField(spy, "httpTimeoutMillis", 10000);
 
-        CerosManifestV0 primary = parse(""
+        CerosManifestV1 primary = parse(""
                 + "{"
                 + "  \"experience\":{\"slug\":\"e\",\"pageSlug\":\"home\"},"
                 + "  \"pages\":[{\"slug\":\"home\",\"manifestUrl\":\"https://x/home/manifest.json\",\"current\":true}]"
@@ -77,7 +77,7 @@ class CerosManifestServiceImplTest {
         CerosManifestServiceImpl spy = spy(new CerosManifestServiceImpl());
         setField(spy, "httpTimeoutMillis", 10000);
 
-        CerosManifestV0 primary = parse(""
+        CerosManifestV1 primary = parse(""
                 + "{"
                 + "  \"experience\":{\"slug\":\"e\",\"pageSlug\":\"home\"},"
                 + "  \"pages\":["
@@ -85,7 +85,7 @@ class CerosManifestServiceImplTest {
                 + "    {\"slug\":\"about\",\"manifestUrl\":\"https://x/about/manifest.json\"}"
                 + "  ]"
                 + "}");
-        CerosManifestV0 about = parse("{\"experience\":{\"slug\":\"e\",\"pageSlug\":\"about\"}}");
+        CerosManifestV1 about = parse("{\"experience\":{\"slug\":\"e\",\"pageSlug\":\"about\"}}");
         doReturn(primary).when(spy).fetchPublicManifestFromUrl("https://x/home/manifest.json");
         doReturn(about).when(spy).fetchPublicManifestFromUrl("https://x/about/manifest.json");
 
@@ -100,7 +100,7 @@ class CerosManifestServiceImplTest {
         CerosManifestServiceImpl spy = spy(new CerosManifestServiceImpl());
         setField(spy, "httpTimeoutMillis", 10000);
 
-        CerosManifestV0 primary = parse(""
+        CerosManifestV1 primary = parse(""
                 + "{"
                 + "  \"experience\":{\"slug\":\"e\",\"pageSlug\":\"home\"},"
                 + "  \"pages\":["
@@ -121,7 +121,7 @@ class CerosManifestServiceImplTest {
         CerosManifestServiceImpl spy = spy(new CerosManifestServiceImpl());
         setField(spy, "httpTimeoutMillis", 10000);
 
-        CerosManifestV0 primary = parse(""
+        CerosManifestV1 primary = parse(""
                 + "{"
                 + "  \"experience\":{\"slug\":\"e\",\"pageSlug\":\"home\"},"
                 + "  \"pages\":["
@@ -130,7 +130,7 @@ class CerosManifestServiceImplTest {
                 + "    {\"slug\":\"contact\",\"manifestUrl\":\"https://x/contact/manifest.json\"}"
                 + "  ]"
                 + "}");
-        CerosManifestV0 contact = parse("{\"experience\":{\"slug\":\"e\",\"pageSlug\":\"contact\"}}");
+        CerosManifestV1 contact = parse("{\"experience\":{\"slug\":\"e\",\"pageSlug\":\"contact\"}}");
         doReturn(primary).when(spy).fetchPublicManifestFromUrl("https://x/home/manifest.json");
         doThrow(new IOException("boom")).when(spy).fetchPublicManifestFromUrl("https://x/about/manifest.json");
         doReturn(contact).when(spy).fetchPublicManifestFromUrl("https://x/contact/manifest.json");
@@ -164,7 +164,7 @@ class CerosManifestServiceImplTest {
         setField(spy, "cerosAssetStorageService", assets);
         when(assets.uploadAssets(any(), any())).thenReturn(Map.of("https://cdn/a.css", "/dam/a.css"));
 
-        LinkedHashMap<String, CerosManifestV0> pages = new LinkedHashMap<>();
+        LinkedHashMap<String, CerosManifestV1> pages = new LinkedHashMap<>();
         pages.put("home", parse("{}"));
         pages.put("about", parse("{}"));
         StoredManifestBundle bundle = new StoredManifestBundle("home", pages);
@@ -203,7 +203,7 @@ class CerosManifestServiceImplTest {
         setField(spy, "cerosAssetStorageService", assets);
         when(assets.uploadAssets(any(), any())).thenReturn(Map.of());
 
-        LinkedHashMap<String, CerosManifestV0> pages = new LinkedHashMap<>();
+        LinkedHashMap<String, CerosManifestV1> pages = new LinkedHashMap<>();
         pages.put("home", parse("{}"));
         doReturn(new StoredManifestBundle("home", pages))
                 .when(spy).fetchManifestBundle("https://x/manifest.json");

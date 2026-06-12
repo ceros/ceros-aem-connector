@@ -1,7 +1,7 @@
 package com.ceros.delivery;
 
 import com.ceros.delivery.modes.DeliveryHandler;
-import com.ceros.models.cerosflex.CerosManifestV0;
+import com.ceros.models.cerosflex.CerosManifestV1;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
@@ -67,7 +67,7 @@ public final class DeliveryResult {
     public boolean isHasContent() { return hasContent; }
 
     /**
-     * Strips trailing {@code manifest.v0.json} (and its trailing slash) so the
+     * Strips trailing {@code manifest.v1.json} (and its trailing slash) so the
      * result is a usable experience root URL.
      */
     public static String deriveExperienceUrl(String url) {
@@ -156,7 +156,7 @@ public final class DeliveryResult {
         private final boolean module;
         private final String loadStrategy;
 
-        public ScriptRef(CerosManifestV0.Script script) {
+        public ScriptRef(CerosManifestV1.Script script) {
             this.inline = false;
             this.src = true;
             this.scriptId = null;
@@ -169,8 +169,8 @@ public final class DeliveryResult {
             this.loadStrategy = StringUtils.defaultIfBlank(script.getLoadStrategy(), "defer");
         }
 
-        public ScriptRef(CerosManifestV0.AssetEntry entry) {
-            CerosManifestV0.AssetSource assetSrc = entry.getSrc();
+        public ScriptRef(CerosManifestV1.AssetEntry entry) {
+            CerosManifestV1.AssetSource assetSrc = entry.getSrc();
             this.inline = assetSrc != null && "inline".equals(assetSrc.getType());
             this.src = assetSrc != null && "external".equals(assetSrc.getType());
             this.scriptId = entry.getName();
@@ -179,7 +179,7 @@ public final class DeliveryResult {
             this.integrity = assetSrc != null ? assetSrc.getIntegrity() : null;
             this.contentType = assetSrc != null ? assetSrc.getMimeType() : null;
             this.sameOrigin = this.src && this.url != null && this.url.startsWith("/");
-            CerosManifestV0.AssetMetadata meta = entry.getMetadata();
+            CerosManifestV1.AssetMetadata meta = entry.getMetadata();
             this.module = meta == null || meta.getModule() == null || meta.getModule();
             this.loadStrategy = meta != null && meta.getLoadStrategy() != null
                     ? meta.getLoadStrategy() : "defer";

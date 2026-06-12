@@ -1,7 +1,7 @@
 package com.ceros.delivery.modes;
 
 import com.ceros.delivery.DeliveryResult;
-import com.ceros.models.cerosflex.CerosManifestV0;
+import com.ceros.models.cerosflex.CerosManifestV1;
 import com.ceros.services.CerosManifestService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.sling.api.SlingHttpServletRequest;
@@ -38,7 +38,7 @@ class FetchDeliveryHandlerTest {
         return new DeliveryHandler.DeliveryContext(url, null, request, null);
     }
 
-    private CerosManifestV0 manifestWithPages(String html, boolean firstIsCurrent) throws IOException {
+    private CerosManifestV1 manifestWithPages(String html, boolean firstIsCurrent) throws IOException {
         return MAPPER.readValue(""
                 + "{"
                 + "  \"experience\":{\"slug\":\"my-exp\",\"accountSlug\":\"acme\",\"pageSlug\":\"page-1\"},"
@@ -47,13 +47,13 @@ class FetchDeliveryHandlerTest {
                 + "    {\"slug\":\"page-1\",\"manifestUrl\":\"" + PRIMARY_URL + "\",\"isFirst\":true,\"current\":" + firstIsCurrent + "},"
                 + "    {\"slug\":\"page-2\",\"manifestUrl\":\"" + PAGE_2_URL + "\",\"current\":" + (!firstIsCurrent) + "}"
                 + "  ]"
-                + "}", CerosManifestV0.class);
+                + "}", CerosManifestV1.class);
     }
 
-    private CerosManifestV0 simpleManifest(String html) throws IOException {
+    private CerosManifestV1 simpleManifest(String html) throws IOException {
         return MAPPER.readValue(
                 "{\"assets\":[{\"type\":\"html-body\",\"src\":{\"type\":\"inline\",\"content\":" + MAPPER.writeValueAsString(html) + "}}]}",
-                CerosManifestV0.class);
+                CerosManifestV1.class);
     }
 
     @Test
@@ -151,9 +151,9 @@ class FetchDeliveryHandlerTest {
 
     @Test
     void normaliseAppendsManifestJsonWhenAbsent() {
-        assertEquals("https://example.com/exp/manifest.v0.json",
+        assertEquals("https://example.com/exp/manifest.v1.json",
                 FetchDeliveryHandler.normaliseManifestUrl("https://example.com/exp"));
-        assertEquals("https://example.com/exp/manifest.v0.json",
+        assertEquals("https://example.com/exp/manifest.v1.json",
                 FetchDeliveryHandler.normaliseManifestUrl("https://example.com/exp/"));
     }
 
