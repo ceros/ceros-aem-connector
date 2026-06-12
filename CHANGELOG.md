@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.4] - 2026-06-12
+
+### Added
+- Manifest fetch now runs as a Sling Job with a polled `cerosflex.fetch-status` endpoint and a new `JcrFetchProgress` writer, so the authoring dialog can show live progress instead of a long-blocking request.
+- Store mode mirrors each page's manifest into DAM at `<damBasePath>/<expSlug>/<pageSlug>/manifest.json`, with `pages[].manifestUrl` rewritten to sibling DAM URLs. `data-flex-manifest-url` points at the DAM copy so the in-browser SPA router navigates entirely inside AEM — no Ceros CDN call at click time.
+- New `CerosFlexPreviewServlet` serves `<componentPath>.preview.html` — a standalone, chrome-free render of the experience used as the iframe source for the author-mode store preview.
+
+### Changed
+- Switched manifest schema from `manifest.v0.json` to `manifest.v1.json`. The model classes mirror the v1 layout (`CerosManifestV1`, new `pages[].manifestUrl` setter).
+- Author-mode preview in store mode no longer points at the external Ceros CDN; it loads the local preview servlet instead, keeping the editor consistent with store mode's offline guarantee.
+
 ## [0.0.3] - 2026-06-12
 
 ### Added
