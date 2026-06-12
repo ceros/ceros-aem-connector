@@ -41,4 +41,34 @@ public interface CerosManifestService {
                                 String manifestUrl,
                                 StoredManifestBundle bundle,
                                 Map<String, String> urlMap);
+
+    /**
+     * Validates that {@code manifestUrl} is acceptable as an outbound fetch
+     * target under the current OSGi policy. Lets the enqueue path reject bad
+     * URLs synchronously instead of failing later inside a background job.
+     *
+     * @throws IllegalArgumentException if the URL is malformed or violates policy
+     */
+    void validateManifestUrl(String manifestUrl);
+
+    /**
+     * Runs the full fetch + asset upload + persist pipeline for store mode.
+     *
+     * <p>Progress is reported through {@code progress} so a background
+     * job consumer can update a poll-friendly status record. The method
+     * never throws on per-asset failures (those are swallowed by the asset
+     * storage layer); it throws only on policy violations or hard fetch
+     * errors that should abort the whole run.</p>
+     *
+     * @param manifestUrl   already normalised manifest URL
+     * @param componentPath validated JCR path of the cerosflex component, or
+     *                      {@code null} to fetch+upload without persisting
+     * @param progress      progress callback (use {@link FetchProgress#NOOP}
+     *                      when not needed)
+     * @param resolver      resource resolver with read access to the manifest
+     *                      source and write access to DAM and the component
+     */
+    void performFetchAndStore(String manifestUrl, String componentPath,
+                              FetchProgress progress, ResourceResolver resolver)
+            throws IOException;
 }

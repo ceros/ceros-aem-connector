@@ -2,7 +2,9 @@ package com.ceros.services.impl;
 
 import com.ceros.models.cerosflex.CerosManifestV0;
 import com.ceros.models.cerosflex.StoredManifestBundle;
+import com.ceros.services.CerosAssetStorageService;
 import com.ceros.services.CerosManifestService;
+import com.ceros.services.FetchProgress;
 import com.ceros.util.HttpUtils;
 import com.ceros.util.ManifestUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,6 +12,7 @@ import org.apache.sling.api.resource.ResourceResolver;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Modified;
+import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
@@ -50,6 +53,9 @@ public class CerosManifestServiceImpl implements CerosManifestService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    @Reference
+    private CerosAssetStorageService cerosAssetStorageService;
+
     private int httpTimeoutMillis;
     private boolean allowHttpScheme;
     private boolean allowLocalAddresses;
@@ -75,6 +81,13 @@ public class CerosManifestServiceImpl implements CerosManifestService {
         String json = HttpUtils.fetchString(manifestUrl, httpTimeoutMillis,
                 Map.of("Accept", "application/json"));
         return objectMapper.readValue(json, CerosManifestV0.class);
+    }
+
+    @Override
+    public void validateManifestUrl(String manifestUrl) {
+        HttpUtils.validateOutboundUrl(
+                manifestUrl == null ? null : manifestUrl.trim(),
+                allowHttpScheme, allowLocalAddresses);
     }
 
     @Override
@@ -139,5 +152,52 @@ public class CerosManifestServiceImpl implements CerosManifestService {
             log.warn("Could not save manifest bundle to JCR at {}: {}", componentPath, e.getMessage());
             return false;
         }
+    }
+
+    @Override
+    public void performFetchAndStore(String manifestUrl, String componentPath,
+                                     FetchProgress progress, ResourceResolver resolver)
+            throws IOException {
+        progress.onPhase(FetchProgress.PHASE_FETCHING_MANIFEST);
+        StoredManifestBundle bundle = fetchManifestBundle(manifestUrl);
+
+        int total = bundle.getPagesBySlug().size();
+        progress.onPhase(FetchProgress.PHASE_UPLOADING_ASSETS);
+        progress.onPageProgress(0, total);
+
+        Map<String, String> urlMap = new LinkedHashMap<>();
+        int processed = 0;
+        for (CerosManifestV0 manifest : bundle.getPagesBySlug().values()) {
+            urlMap.putAll(cerosAssetStorageService.uploadAssets(manifest, resolver));
+            processed++;
+            progress.onPageProgress(processed, total);
+        }
+
+        boolean saved = false;
+        String fetchedAt = Instant.now().toString();
+        if (componentPath != null) {
+            progress.onPhase(FetchProgress.PHASE_PERSISTING);
+            saved = storeManifestBundle(resolver, componentPath, manifestUrl, bundle, urlMap);
+            if (saved) {
+                fetchedAt = readFetchedAt(resolver, componentPath, fetchedAt);
+            }
+        }
+
+        progress.onComplete(fetchedAt, saved, total);
+    }
+
+    private String readFetchedAt(ResourceResolver resolver, String componentPath, String fallback) {
+        try {
+            Session session = resolver.adaptTo(Session.class);
+            if (session != null && session.nodeExists(componentPath)) {
+                Node node = session.getNode(componentPath);
+                if (node.hasProperty("cerosPrefetchedAt")) {
+                    return node.getProperty("cerosPrefetchedAt").getString();
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Could not read cerosPrefetchedAt from {}: {}", componentPath, e.getMessage());
+        }
+        return fallback;
     }
 }

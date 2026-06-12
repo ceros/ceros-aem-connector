@@ -2,14 +2,22 @@ package com.ceros.services.impl;
 
 import com.ceros.models.cerosflex.CerosManifestV0;
 import com.ceros.models.cerosflex.StoredManifestBundle;
+import com.ceros.services.CerosAssetStorageService;
+import com.ceros.services.FetchProgress;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.sling.api.resource.ResourceResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 class CerosManifestServiceImplTest {
@@ -143,5 +151,105 @@ class CerosManifestServiceImplTest {
         doThrow(new IOException("nope")).when(spy).fetchPublicManifestFromUrl("https://x/home/manifest.json");
 
         assertThrows(IOException.class, () -> spy.fetchManifestBundle("https://x/home/manifest.json"));
+    }
+
+    // ---- performFetchAndStore ----
+
+    @Test
+    void performFetchAndStoreDrivesProgressThroughEveryPhase() throws Exception {
+        CerosManifestServiceImpl spy = spy(new CerosManifestServiceImpl());
+        setField(spy, "httpTimeoutMillis", 10000);
+
+        CerosAssetStorageService assets = mock(CerosAssetStorageService.class);
+        setField(spy, "cerosAssetStorageService", assets);
+        when(assets.uploadAssets(any(), any())).thenReturn(Map.of("https://cdn/a.css", "/dam/a.css"));
+
+        LinkedHashMap<String, CerosManifestV0> pages = new LinkedHashMap<>();
+        pages.put("home", parse("{}"));
+        pages.put("about", parse("{}"));
+        StoredManifestBundle bundle = new StoredManifestBundle("home", pages);
+        doReturn(bundle).when(spy).fetchManifestBundle("https://x/manifest.json");
+        doReturn(true).when(spy).storeManifestBundle(any(), eq("/content/x"), anyString(), any(), any());
+
+        RecordingProgress progress = new RecordingProgress();
+        ResourceResolver resolver = mock(ResourceResolver.class);
+
+        spy.performFetchAndStore("https://x/manifest.json", "/content/x", progress, resolver);
+
+        // Phases visited in order, with the upload phase always preceding asset uploads.
+        assertEquals(FetchProgress.PHASE_FETCHING_MANIFEST, progress.phases.get(0));
+        assertEquals(FetchProgress.PHASE_UPLOADING_ASSETS, progress.phases.get(1));
+        assertEquals(FetchProgress.PHASE_PERSISTING, progress.phases.get(2));
+
+        // Asset upload called for every page in the bundle.
+        verify(assets, times(2)).uploadAssets(any(), eq(resolver));
+
+        // Final page-progress count equals total page count.
+        assertEquals(2, progress.lastProcessed.get());
+        assertEquals(2, progress.lastTotal.get());
+
+        // onComplete fired with saved=true and the correct page count.
+        assertNotNull(progress.completion.get());
+        assertTrue(progress.completion.get().saved);
+        assertEquals(2, progress.completion.get().pages);
+    }
+
+    @Test
+    void performFetchAndStoreSkipsPersistWhenComponentPathNull() throws Exception {
+        CerosManifestServiceImpl spy = spy(new CerosManifestServiceImpl());
+        setField(spy, "httpTimeoutMillis", 10000);
+
+        CerosAssetStorageService assets = mock(CerosAssetStorageService.class);
+        setField(spy, "cerosAssetStorageService", assets);
+        when(assets.uploadAssets(any(), any())).thenReturn(Map.of());
+
+        LinkedHashMap<String, CerosManifestV0> pages = new LinkedHashMap<>();
+        pages.put("home", parse("{}"));
+        doReturn(new StoredManifestBundle("home", pages))
+                .when(spy).fetchManifestBundle("https://x/manifest.json");
+
+        RecordingProgress progress = new RecordingProgress();
+        spy.performFetchAndStore("https://x/manifest.json", null, progress, mock(ResourceResolver.class));
+
+        assertFalse(progress.phases.contains(FetchProgress.PHASE_PERSISTING));
+        verify(spy, never()).storeManifestBundle(any(), anyString(), anyString(), any(), any());
+        assertFalse(progress.completion.get().saved);
+    }
+
+    @Test
+    void performFetchAndStorePropagatesFetchFailures() throws Exception {
+        CerosManifestServiceImpl spy = spy(new CerosManifestServiceImpl());
+        setField(spy, "httpTimeoutMillis", 10000);
+        setField(spy, "cerosAssetStorageService", mock(CerosAssetStorageService.class));
+        doThrow(new IOException("bad gateway"))
+                .when(spy).fetchManifestBundle("https://x/manifest.json");
+
+        RecordingProgress progress = new RecordingProgress();
+        assertThrows(IOException.class, () -> spy.performFetchAndStore(
+                "https://x/manifest.json", "/content/x", progress, mock(ResourceResolver.class)));
+        assertNull(progress.completion.get());
+    }
+
+    private static class RecordingProgress implements FetchProgress {
+        final java.util.List<String> phases = new java.util.ArrayList<>();
+        final AtomicInteger lastProcessed = new AtomicInteger(-1);
+        final AtomicInteger lastTotal = new AtomicInteger(-1);
+        final AtomicReference<Completion> completion = new AtomicReference<>();
+
+        @Override public void onPhase(String phase) { phases.add(phase); }
+        @Override public void onPageProgress(int processed, int total) {
+            lastProcessed.set(processed);
+            lastTotal.set(total);
+        }
+        @Override public void onComplete(String fetchedAt, boolean saved, int pages) {
+            completion.set(new Completion(fetchedAt, saved, pages));
+        }
+        @Override public void onError(String message) {}
+
+        static final class Completion {
+            final boolean saved;
+            final int pages;
+            Completion(String f, boolean s, int p) { saved = s; pages = p; }
+        }
     }
 }

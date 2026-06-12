@@ -1,0 +1,5 @@
+{
+    "user.mapping": [
+        "ceros-aem-connector-core:ceros-fetcher=[ceros-fetcher-service]"
+    ]
+}
