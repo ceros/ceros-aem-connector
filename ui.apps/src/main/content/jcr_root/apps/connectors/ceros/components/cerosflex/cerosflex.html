@@ -57,7 +57,7 @@
         </div>
     </div>
 
-    <!--/* Author/edit mode: iframe preview for store and fetch modes */-->
+    <!--/* Shared author-preview chrome (badge + frame). */-->
     <sly data-sly-test="${model.configured && model.hasContent && !model.embedMode && !wcmmode.disabled}">
         <style>
             .cmp-cerosflex__author-preview {
@@ -84,7 +84,20 @@
                             pointer-events:none;">
                     Stored: ${model.prefetchedAt}</div>
             </sly>
-            <iframe src="${model.experienceUrl}?ceros-analytics=disabled" title="Ceros experience preview"></iframe>
+
+            <!--/* Store mode: iframe to the page itself rendered with
+                   wcmmode=disabled. The author sees the actual store-mode
+                   output — full layout, SPA router runs inside the iframe,
+                   isolated from the editor's click overlay. No CDN call. */-->
+            <iframe data-sly-test="${model.storeMode}"
+                    src="${model.previewPageUrl}"
+                    title="Ceros experience preview (stored)"></iframe>
+
+            <!--/* Fetch mode: live iframe to the Ceros CDN — necessary
+                   because we have no local copy of the experience to show. */-->
+            <iframe data-sly-test="${!model.storeMode}"
+                    src="${model.experienceUrl}?ceros-analytics=disabled"
+                    title="Ceros experience preview"></iframe>
         </div>
     </sly>
 

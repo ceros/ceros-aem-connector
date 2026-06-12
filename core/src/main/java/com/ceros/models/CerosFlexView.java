@@ -102,4 +102,17 @@ public class CerosFlexView {
     public String getEmbedScriptUrl() {
         return result.getEmbedScriptUrl();
     }
+
+    /**
+     * URL used as the iframe src for the author-mode store preview. Resolves to
+     * {@code cerosflex.preview.html} on the same component — a minimal page
+     * containing only the experience (CSS + HTML + SSR scripts) and no AEM
+     * chrome. The SPA router runs inside the iframe, isolated from the editor.
+     */
+    public String getPreviewPageUrl() {
+        if (resource == null) {
+            return null;
+        }
+        return resource.getPath() + ".preview.html";
+    }
 }
