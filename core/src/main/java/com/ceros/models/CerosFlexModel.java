@@ -25,6 +25,12 @@ public class CerosFlexModel {
     public static final String MODE_STORE = StoreDeliveryHandler.MODE;
     public static final String MODE_EMBED = EmbedDeliveryHandler.MODE;
 
+    /** Iframe types — relevant only when {@link #cerosMode} is {@code embed}. */
+    public static final String EMBED_TYPE_FULL_HEIGHT = "fullheight";
+    public static final String EMBED_TYPE_SCROLLING = "scrolling";
+
+    private static final String DEFAULT_EMBED_HEIGHT = "800px";
+
     @ValueMapValue
     private String manifestUrl;
 
@@ -36,6 +42,12 @@ public class CerosFlexModel {
 
     @ValueMapValue
     private String cerosPrefetchedAt;
+
+    @ValueMapValue
+    private String cerosEmbedType;
+
+    @ValueMapValue
+    private String cerosEmbedHeight;
 
     @SlingObject
     private Resource resource;
@@ -66,6 +78,19 @@ public class CerosFlexModel {
 
     public boolean isEmbedMode() {
         return MODE_EMBED.equals(cerosMode);
+    }
+
+    /**
+     * Returns the value to render into the iframe-embed snippet's
+     * {@code data-embed-height} attribute. {@code "auto"} when the author
+     * picked Full Height (the embed script then resizes the iframe to its
+     * content); otherwise the configured CSS length (e.g. {@code "800px"}).
+     */
+    public String getEmbedHeightAttribute() {
+        if (EMBED_TYPE_SCROLLING.equals(cerosEmbedType)) {
+            return StringUtils.defaultIfBlank(cerosEmbedHeight, DEFAULT_EMBED_HEIGHT);
+        }
+        return "auto";
     }
 
     /**

@@ -51,6 +51,33 @@
                         fieldLabel="Last Fetched"
                         name="./cerosPrefetchedAt"/>
 
+                    <cerosEmbedType
+                        jcr:primaryType="nt:unstructured"
+                        sling:resourceType="granite/ui/components/coral/foundation/form/select"
+                        fieldLabel="Iframe Type"
+                        fieldDescription="Only applies in Client-side (Iframe embed) mode. Full Height: iframe auto-resizes to the experience content (no inner scrollbars). Scrolling: iframe stays at a fixed height and the experience scrolls inside it."
+                        name="./cerosEmbedType">
+                        <items jcr:primaryType="nt:unstructured">
+                            <fullheight
+                                jcr:primaryType="nt:unstructured"
+                                text="Full Height"
+                                value="fullheight"
+                                selected="{Boolean}true"/>
+                            <scrolling
+                                jcr:primaryType="nt:unstructured"
+                                text="Scrolling"
+                                value="scrolling"/>
+                        </items>
+                    </cerosEmbedType>
+
+                    <cerosEmbedHeight
+                        jcr:primaryType="nt:unstructured"
+                        sling:resourceType="granite/ui/components/coral/foundation/form/textfield"
+                        fieldLabel="Iframe Height"
+                        fieldDescription="Used only when Iframe Type is Scrolling. CSS length, e.g. 800px or 75vh."
+                        name="./cerosEmbedHeight"
+                        value="800px"/>
+
                 </items>
             </column>
         </items>
