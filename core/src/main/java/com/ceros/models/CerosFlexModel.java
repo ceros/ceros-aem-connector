@@ -48,6 +48,14 @@ public class CerosFlexModel {
     @ValueMapValue
     private String cerosEmbedHeight;
 
+    /**
+     * The {@code flex-client.js} URL for inline mode, grabbed from the manifest
+     * and persisted by {@code CerosFlexInlinePostProcessor} when the dialog is
+     * saved. Read at render time — no fetch on the request path.
+     */
+    @ValueMapValue
+    private String cerosInlineScriptUrl;
+
     @SlingObject
     private Resource resource;
 
@@ -65,6 +73,11 @@ public class CerosFlexModel {
 
     public String getPrefetchedAt() {
         return cerosPrefetchedAt;
+    }
+
+    /** Persisted {@code flex-client.js} URL for inline mode (grabbed on save). */
+    public String getInlineScriptUrl() {
+        return StringUtils.trimToNull(cerosInlineScriptUrl);
     }
 
     public boolean isConfigured() {

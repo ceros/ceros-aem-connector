@@ -93,7 +93,7 @@ public final class FetchDeliveryHandler implements DeliveryHandler {
         return b.build();
     }
 
-    static String normaliseManifestUrl(String url) {
+    public static String normaliseManifestUrl(String url) {
         if (url == null) {
             return null;
         }

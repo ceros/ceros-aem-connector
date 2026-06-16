@@ -30,6 +30,7 @@ public class CerosFlexDeliveryServiceImpl implements CerosFlexDeliveryService {
         DeliveryHandler.DeliveryContext ctx = new DeliveryHandler.DeliveryContext(
                 model.getManifestUrl(),
                 model.getCerosPrefetchedManifestJson(),
+                model.getInlineScriptUrl(),
                 request,
                 resource);
         return DeliveryHandler.forMode(model.getCerosMode(), manifestService, assetStorageService).handle(ctx);
