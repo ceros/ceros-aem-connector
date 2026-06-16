@@ -171,7 +171,7 @@
     <!--/* Client-side embed: publish/preview mode — inject Ceros embed snippet */-->
     <sly data-sly-test="${model.configured && model.embedMode && wcmmode.disabled}">
         <div data-embed-width="100%"
-             data-embed-height="auto"
+             data-embed-height="${model.embedHeightAttribute}"
              data-ceros-experience="${model.experienceUrl}"
              data-embed-title="${model.embedTitle}"></div>
         <script data-sly-test="${model.embedScriptUrl}" src="${model.embedScriptUrl}"></script>
