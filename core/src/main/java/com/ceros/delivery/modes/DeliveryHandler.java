@@ -31,16 +31,17 @@ public interface DeliveryHandler {
     static DeliveryHandler forMode(String mode,
                                    CerosManifestService manifestService,
                                    CerosAssetStorageService assetStorageService) {
-        if (EmbedDeliveryHandler.MODE.equals(mode)) {
-            return new EmbedDeliveryHandler();
+        switch (CerosDeliveryMode.fromValue(mode)) {
+            case EMBED:
+                return new EmbedDeliveryHandler();
+            case INLINE:
+                return new InlineDeliveryHandler();
+            case STORE:
+                return new StoreDeliveryHandler(assetStorageService);
+            case FETCH:
+            default:
+                return new FetchDeliveryHandler(manifestService);
         }
-        if (InlineDeliveryHandler.MODE.equals(mode)) {
-            return new InlineDeliveryHandler();
-        }
-        if (StoreDeliveryHandler.MODE.equals(mode)) {
-            return new StoreDeliveryHandler(assetStorageService);
-        }
-        return new FetchDeliveryHandler(manifestService);
     }
 
     /**

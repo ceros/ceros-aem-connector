@@ -23,15 +23,13 @@ import java.net.URISyntaxException;
  */
 public final class InlineDeliveryHandler implements DeliveryHandler {
 
-    public static final String MODE = "inline";
-
     private static final String FLEX_CLIENT_PATH = "/js/flex-client.js";
 
     private static final Logger log = LoggerFactory.getLogger(InlineDeliveryHandler.class);
 
     @Override
     public String mode() {
-        return MODE;
+        return CerosDeliveryMode.INLINE.value();
     }
 
     @Override

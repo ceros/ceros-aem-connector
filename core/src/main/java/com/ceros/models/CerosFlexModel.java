@@ -8,10 +8,7 @@ import org.apache.sling.models.annotations.Model;
 import org.apache.sling.models.annotations.injectorspecific.SlingObject;
 import org.apache.sling.models.annotations.injectorspecific.ValueMapValue;
 
-import com.ceros.delivery.modes.EmbedDeliveryHandler;
-import com.ceros.delivery.modes.FetchDeliveryHandler;
-import com.ceros.delivery.modes.InlineDeliveryHandler;
-import com.ceros.delivery.modes.StoreDeliveryHandler;
+import com.ceros.delivery.modes.CerosDeliveryMode;
 
 /**
  * Data POJO for the <em>Ceros Flex</em> AEM component — exposes the
@@ -22,10 +19,10 @@ import com.ceros.delivery.modes.StoreDeliveryHandler;
         defaultInjectionStrategy = DefaultInjectionStrategy.OPTIONAL)
 public class CerosFlexModel {
 
-    public static final String MODE_FETCH = FetchDeliveryHandler.MODE;
-    public static final String MODE_STORE = StoreDeliveryHandler.MODE;
-    public static final String MODE_EMBED = EmbedDeliveryHandler.MODE;
-    public static final String MODE_INLINE = InlineDeliveryHandler.MODE;
+    public static final String MODE_FETCH = CerosDeliveryMode.FETCH.value();
+    public static final String MODE_STORE = CerosDeliveryMode.STORE.value();
+    public static final String MODE_EMBED = CerosDeliveryMode.EMBED.value();
+    public static final String MODE_INLINE = CerosDeliveryMode.INLINE.value();
 
     /** Iframe types — relevant only when {@link #cerosMode} is {@code embed}. */
     public static final String EMBED_TYPE_FULL_HEIGHT = "fullheight";

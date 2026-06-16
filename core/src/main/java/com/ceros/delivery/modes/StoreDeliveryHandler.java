@@ -19,8 +19,6 @@ import java.io.IOException;
  */
 public final class StoreDeliveryHandler implements DeliveryHandler {
 
-    public static final String MODE = "store";
-
     private static final Logger log = LoggerFactory.getLogger(StoreDeliveryHandler.class);
 
     private final CerosAssetStorageService assetStorageService;
@@ -31,7 +29,7 @@ public final class StoreDeliveryHandler implements DeliveryHandler {
 
     @Override
     public String mode() {
-        return MODE;
+        return CerosDeliveryMode.STORE.value();
     }
 
     @Override
