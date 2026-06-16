@@ -41,7 +41,7 @@
 
     <!--/* Fetch mode: URL set but live fetch failed (no content) */-->
     <div class="cmp-cerosflex__placeholder"
-         data-sly-test="${model.configured && !model.storeMode && !model.embedMode && !model.hasContent}"
+         data-sly-test="${model.configured && !model.storeMode && !model.embedMode && !model.inlineMode && !model.hasContent}"
          style="display:flex; flex-direction:column; align-items:center; justify-content:center;
                 gap:12px; padding:40px 24px; min-height:120px;
                 border:2px dashed #d9534f; border-radius:8px;
@@ -58,7 +58,7 @@
     </div>
 
     <!--/* Shared author-preview chrome (badge + frame). */-->
-    <sly data-sly-test="${model.configured && model.hasContent && !model.embedMode && !wcmmode.disabled}">
+    <sly data-sly-test="${model.configured && model.hasContent && !model.embedMode && !model.inlineMode && !wcmmode.disabled}">
         <style>
             .cmp-cerosflex__author-preview {
                 position: relative;
@@ -102,7 +102,7 @@
     </sly>
 
     <!--/* Publish/preview mode: full render with all scripts */-->
-    <sly data-sly-test="${model.configured && model.hasContent && !model.embedMode && wcmmode.disabled}">
+    <sly data-sly-test="${model.configured && model.hasContent && !model.embedMode && !model.inlineMode && wcmmode.disabled}">
 
         <sly data-sly-repeat.css="${model.cssLinks}">
             <link data-sly-test="${!css.sameOrigin}" rel="stylesheet"
@@ -176,6 +176,59 @@
              data-embed-title="${model.embedTitle}"></div>
         <script data-sly-test="${model.embedScriptUrl}" src="${model.embedScriptUrl}"></script>
         <script data-sly-test="${!model.embedScriptUrl}" src="https://assets.ceros.site/js/embed.v1.js"></script>
+    </sly>
+
+    <!--/* Client-side inline embed: URL set but unusable (could not derive the
+           manifest / flex-client.js URLs from it) */-->
+    <div class="cmp-cerosflex__placeholder"
+         data-sly-test="${model.configured && model.inlineMode && !model.hasContent}"
+         style="display:flex; flex-direction:column; align-items:center; justify-content:center;
+                gap:12px; padding:40px 24px; min-height:120px;
+                border:2px dashed #d9534f; border-radius:8px;
+                background:#fdf2f2; color:#505050; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+                text-align:center;">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d9534f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 9v4"/><path d="M12 17h.01"/>
+            <circle cx="12" cy="12" r="10"/>
+        </svg>
+        <div>
+            <p style="margin:0 0 4px; font-size:15px; font-weight:600; color:#333;">Ceros Flex — Inline Embed Unavailable</p>
+            <p style="margin:0; font-size:13px; color:#707070;">Could not build the inline embed from this URL. Verify the Ceros Experience URL is a valid <strong>https://</strong> address.</p>
+        </div>
+    </div>
+
+    <!--/* Client-side inline embed: author/edit mode — iframe preview */-->
+    <sly data-sly-test="${model.configured && model.inlineMode && model.hasContent && !wcmmode.disabled}">
+        <style>
+            .cmp-cerosflex__inline-preview {
+                position: relative;
+                height: 600px;
+                overflow: hidden;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+            }
+            .cmp-cerosflex__inline-preview iframe {
+                width: 100%;
+                height: 100%;
+                border: none;
+            }
+        </style>
+        <div class="cmp-cerosflex__inline-preview">
+            <div style="position:absolute; top:8px; right:8px; z-index:10; background:rgba(0,0,0,0.6);
+                        color:#fff; padding:4px 10px; border-radius:4px; font-size:11px; font-family:sans-serif;
+                        pointer-events:none;">
+                Client-side inline embed preview</div>
+            <iframe src="${model.experienceUrl}?ceros-analytics=disabled" title="${model.embedTitle}"></iframe>
+        </div>
+    </sly>
+
+    <!--/* Client-side inline embed: publish/preview mode — inject the Ceros
+           inline marker + flex-client.js runtime, which fetches the manifest
+           in the browser and renders into a Shadow Root. */-->
+    <sly data-sly-test="${model.configured && model.inlineMode && model.hasContent && wcmmode.disabled}">
+        <div data-flex-inline
+             data-flex-manifest-url="${model.manifestUrl}"></div>
+        <script data-sly-test="${model.inlineScriptUrl}" src="${model.inlineScriptUrl}"></script>
     </sly>
 
 </sly>

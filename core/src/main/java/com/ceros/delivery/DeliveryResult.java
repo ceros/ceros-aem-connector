@@ -42,6 +42,7 @@ public final class DeliveryResult {
     private final List<ScriptRef> bodyScripts;
     private final String embedTitle;
     private final String embedScriptUrl;
+    private final String inlineScriptUrl;
     private final boolean hasContent;
 
     private DeliveryResult(Builder b) {
@@ -53,6 +54,7 @@ public final class DeliveryResult {
         this.bodyScripts = Collections.unmodifiableList(new ArrayList<>(b.bodyScripts));
         this.embedTitle = b.embedTitle;
         this.embedScriptUrl = b.embedScriptUrl;
+        this.inlineScriptUrl = b.inlineScriptUrl;
         this.hasContent = b.hasContent;
     }
 
@@ -64,6 +66,7 @@ public final class DeliveryResult {
     public List<ScriptRef> getBodyScripts() { return bodyScripts; }
     public String getEmbedTitle() { return embedTitle; }
     public String getEmbedScriptUrl() { return embedScriptUrl; }
+    public String getInlineScriptUrl() { return inlineScriptUrl; }
     public boolean isHasContent() { return hasContent; }
 
     /**
@@ -111,6 +114,7 @@ public final class DeliveryResult {
         private List<ScriptRef> bodyScripts = new ArrayList<>();
         private String embedTitle;
         private String embedScriptUrl;
+        private String inlineScriptUrl;
         private boolean hasContent;
 
         public Builder manifestUrl(String v) { this.manifestUrl = v; return this; }
@@ -121,6 +125,7 @@ public final class DeliveryResult {
         public Builder bodyScripts(List<ScriptRef> v) { this.bodyScripts = v; return this; }
         public Builder embedTitle(String v) { this.embedTitle = v; return this; }
         public Builder embedScriptUrl(String v) { this.embedScriptUrl = v; return this; }
+        public Builder inlineScriptUrl(String v) { this.inlineScriptUrl = v; return this; }
         public Builder hasContent(boolean v) { this.hasContent = v; return this; }
 
         public DeliveryResult build() {

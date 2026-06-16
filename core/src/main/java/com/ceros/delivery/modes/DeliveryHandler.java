@@ -34,6 +34,9 @@ public interface DeliveryHandler {
         if (EmbedDeliveryHandler.MODE.equals(mode)) {
             return new EmbedDeliveryHandler();
         }
+        if (InlineDeliveryHandler.MODE.equals(mode)) {
+            return new InlineDeliveryHandler();
+        }
         if (StoreDeliveryHandler.MODE.equals(mode)) {
             return new StoreDeliveryHandler(assetStorageService);
         }
