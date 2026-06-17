@@ -61,6 +61,21 @@ class CerosFlexModelTest {
     }
 
     @Test
+    void importModeIsConfiguredWhenBundlePresentEvenWithoutManifestUrl() throws Exception {
+        // Import has no manifest URL (the dialog clears it on save); the imported
+        // bundle is what makes it configured.
+        setField("cerosMode", "import");
+        setField("cerosPrefetchedManifestJson", "{\"primarySlug\":\"page-1\"}");
+        assertTrue(model.isConfigured());
+    }
+
+    @Test
+    void importModeNotConfiguredWithoutBundle() throws Exception {
+        setField("cerosMode", "import");
+        assertFalse(model.isConfigured());
+    }
+
+    @Test
     void importModeFlag() throws Exception {
         setField("cerosMode", "import");
         assertTrue(model.isImportMode());

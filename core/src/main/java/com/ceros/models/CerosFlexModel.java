@@ -82,7 +82,14 @@ public class CerosFlexModel {
     }
 
     public boolean isConfigured() {
-        return StringUtils.isNotBlank(manifestUrl);
+        if (StringUtils.isNotBlank(manifestUrl)) {
+            return true;
+        }
+        // Import mode has no manifest URL: the experience comes from an uploaded
+        // archive, and the dialog can't carry a URL (saving it would even clear a
+        // server-set one). It's "configured" once the archive has been imported,
+        // i.e. the prefetched bundle is present on the component.
+        return isImportMode() && StringUtils.isNotBlank(cerosPrefetchedManifestJson);
     }
 
     public boolean isStoreMode() {
