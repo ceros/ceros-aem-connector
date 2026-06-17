@@ -23,29 +23,12 @@
                         <granite:data
                             jcr:primaryType="nt:unstructured"
                             cq-dialog-dropdown-showhide-target=".cerosflex-mode-toggle"/>
-                        <items jcr:primaryType="nt:unstructured">
-                            <fetch
-                                jcr:primaryType="nt:unstructured"
-                                text="Server-side (Always Fetch)"
-                                value="fetch"
-                                selected="{Boolean}true"/>
-                            <store
-                                jcr:primaryType="nt:unstructured"
-                                text="Server-side (Store)"
-                                value="store"/>
-                            <import
-                                jcr:primaryType="nt:unstructured"
-                                text="Server-side (HTML Import)"
-                                value="import"/>
-                            <inline
-                                jcr:primaryType="nt:unstructured"
-                                text="Client-side (Inline embed)"
-                                value="inline"/>
-                            <embed
-                                jcr:primaryType="nt:unstructured"
-                                text="Client-side (Iframe embed)"
-                                value="embed"/>
-                        </items>
+                        <!-- Options come from the global, context-aware
+                             CerosFlexModesConfig (all modes by default; a site can
+                             restrict the list via /conf). -->
+                        <datasource
+                            jcr:primaryType="nt:unstructured"
+                            sling:resourceType="connectors/ceros/datasources/modes"/>
                     </cerosMode>
 
                     <manifestUrl
