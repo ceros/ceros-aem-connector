@@ -31,13 +31,17 @@ public interface DeliveryHandler {
     static DeliveryHandler forMode(String mode,
                                    CerosManifestService manifestService,
                                    CerosAssetStorageService assetStorageService) {
-        if (EmbedDeliveryHandler.MODE.equals(mode)) {
-            return new EmbedDeliveryHandler();
+        switch (CerosDeliveryMode.fromValue(mode)) {
+            case EMBED:
+                return new EmbedDeliveryHandler();
+            case INLINE:
+                return new InlineDeliveryHandler();
+            case STORE:
+                return new StoreDeliveryHandler(assetStorageService);
+            case FETCH:
+            default:
+                return new FetchDeliveryHandler(manifestService);
         }
-        if (StoreDeliveryHandler.MODE.equals(mode)) {
-            return new StoreDeliveryHandler(assetStorageService);
-        }
-        return new FetchDeliveryHandler(manifestService);
     }
 
     /**
@@ -47,6 +51,12 @@ public interface DeliveryHandler {
     final class DeliveryContext {
         public final String manifestUrl;
         public final String prefetchedManifestJson;
+        /**
+         * The {@code flex-client.js} URL grabbed from the manifest's inline
+         * delivery mode and persisted on the component at authoring time. Only
+         * set for inline mode; {@code null} otherwise.
+         */
+        public final String inlineScriptUrl;
         public final SlingHttpServletRequest request;
         public final Resource resource;
 
@@ -54,8 +64,17 @@ public interface DeliveryHandler {
                                String prefetchedManifestJson,
                                SlingHttpServletRequest request,
                                Resource resource) {
+            this(manifestUrl, prefetchedManifestJson, null, request, resource);
+        }
+
+        public DeliveryContext(String manifestUrl,
+                               String prefetchedManifestJson,
+                               String inlineScriptUrl,
+                               SlingHttpServletRequest request,
+                               Resource resource) {
             this.manifestUrl = manifestUrl;
             this.prefetchedManifestJson = prefetchedManifestJson;
+            this.inlineScriptUrl = inlineScriptUrl;
             this.request = request;
             this.resource = resource;
         }

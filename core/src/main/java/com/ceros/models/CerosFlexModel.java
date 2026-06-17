@@ -8,9 +8,7 @@ import org.apache.sling.models.annotations.Model;
 import org.apache.sling.models.annotations.injectorspecific.SlingObject;
 import org.apache.sling.models.annotations.injectorspecific.ValueMapValue;
 
-import com.ceros.delivery.modes.EmbedDeliveryHandler;
-import com.ceros.delivery.modes.FetchDeliveryHandler;
-import com.ceros.delivery.modes.StoreDeliveryHandler;
+import com.ceros.delivery.modes.CerosDeliveryMode;
 
 /**
  * Data POJO for the <em>Ceros Flex</em> AEM component — exposes the
@@ -21,9 +19,10 @@ import com.ceros.delivery.modes.StoreDeliveryHandler;
         defaultInjectionStrategy = DefaultInjectionStrategy.OPTIONAL)
 public class CerosFlexModel {
 
-    public static final String MODE_FETCH = FetchDeliveryHandler.MODE;
-    public static final String MODE_STORE = StoreDeliveryHandler.MODE;
-    public static final String MODE_EMBED = EmbedDeliveryHandler.MODE;
+    public static final String MODE_FETCH = CerosDeliveryMode.FETCH.value();
+    public static final String MODE_STORE = CerosDeliveryMode.STORE.value();
+    public static final String MODE_EMBED = CerosDeliveryMode.EMBED.value();
+    public static final String MODE_INLINE = CerosDeliveryMode.INLINE.value();
 
     /** Iframe types — relevant only when {@link #cerosMode} is {@code embed}. */
     public static final String EMBED_TYPE_FULL_HEIGHT = "fullheight";
@@ -49,6 +48,14 @@ public class CerosFlexModel {
     @ValueMapValue
     private String cerosEmbedHeight;
 
+    /**
+     * The {@code flex-client.js} URL for inline mode, grabbed from the manifest
+     * and persisted by {@code CerosFlexInlinePostProcessor} when the dialog is
+     * saved. Read at render time — no fetch on the request path.
+     */
+    @ValueMapValue
+    private String cerosInlineScriptUrl;
+
     @SlingObject
     private Resource resource;
 
@@ -68,6 +75,11 @@ public class CerosFlexModel {
         return cerosPrefetchedAt;
     }
 
+    /** Persisted {@code flex-client.js} URL for inline mode (grabbed on save). */
+    public String getInlineScriptUrl() {
+        return StringUtils.trimToNull(cerosInlineScriptUrl);
+    }
+
     public boolean isConfigured() {
         return StringUtils.isNotBlank(manifestUrl);
     }
@@ -78,6 +90,10 @@ public class CerosFlexModel {
 
     public boolean isEmbedMode() {
         return MODE_EMBED.equals(cerosMode);
+    }
+
+    public boolean isInlineMode() {
+        return MODE_INLINE.equals(cerosMode);
     }
 
     /**

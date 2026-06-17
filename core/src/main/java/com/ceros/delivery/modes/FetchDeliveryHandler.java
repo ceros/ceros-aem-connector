@@ -19,8 +19,6 @@ import java.io.IOException;
  */
 public final class FetchDeliveryHandler implements DeliveryHandler {
 
-    public static final String MODE = "fetch";
-
     private static final Logger log = LoggerFactory.getLogger(FetchDeliveryHandler.class);
 
     private final CerosManifestService manifestService;
@@ -31,7 +29,7 @@ public final class FetchDeliveryHandler implements DeliveryHandler {
 
     @Override
     public String mode() {
-        return MODE;
+        return CerosDeliveryMode.FETCH.value();
     }
 
     @Override
@@ -95,7 +93,7 @@ public final class FetchDeliveryHandler implements DeliveryHandler {
         return b.build();
     }
 
-    static String normaliseManifestUrl(String url) {
+    public static String normaliseManifestUrl(String url) {
         if (url == null) {
             return null;
         }

@@ -68,6 +68,14 @@ class CerosFlexModelTest {
     }
 
     @Test
+    void inlineModeFlag() throws Exception {
+        setField("cerosMode", "inline");
+        assertTrue(model.isInlineMode());
+        assertFalse(model.isEmbedMode());
+        assertFalse(model.isStoreMode());
+    }
+
+    @Test
     void getPagePreviewUrlStripsJcrContentSuffix() throws Exception {
         setField("resource", resource);
         when(resource.getPath()).thenReturn("/content/site/page/jcr:content/root/cerosflex");
@@ -85,5 +93,6 @@ class CerosFlexModelTest {
         assertEquals("fetch", CerosFlexModel.MODE_FETCH);
         assertEquals("store", CerosFlexModel.MODE_STORE);
         assertEquals("embed", CerosFlexModel.MODE_EMBED);
+        assertEquals("inline", CerosFlexModel.MODE_INLINE);
     }
 }

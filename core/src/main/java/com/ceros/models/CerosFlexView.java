@@ -56,6 +56,10 @@ public class CerosFlexView {
         return model != null && model.isEmbedMode();
     }
 
+    public boolean isInlineMode() {
+        return model != null && model.isInlineMode();
+    }
+
     public String getPrefetchedAt() {
         return model != null ? model.getPrefetchedAt() : null;
     }
@@ -101,6 +105,11 @@ public class CerosFlexView {
 
     public String getEmbedScriptUrl() {
         return result.getEmbedScriptUrl();
+    }
+
+    /** {@code flex-client.js} URL for the client-side inline embed snippet. */
+    public String getInlineScriptUrl() {
+        return result.getInlineScriptUrl();
     }
 
     /** Authored {@code data-embed-height} value for the iframe-embed snippet. */

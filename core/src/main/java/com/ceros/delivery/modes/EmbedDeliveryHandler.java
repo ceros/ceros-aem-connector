@@ -8,11 +8,9 @@ import com.ceros.delivery.DeliveryResult;
  */
 public final class EmbedDeliveryHandler implements DeliveryHandler {
 
-    public static final String MODE = "embed";
-
     @Override
     public String mode() {
-        return MODE;
+        return CerosDeliveryMode.EMBED.value();
     }
 
     @Override
