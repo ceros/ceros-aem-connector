@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.6] - 2026-06-17
+
+### Fixed
+- HTML-import components no longer revert to the "not configured" placeholder after the dialog is saved. Import stores the manifest in the DAM and sets `manifestUrl` to that DAM path (like store mode), but clicking Done submitted the empty hidden `manifestUrl` field and cleared it. The dialog now mirrors the imported manifest's DAM URL back into the field on success so Done preserves it, and `isConfigured()` additionally treats an imported bundle as configured (guarding the click-Done-immediately race).
+
 ## [0.0.5] - 2026-06-17
 
 ### Added
