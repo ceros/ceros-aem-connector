@@ -1,13 +1,16 @@
 package com.ceros.services.impl;
 
+import com.ceros.delivery.modes.CerosDeliveryMode;
 import com.ceros.models.cerosflex.CerosManifestV1;
 import com.ceros.models.cerosflex.StoredManifestBundle;
 import com.ceros.services.CerosAssetStorageService;
 import com.ceros.services.CerosManifestService;
 import com.ceros.services.FetchProgress;
+import com.ceros.util.ArchiveUtils;
 import com.ceros.util.HttpUtils;
 import com.ceros.util.ManifestUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -22,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import javax.jcr.Node;
 import javax.jcr.Session;
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -50,6 +54,11 @@ public class CerosManifestServiceImpl implements CerosManifestService {
                         "and internal hosts.")
         boolean allowLocalAddresses() default false;
     }
+
+    /** Zip-bomb guard: cap on the summed uncompressed size of an import archive. */
+    private static final long MAX_ARCHIVE_UNCOMPRESSED_BYTES = 250L * 1024 * 1024;
+
+    private static final String INDEX_MANIFEST_NAME = "index.manifest.v1.json";
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -124,6 +133,20 @@ public class CerosManifestServiceImpl implements CerosManifestService {
                                        String manifestUrl,
                                        StoredManifestBundle bundle,
                                        Map<String, String> urlMap) {
+        return storeBundle(resolver, componentPath, manifestUrl,
+                CerosDeliveryMode.STORE.value(), bundle, urlMap);
+    }
+
+    /**
+     * Shared bundle-persist used by both store ({@code mode="store"}) and
+     * import ({@code mode="import"}) pipelines. Writes the bundle JSON, the
+     * delivery mode, the manifest URL, the fetch timestamp, and the DAM asset
+     * reference list onto the component node.
+     */
+    private boolean storeBundle(ResourceResolver resolver, String componentPath,
+                                String manifestUrl, String mode,
+                                StoredManifestBundle bundle,
+                                Map<String, String> urlMap) {
         try {
             String bundleJson = bundle.toJson();
             String fetchedAt = Instant.now().toString();
@@ -134,8 +157,10 @@ public class CerosManifestServiceImpl implements CerosManifestService {
             }
 
             Node node = session.getNode(componentPath);
-            node.setProperty("manifestUrl", manifestUrl);
-            node.setProperty("cerosMode", "store");
+            if (manifestUrl != null) {
+                node.setProperty("manifestUrl", manifestUrl);
+            }
+            node.setProperty("cerosMode", mode);
             node.setProperty("cerosPrefetchedManifestJson", bundleJson);
             node.setProperty("cerosPrefetchedAt", fetchedAt);
 
@@ -197,6 +222,131 @@ public class CerosManifestServiceImpl implements CerosManifestService {
         }
 
         progress.onComplete(fetchedAt, saved, total);
+    }
+
+    @Override
+    public void performImportAndStore(String archivePath, String componentPath,
+                                      FetchProgress progress, ResourceResolver resolver)
+            throws IOException {
+        progress.onPhase(FetchProgress.PHASE_READING_ARCHIVE);
+        Map<String, byte[]> archive = readArchive(archivePath, resolver);
+
+        CerosManifestV1 primary = parsePrimaryManifest(archive);
+        StoredManifestBundle bundle = buildBundleFromArchive(primary, archive);
+
+        int total = bundle.getPagesBySlug().size();
+        progress.onPhase(FetchProgress.PHASE_UPLOADING_ASSETS);
+        progress.onPageProgress(0, total);
+
+        Map<String, String> urlMap = new LinkedHashMap<>();
+        int processed = 0;
+        for (CerosManifestV1 manifest : bundle.getPagesBySlug().values()) {
+            urlMap.putAll(cerosAssetStorageService.uploadAssetsFromArchive(manifest, archive, resolver));
+            processed++;
+            progress.onPageProgress(processed, total);
+        }
+
+        // Same as store mode: write each (asset-rewritten) manifest to DAM with
+        // its pages[] rewritten to DAM paths, so the in-browser SPA router never
+        // reaches out to a CDN.
+        for (CerosManifestV1 manifest : bundle.getPagesBySlug().values()) {
+            String damPath = cerosAssetStorageService.uploadManifest(manifest, resolver);
+            if (damPath != null) {
+                urlMap.put(damPath, damPath);
+            }
+        }
+
+        // There is no CDN URL for an imported experience; point manifestUrl at
+        // the primary page's DAM manifest so the component reads as configured.
+        String primaryManifestUrl = damManifestUrlFor(primary);
+
+        boolean saved = false;
+        String fetchedAt = Instant.now().toString();
+        if (componentPath != null) {
+            progress.onPhase(FetchProgress.PHASE_PERSISTING);
+            saved = storeBundle(resolver, componentPath, primaryManifestUrl,
+                    CerosDeliveryMode.IMPORT.value(), bundle, urlMap);
+            if (saved) {
+                fetchedAt = readFetchedAt(resolver, componentPath, fetchedAt);
+            }
+        }
+
+        progress.onComplete(fetchedAt, saved, total);
+    }
+
+    private Map<String, byte[]> readArchive(String archivePath, ResourceResolver resolver)
+            throws IOException {
+        if (archivePath == null) {
+            throw new IOException("No archive path provided for import");
+        }
+        Resource res = resolver.getResource(archivePath);
+        if (res == null) {
+            throw new IOException("Uploaded archive not found at " + archivePath);
+        }
+        InputStream in = res.adaptTo(InputStream.class);
+        if (in == null && res.getChild("jcr:content") != null) {
+            in = res.getChild("jcr:content").adaptTo(InputStream.class);
+        }
+        if (in == null) {
+            throw new IOException("Could not open uploaded archive stream at " + archivePath);
+        }
+        try (InputStream stream = in) {
+            return ArchiveUtils.readTarGz(stream, MAX_ARCHIVE_UNCOMPRESSED_BYTES);
+        }
+    }
+
+    private CerosManifestV1 parsePrimaryManifest(Map<String, byte[]> archive) throws IOException {
+        byte[] indexBytes = ArchiveUtils.get(archive, INDEX_MANIFEST_NAME);
+        if (indexBytes == null) {
+            // Fall back to any root-level *.manifest.v1.json.
+            for (Map.Entry<String, byte[]> e : archive.entrySet()) {
+                if (e.getKey().endsWith(".manifest.v1.json") && !e.getKey().contains("/")) {
+                    indexBytes = e.getValue();
+                    break;
+                }
+            }
+        }
+        if (indexBytes == null) {
+            throw new IOException("Archive does not contain " + INDEX_MANIFEST_NAME);
+        }
+        return objectMapper.readValue(indexBytes, CerosManifestV1.class);
+    }
+
+    private StoredManifestBundle buildBundleFromArchive(CerosManifestV1 primary,
+                                                        Map<String, byte[]> archive) {
+        LinkedHashMap<String, CerosManifestV1> pages = new LinkedHashMap<>();
+        String primarySlug = ManifestUtils.primarySlugOf(primary);
+        pages.put(primarySlug != null ? primarySlug : "", primary);
+
+        for (CerosManifestV1.PageRef page : primary.getPages()) {
+            String slug = page.getSlug();
+            if (slug == null || slug.isEmpty() || page.isCurrent() || pages.containsKey(slug)) {
+                continue;
+            }
+            byte[] pageBytes = ArchiveUtils.get(archive, page.getManifestUrl());
+            if (pageBytes == null) {
+                log.warn("Archive has no manifest for page {} ({}); skipping", slug, page.getManifestUrl());
+                continue;
+            }
+            try {
+                pages.put(slug, objectMapper.readValue(pageBytes, CerosManifestV1.class));
+            } catch (IOException e) {
+                log.warn("Failed to parse manifest for page {} ({}); skipping: {}",
+                        slug, page.getManifestUrl(), e.getMessage());
+            }
+        }
+        return new StoredManifestBundle(primarySlug, pages);
+    }
+
+    private String damManifestUrlFor(CerosManifestV1 manifest) {
+        if (manifest == null || manifest.getExperience() == null) {
+            return null;
+        }
+        CerosManifestV1.Experience exp = manifest.getExperience();
+        if (exp.getSlug() == null || exp.getPageSlug() == null) {
+            return null;
+        }
+        return cerosAssetStorageService.damPathForManifest(exp.getSlug(), exp.getPageSlug());
     }
 
     private String readFetchedAt(ResourceResolver resolver, String componentPath, String fallback) {

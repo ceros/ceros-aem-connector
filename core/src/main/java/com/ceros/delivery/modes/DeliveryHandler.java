@@ -37,6 +37,10 @@ public interface DeliveryHandler {
             case INLINE:
                 return new InlineDeliveryHandler();
             case STORE:
+            case IMPORT:
+                // Import produces the same stored end state as store mode
+                // (bundle on the component + assets in DAM), so it renders
+                // through the same offline handler.
                 return new StoreDeliveryHandler(assetStorageService);
             case FETCH:
             default:

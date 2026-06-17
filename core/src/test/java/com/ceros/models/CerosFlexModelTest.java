@@ -61,6 +61,15 @@ class CerosFlexModelTest {
     }
 
     @Test
+    void importModeFlag() throws Exception {
+        setField("cerosMode", "import");
+        assertTrue(model.isImportMode());
+        assertFalse(model.isStoreMode());
+        assertFalse(model.isEmbedMode());
+        assertFalse(model.isInlineMode());
+    }
+
+    @Test
     void embedModeFlag() throws Exception {
         setField("cerosMode", "embed");
         assertTrue(model.isEmbedMode());
@@ -92,6 +101,7 @@ class CerosFlexModelTest {
     void modeConstantsMatchHandlerKeys() {
         assertEquals("fetch", CerosFlexModel.MODE_FETCH);
         assertEquals("store", CerosFlexModel.MODE_STORE);
+        assertEquals("import", CerosFlexModel.MODE_IMPORT);
         assertEquals("embed", CerosFlexModel.MODE_EMBED);
         assertEquals("inline", CerosFlexModel.MODE_INLINE);
     }

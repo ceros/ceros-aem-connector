@@ -4,6 +4,7 @@ import com.adobe.granite.asset.api.Asset;
 import com.adobe.granite.asset.api.AssetManager;
 import com.ceros.models.cerosflex.CerosManifestV1;
 import com.ceros.services.CerosAssetStorageService;
+import com.ceros.util.ArchiveUtils;
 import com.ceros.util.FileUtils;
 import com.ceros.util.HttpUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -105,6 +106,105 @@ public class CerosAssetStorageServiceImpl implements CerosAssetStorageService {
 
         rewriteInlineContent(manifest, urlMap);
         return urlMap;
+    }
+
+    @Override
+    public Map<String, String> uploadAssetsFromArchive(CerosManifestV1 manifest,
+                                                       Map<String, byte[]> archive,
+                                                       ResourceResolver resolver) throws IOException {
+        String slug = manifest.getExperience() != null ? manifest.getExperience().getSlug() : null;
+        if (StringUtils.isBlank(slug)) {
+            log.warn("No experience slug in manifest, skipping archive asset upload");
+            return Map.of();
+        }
+
+        AssetManager assetManager = resolver.adaptTo(AssetManager.class);
+        if (assetManager == null) {
+            log.warn("Could not obtain AssetManager, skipping archive asset upload");
+            return Map.of();
+        }
+
+        String pageSlug = StringUtils.defaultIfBlank(manifest.getExperience().getPageSlug(), "page-1");
+        String basePath = damBasePath + "/" + slug + "/" + pageSlug;
+        Map<String, String> urlMap = new LinkedHashMap<>();
+
+        // SSR delivery mode is what store/import render — pull its CSS + JS from the archive.
+        CerosManifestV1.DeliveryMode ssr = manifest.getDeliveryMode("ssr");
+        if (ssr != null) {
+            for (CerosManifestV1.Style style : ssr.getStyles()) {
+                String damPath = storeArchiveEntry(style.getUrl(), archive, basePath,
+                        StringUtils.defaultIfBlank(style.getMimeType(), "text/css"),
+                        assetManager, urlMap, resolver);
+                if (damPath != null) {
+                    style.setUrl(damPath);
+                }
+            }
+            for (CerosManifestV1.Script script : ssr.getScripts()) {
+                String damPath = storeArchiveEntry(script.getUrl(), archive, basePath,
+                        StringUtils.defaultIfBlank(script.getMimeType(), "application/javascript"),
+                        assetManager, urlMap, resolver);
+                if (damPath != null) {
+                    script.setUrl(damPath);
+                }
+            }
+        }
+
+        // Webfonts declared with a direct file URL in the archive.
+        for (CerosManifestV1.AssetEntry entry : manifest.getAssets()) {
+            if ("webfont".equals(entry.getType()) && entry.getSrc() != null
+                    && entry.getSrc().getUrl() != null) {
+                String damPath = storeArchiveEntry(entry.getSrc().getUrl(), archive, basePath,
+                        StringUtils.defaultIfBlank(entry.getSrc().getMimeType(), "application/octet-stream"),
+                        assetManager, urlMap, resolver);
+                if (damPath != null) {
+                    entry.getSrc().setUrl(damPath);
+                }
+            }
+        }
+
+        // Media (images / video / posters) referenced from the inline body markup.
+        Set<String> seen = new LinkedHashSet<>();
+        for (CerosManifestV1.MediaEntry entry : manifest.getMedia()) {
+            if (entry.getUrl() == null || !seen.add(FileUtils.stripQueryParams(entry.getUrl()))) {
+                continue;
+            }
+            storeArchiveEntry(entry.getUrl(), archive, basePath,
+                    StringUtils.defaultIfBlank(entry.getMimeType(), "application/octet-stream"),
+                    assetManager, urlMap, resolver);
+        }
+
+        resolver.commit();
+
+        rewriteInlineContent(manifest, urlMap);
+        return urlMap;
+    }
+
+    /**
+     * Resolves {@code relativeUrl} to bytes in the extracted archive and writes
+     * them to the DAM, mirroring the archive's relative path under {@code basePath}
+     * (e.g. {@code assets/styles/reset.css}). Idempotent across manifest fields
+     * that reference the same asset. Returns the DAM path, or {@code null} when
+     * the URL is blank or absent from the archive (left untouched in that case).
+     */
+    private String storeArchiveEntry(String relativeUrl, Map<String, byte[]> archive, String basePath,
+                                     String mimeType, AssetManager assetManager,
+                                     Map<String, String> urlMap, ResourceResolver resolver) {
+        if (StringUtils.isBlank(relativeUrl)) {
+            return null;
+        }
+        if (urlMap.containsKey(relativeUrl)) {
+            return urlMap.get(relativeUrl);
+        }
+        byte[] bytes = ArchiveUtils.get(archive, relativeUrl);
+        if (bytes == null) {
+            log.warn("Archive has no entry for manifest URL '{}'; leaving it unchanged", relativeUrl);
+            return null;
+        }
+        String damPath = basePath + "/" + ArchiveUtils.normalizeLookup(relativeUrl);
+        createOrReplaceAsset(assetManager, damPath, new ByteArrayInputStream(bytes), mimeType, resolver);
+        urlMap.put(relativeUrl, damPath);
+        log.info("Stored archive asset: {} -> {}", relativeUrl, damPath);
+        return damPath;
     }
 
     private void handleDeliveryModeAssets(CerosManifestV1 manifest, AssetManager assetManager,

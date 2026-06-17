@@ -18,7 +18,7 @@
                         jcr:primaryType="nt:unstructured"
                         sling:resourceType="granite/ui/components/coral/foundation/form/select"
                         fieldLabel="Delivery Mode"
-                        fieldDescription="Server-side (Always Fetch): loads manifest on every page render. Server-side (Store): fetches once and saves to JCR. Client-side (Inline embed): injects the Ceros inline marker + flex-client.js, which renders the experience into the page DOM. Client-side (Iframe embed): injects the Ceros embed script that renders the experience in an iframe."
+                        fieldDescription="Server-side (Always Fetch): loads manifest on every page render. Server-side (Store): fetches once and saves to JCR. Server-side (HTML Import): upload a Ceros .tar.gz export, unpacked into the DAM and served offline. Client-side (Inline embed): injects the Ceros inline marker + flex-client.js, which renders the experience into the page DOM. Client-side (Iframe embed): injects the Ceros embed script that renders the experience in an iframe."
                         name="./cerosMode">
                         <granite:data
                             jcr:primaryType="nt:unstructured"
@@ -33,6 +33,10 @@
                                 jcr:primaryType="nt:unstructured"
                                 text="Server-side (Store)"
                                 value="store"/>
+                            <import
+                                jcr:primaryType="nt:unstructured"
+                                text="Server-side (HTML Import)"
+                                value="import"/>
                             <inline
                                 jcr:primaryType="nt:unstructured"
                                 text="Client-side (Inline embed)"
@@ -58,6 +62,21 @@
                         disabled="{Boolean}true"
                         fieldLabel="Last Fetched"
                         name="./cerosPrefetchedAt"/>
+
+                    <importSection
+                        granite:class="cerosflex-mode-toggle cerosflex-import-section hidden"
+                        jcr:primaryType="nt:unstructured"
+                        sling:resourceType="granite/ui/components/coral/foundation/container">
+                        <granite:data
+                            jcr:primaryType="nt:unstructured"
+                            showhidetargetvalue="import"/>
+                        <items jcr:primaryType="nt:unstructured">
+                            <importHelp
+                                jcr:primaryType="nt:unstructured"
+                                sling:resourceType="granite/ui/components/coral/foundation/text"
+                                text="Choose a Ceros HTML export (.tar.gz) below. It uploads and unpacks into the DAM automatically — served offline, no CDN dependency."/>
+                        </items>
+                    </importSection>
 
                     <embedSection
                         granite:class="cerosflex-mode-toggle hidden"

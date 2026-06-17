@@ -39,9 +39,27 @@
         </div>
     </div>
 
+    <!--/* Import mode: configured but archive not yet imported (no content) */-->
+    <div class="cmp-cerosflex__placeholder"
+         data-sly-test="${model.configured && model.importMode && !model.hasContent}"
+         style="display:flex; flex-direction:column; align-items:center; justify-content:center;
+                gap:12px; padding:40px 24px; min-height:120px;
+                border:2px dashed #e6a23c; border-radius:8px;
+                background:#fdf6ec; color:#505050; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+                text-align:center;">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#e6a23c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>
+        </svg>
+        <div>
+            <p style="margin:0 0 4px; font-size:15px; font-weight:600; color:#333;">Ceros Flex — HTML Import</p>
+            <p style="margin:0; font-size:13px; color:#707070;">Open the dialog, upload a Ceros <strong>.tar.gz</strong> export and click <strong>Import</strong>.</p>
+        </div>
+    </div>
+
     <!--/* Fetch mode: URL set but live fetch failed (no content) */-->
     <div class="cmp-cerosflex__placeholder"
-         data-sly-test="${model.configured && !model.storeMode && !model.embedMode && !model.inlineMode && !model.hasContent}"
+         data-sly-test="${model.configured && !model.storeMode && !model.importMode && !model.embedMode && !model.inlineMode && !model.hasContent}"
          style="display:flex; flex-direction:column; align-items:center; justify-content:center;
                 gap:12px; padding:40px 24px; min-height:120px;
                 border:2px dashed #d9534f; border-radius:8px;
@@ -78,24 +96,24 @@
                         color:#fff; padding:4px 10px; border-radius:4px; font-size:11px; font-family:sans-serif;
                         pointer-events:none;">
                 Edit mode preview</div>
-            <sly data-sly-test="${model.storeMode && model.prefetchedAt}">
+            <sly data-sly-test="${(model.storeMode || model.importMode) && model.prefetchedAt}">
                 <div style="position:absolute; top:8px; left:8px; z-index:10; background:rgba(0,0,0,0.6);
                             color:#fff; padding:4px 10px; border-radius:4px; font-size:11px; font-family:sans-serif;
                             pointer-events:none;">
                     Stored: ${model.prefetchedAt}</div>
             </sly>
 
-            <!--/* Store mode: iframe to the page itself rendered with
-                   wcmmode=disabled. The author sees the actual store-mode
-                   output — full layout, SPA router runs inside the iframe,
-                   isolated from the editor's click overlay. No CDN call. */-->
-            <iframe data-sly-test="${model.storeMode}"
+            <!--/* Store / import modes: iframe to the page itself rendered with
+                   wcmmode=disabled. The author sees the actual offline output —
+                   full layout, SPA router runs inside the iframe, isolated from
+                   the editor's click overlay. No CDN call. */-->
+            <iframe data-sly-test="${model.storeMode || model.importMode}"
                     src="${model.previewPageUrl}"
                     title="Ceros experience preview (stored)"></iframe>
 
             <!--/* Fetch mode: live iframe to the Ceros CDN — necessary
                    because we have no local copy of the experience to show. */-->
-            <iframe data-sly-test="${!model.storeMode}"
+            <iframe data-sly-test="${!model.storeMode && !model.importMode}"
                     src="${model.experienceUrl}?ceros-analytics=disabled"
                     title="Ceros experience preview"></iframe>
         </div>

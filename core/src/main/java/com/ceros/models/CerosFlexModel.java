@@ -21,6 +21,7 @@ public class CerosFlexModel {
 
     public static final String MODE_FETCH = CerosDeliveryMode.FETCH.value();
     public static final String MODE_STORE = CerosDeliveryMode.STORE.value();
+    public static final String MODE_IMPORT = CerosDeliveryMode.IMPORT.value();
     public static final String MODE_EMBED = CerosDeliveryMode.EMBED.value();
     public static final String MODE_INLINE = CerosDeliveryMode.INLINE.value();
 
@@ -86,6 +87,10 @@ public class CerosFlexModel {
 
     public boolean isStoreMode() {
         return MODE_STORE.equals(cerosMode);
+    }
+
+    public boolean isImportMode() {
+        return MODE_IMPORT.equals(cerosMode);
     }
 
     public boolean isEmbedMode() {

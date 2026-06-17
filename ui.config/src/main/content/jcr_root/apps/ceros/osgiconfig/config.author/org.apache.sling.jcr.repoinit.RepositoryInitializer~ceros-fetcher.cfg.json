@@ -3,6 +3,7 @@
         "create service user ceros-fetcher-service with path system/cq:services/ceros",
         "create path /content/dam/ceros(sling:OrderedFolder)",
         "create path /var/ceros(sling:Folder)/fetch-jobs(sling:Folder)",
+        "create path /var/ceros(sling:Folder)/imports(sling:Folder)",
         "set principal ACL for ceros-fetcher-service\n  allow jcr:read on /\n  allow rep:write on /content\n  allow jcr:all on /content/dam/ceros\n  allow jcr:all on /var/ceros\nend"
     ]
 }
