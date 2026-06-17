@@ -147,6 +147,18 @@
         if (data.saved) {
             setStatus($status, 'Imported ✓', false);
             notify('success', 'Ceros experience imported and stored.');
+            // The import job wrote manifestUrl (the DAM manifest path) on the
+            // component, mirroring store mode. Mirror it into the dialog's hidden
+            // manifestUrl field so clicking Done re-submits it instead of clearing
+            // it — keeping the component's stored shape identical to store mode.
+            $.getJSON(componentPath + '.json').done(function (node) {
+                if (node && node.manifestUrl) {
+                    var urlEl = $dialog.find('[name="./manifestUrl"]')[0];
+                    if (urlEl) {
+                        urlEl.value = node.manifestUrl;
+                    }
+                }
+            });
             try {
                 var editables = Granite.author.store.getEditables();
                 if (editables) {
