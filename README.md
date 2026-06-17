@@ -32,29 +32,62 @@ local Maven repository.
 
 ## Delivery Modes
 
-The Ceros Flex component supports three delivery modes, selectable per
-component instance in the authoring dialog:
+The Ceros Flex component supports five delivery modes, selectable per component
+instance in the authoring dialog. `CerosDeliveryMode` is the single source of
+truth for the stored mode strings; at render time `CerosFlexModel` delegates to
+`CerosFlexDeliveryService`, which calls `DeliveryHandler.forMode(...)` to
+dispatch to the matching handler. Unknown or blank modes fall back to **Fetch**
+so legacy components keep working.
 
-### Fetch (client-side)
+The modes fall into two families:
 
-At page render time, `CerosFlexModel` calls `CerosPublicManifestService` to
-fetch the manifest JSON from the Ceros CDN. CSS, JS, and HTML assets are
-inlined into the page. The published page makes runtime requests to the Ceros
-CDN.
+- **Server-side (SSR)** — the manifest is resolved on the server and the
+  experience markup is rendered into the page.
+- **Client-side** — the page emits a small marker plus a Ceros runtime script
+  that renders the experience in the browser.
 
-### Store (server-side)
+### Fetch — server-side (`fetch`)
 
-An author triggers a fetch from the dialog. The `CerosManifestStoreServlet`
-fetches the manifest, then `CerosAssetStorageService` downloads all referenced
-assets (CSS, JS, fonts, media) and uploads them to AEM DAM. Manifest URLs are
-rewritten to point at the DAM copies and the rewritten manifest JSON is
-persisted on the component node. The published page has **no runtime CDN
-dependency**.
+At page render time, `FetchDeliveryHandler` calls `CerosManifestService` to
+fetch the manifest JSON from the Ceros CDN on every render, and renders its CSS,
+JS, and HTML into the page. If a deep-link query param targets a different page
+of the experience, that page's manifest is fetched instead. The published page
+makes runtime requests to the Ceros CDN.
 
-### Embed (iframe)
+### Store — server-side (`store`)
 
-Renders a lightweight iframe embed using the Ceros embed script. No manifest
-processing is required.
+An author triggers a fetch from the dialog. `CerosManifestStoreServlet` fetches
+the manifest, then `CerosAssetStorageService` downloads all referenced assets
+(CSS, JS, fonts, media) and uploads them to the AEM DAM. Manifest URLs are
+rewritten to point at the DAM copies, and the rewritten manifest bundle is
+persisted on the component node. At render time `StoreDeliveryHandler` reads the
+stored bundle and serves the page matching the deep-link param — fully offline,
+with **no runtime CDN dependency**.
+
+### HTML Import — server-side (`import`)
+
+Instead of a live CDN fetch, the author uploads a Ceros export archive
+(`.tar.gz`) from the dialog. `CerosImportArchiveServlet` hands it to
+`CerosManifestService.performImportAndStore`, which unpacks the archive (with a
+zip-bomb size guard), uploads its assets and manifests to the DAM, and persists
+the same stored bundle on the component. Because the end state is identical to
+**Store** (bundle on the component + assets in DAM), it renders through the same
+`StoreDeliveryHandler` and is likewise fully offline.
+
+### Inline — client-side (`inline`)
+
+`InlineDeliveryHandler` emits the Ceros inline marker
+(`<div data-flex-inline data-flex-manifest-url=…>`) plus the `flex-client.js`
+runtime, which fetches the manifest in the browser and renders the experience
+into a Shadow Root in the host page DOM — no SSR markup and no iframe. The
+runtime URL is grabbed from the manifest at authoring time and persisted on the
+component (see `CerosFlexInlinePostProcessor`), so render makes no network call.
+
+### Embed — client-side (`embed`)
+
+`EmbedDeliveryHandler` renders a lightweight iframe embed using the Ceros embed
+script. No manifest processing is required — the embed script loads everything
+client-side.
 
 ## Experience Browsing
 
@@ -67,7 +100,7 @@ manifest URL manually.
 
 ```
 core/        Java: Sling Model (CerosFlexModel), services, servlets, DTOs, utilities
-ui.apps/     AEM component: definition, dialog, HTL template under /apps/ceros-flex/components/cerosflex
+ui.apps/     AEM component: definition, dialog, HTL template under /apps/connectors/ceros/components/cerosflex
 ui.config/   Default OSGi configuration for the Flex API service
 all/         Single content package that embeds core, ui.apps, and ui.config
 ```
