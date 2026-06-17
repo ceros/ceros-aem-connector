@@ -6,7 +6,7 @@
   <groupId>com.ceros</groupId>
   <artifactId>ceros-aem-connector</artifactId>
   <packaging>pom</packaging>
-  <version>0.0.6</version>
+  <version>0.0.7-SNAPSHOT</version>
   <name>Ceros AEM Plugin</name>
   <description>Ceros Flex component plugin for AEM — produces an OSGi bundle and a content package.</description>
   <url>https://github.com/ceros/ceros-aem-connector</url>
