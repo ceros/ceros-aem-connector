@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.5] - 2026-06-17
+
+### Added
+- HTML-import delivery mode: authors can upload a Ceros `.tar.gz` export in the cerosflex dialog and have it unpacked into the DAM, then served fully offline with no CDN dependency. `CerosImportArchiveServlet` (`/bin/ceros/import-archive`) streams the upload to `/var/ceros/imports/<jobId>`, and `CerosImportArchiveJobConsumer` (topic `com/ceros/import-archive`) unpacks it, stores assets + manifests to DAM, and deletes the transient archive on success. The stored end state matches store mode, so it renders through the existing `StoreDeliveryHandler` and `.preview.html` servlet.
+- `ArchiveUtils` — dependency-free `.tar.gz` reader (JDK gunzip + minimal USTAR) that strips the wrapper directory, with zip-slip and uncompressed-size guards.
+- `CerosAssetStorageService.uploadAssetsFromArchive` — archive-sourced asset upload that mirrors the relative archive layout into `<damBasePath>/<expSlug>/<pageSlug>/` and rewrites manifest URLs to the DAM copies.
+
+### Changed
+- `CerosManifestService.storeManifestBundle` is mode-parameterised so import persists `cerosMode=import` (and `manifestUrl` pointing at the primary DAM manifest). `ServletUtils` gains a shared `normaliseComponentPath` reused by the fetch and import servlets.
+- Authoring dialog adds the **Server-side (HTML Import)** option with a file picker that uploads on selection (loading state, no separate button); fetch-only widgets (Browse Experiences, Ceros Experience URL, Last Fetched) are hidden in import mode. Status polling reuses the existing `/bin/ceros/fetch-manifest-status` endpoint, and repoinit adds `/var/ceros/imports`.
+
 ## [0.0.4] - 2026-06-12
 
 ### Added
