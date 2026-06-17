@@ -74,7 +74,7 @@ public class CerosManifestStoreServlet extends SlingAllMethodsServlet {
             return;
         }
 
-        String componentPath = normaliseComponentPath(request.getParameter("componentPath"));
+        String componentPath = ServletUtils.normaliseComponentPath(request.getParameter("componentPath"));
 
         String jobId = UUID.randomUUID().toString();
         JcrFetchProgress.seed(request.getResourceResolver(), jobId, manifestUrl, componentPath);
@@ -101,25 +101,6 @@ public class CerosManifestStoreServlet extends SlingAllMethodsServlet {
                 "status", "accepted",
                 "jobId", jobId,
                 "statusUrl", STATUS_URL_PATH + ".json?jobId=" + jobId));
-    }
-
-    private String normaliseComponentPath(String raw) {
-        String componentPath = StringUtils.trimToNull(raw);
-        if (componentPath == null) {
-            return null;
-        }
-        // Sling encodes jcr:content as _jcr_content in URLs since colons aren't URL-safe.
-        componentPath = componentPath.replace("_jcr_content", "jcr:content");
-        if (!isComponentPathValid(componentPath)) {
-            return null;
-        }
-        return componentPath;
-    }
-
-    private boolean isComponentPathValid(String path) {
-        return path.startsWith("/content/")
-                && !path.contains("..")
-                && !path.contains("*");
     }
 
     private String normaliseManifestUrl(String manifestUrl) {

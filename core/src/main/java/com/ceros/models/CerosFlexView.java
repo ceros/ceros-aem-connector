@@ -52,6 +52,10 @@ public class CerosFlexView {
         return model != null && model.isStoreMode();
     }
 
+    public boolean isImportMode() {
+        return model != null && model.isImportMode();
+    }
+
     public boolean isEmbedMode() {
         return model != null && model.isEmbedMode();
     }

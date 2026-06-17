@@ -10,6 +10,7 @@ class CerosDeliveryModeTest {
     void valuesMatchPersistedStrings() {
         assertEquals("fetch", CerosDeliveryMode.FETCH.value());
         assertEquals("store", CerosDeliveryMode.STORE.value());
+        assertEquals("import", CerosDeliveryMode.IMPORT.value());
         assertEquals("inline", CerosDeliveryMode.INLINE.value());
         assertEquals("embed", CerosDeliveryMode.EMBED.value());
     }
@@ -18,6 +19,7 @@ class CerosDeliveryModeTest {
     void fromValueResolvesEachMode() {
         assertEquals(CerosDeliveryMode.FETCH, CerosDeliveryMode.fromValue("fetch"));
         assertEquals(CerosDeliveryMode.STORE, CerosDeliveryMode.fromValue("store"));
+        assertEquals(CerosDeliveryMode.IMPORT, CerosDeliveryMode.fromValue("import"));
         assertEquals(CerosDeliveryMode.INLINE, CerosDeliveryMode.fromValue("inline"));
         assertEquals(CerosDeliveryMode.EMBED, CerosDeliveryMode.fromValue("embed"));
     }

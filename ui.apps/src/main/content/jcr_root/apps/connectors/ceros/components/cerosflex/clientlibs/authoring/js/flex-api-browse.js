@@ -39,6 +39,15 @@
 
         $insertAfter.after($btn);
 
+        // Browse picks a CDN experience URL — irrelevant in HTML-import mode.
+        // Hide on inject (this runs async, after the mode toggler) so it never
+        // flashes in for an already-imported component reopened in import mode.
+        var modeEl = $root.find('[name="./cerosMode"]').first()[0];
+        var mode = modeEl ? (modeEl.value !== undefined ? String(modeEl.value) : $(modeEl).val()) : '';
+        if (mode === 'import') {
+            $btn.hide();
+        }
+
         $btn.on('click', function () {
             $btn.attr('disabled', true).text('Loading\u2026');
             $.getJSON(TREE_URL)

@@ -9,6 +9,8 @@ public interface FetchProgress {
 
     /** Phase IDs surfaced through {@link #onPhase(String)}. */
     String PHASE_FETCHING_MANIFEST = "fetching-manifest";
+    /** Reading + unpacking an uploaded export archive (HTML-import mode). */
+    String PHASE_READING_ARCHIVE = "reading-archive";
     String PHASE_UPLOADING_ASSETS = "uploading-assets";
     String PHASE_PERSISTING = "persisting";
 

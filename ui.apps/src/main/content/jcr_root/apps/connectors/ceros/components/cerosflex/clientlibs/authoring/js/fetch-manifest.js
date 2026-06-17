@@ -185,11 +185,20 @@
     function toggleModeWidgets($root) {
         var mode = getSelectValue($root, './cerosMode');
         var isStore = (mode === 'store');
+        var isImport = (mode === 'import');
 
+        // Fetch button is store-mode only (import uses its own Import button).
         $root.find('.cerosflex-fetch-btn').toggle(isStore);
 
+        // Browse Experiences is for picking a CDN experience URL — not for import.
+        $root.find('.cerosflex-browse-btn').toggle(!isImport);
+
+        // Last Fetched / Manifest URL belong to the CDN fetch flow — hide for import.
         var $tsWrapper = $root.find('[name="./cerosPrefetchedAt"]').closest('.coral-Form-fieldwrapper, coral-formfield');
-        $tsWrapper.toggle(isStore);
+        $tsWrapper.toggle(!isImport);
+
+        var $urlWrapper = $root.find('[name="./manifestUrl"]').closest('.coral-Form-fieldwrapper, coral-formfield');
+        $urlWrapper.toggle(!isImport);
     }
 
     $(document).on('foundation-contentloaded', function (e) {

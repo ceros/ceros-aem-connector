@@ -1,4 +1,5 @@
 #base=js
 dialog-showhide.js
 fetch-manifest.js
+import-archive.js
 flex-api-browse.js

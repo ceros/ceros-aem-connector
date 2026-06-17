@@ -71,4 +71,25 @@ public interface CerosManifestService {
     void performFetchAndStore(String manifestUrl, String componentPath,
                               FetchProgress progress, ResourceResolver resolver)
             throws IOException;
+
+    /**
+     * Runs the full unpack + asset upload + persist pipeline for HTML-import
+     * mode. Reads the {@code .tar.gz} export previously uploaded to
+     * {@code archivePath} (under {@code /var/ceros/imports}), unpacks it,
+     * stores each page's assets and manifest into the DAM, and persists the
+     * bundle to the component with {@code cerosMode=import}.
+     *
+     * <p>The stored end state is identical to {@link #performFetchAndStore}, so
+     * the component renders through the same offline store handler.</p>
+     *
+     * @param archivePath   JCR path of the uploaded archive ({@code nt:file})
+     * @param componentPath validated JCR path of the cerosflex component, or
+     *                      {@code null} to unpack without persisting
+     * @param progress      progress callback (use {@link FetchProgress#NOOP} when not needed)
+     * @param resolver      resource resolver with read access to {@code archivePath}
+     *                      and write access to DAM and the component
+     */
+    void performImportAndStore(String archivePath, String componentPath,
+                               FetchProgress progress, ResourceResolver resolver)
+            throws IOException;
 }

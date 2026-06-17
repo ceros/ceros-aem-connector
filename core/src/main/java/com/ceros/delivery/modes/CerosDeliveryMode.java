@@ -11,6 +11,12 @@ public enum CerosDeliveryMode {
     FETCH("fetch"),
     /** Pre-fetch the manifest + assets into JCR/DAM and serve offline (SSR). */
     STORE("store"),
+    /**
+     * Import a Ceros export archive (.tar.gz), unpack it into JCR/DAM and serve
+     * offline (SSR). Same stored end state as {@link #STORE}, but the source is
+     * an uploaded archive instead of a live CDN fetch.
+     */
+    IMPORT("import"),
     /** Client-side render in the host DOM via {@code flex-client.js} (Shadow Root). */
     INLINE("inline"),
     /** Client-side render inside an iframe via the Ceros embed script. */

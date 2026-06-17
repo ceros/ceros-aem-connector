@@ -18,3 +18,40 @@
     opacity: 0.6;
     cursor: not-allowed;
 }
+
+.cerosflex-import-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+.cerosflex-import-file {
+    font-size: 13px;
+}
+.cerosflex-import-file:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+.cerosflex-import-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #505050;
+}
+.cerosflex-import-spinner {
+    display: none;
+    width: 14px;
+    height: 14px;
+    border: 2px solid #c8c8c8;
+    border-top-color: #0265DC;
+    border-radius: 50%;
+    animation: cerosflex-import-spin 0.7s linear infinite;
+}
+.cerosflex-import-status.is-loading .cerosflex-import-spinner {
+    display: inline-block;
+}
+@keyframes cerosflex-import-spin {
+    to { transform: rotate(360deg); }
+}
