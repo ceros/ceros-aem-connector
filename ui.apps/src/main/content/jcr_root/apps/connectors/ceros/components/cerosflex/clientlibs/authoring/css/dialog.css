@@ -65,7 +65,8 @@
 }
 .cerosflex-import-timestamp {
     display: block;
-    margin-top: 8px;
+    margin-top: 16px;
+    margin-bottom: 12px;
 }
 
 /* Shared progress indicator (spinner + status text) for both flows. */
