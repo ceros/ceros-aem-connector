@@ -30,9 +30,9 @@
             'class':  'cerosflex-import-file',
             'accept': '.tar.gz,.tgz,application/gzip'
         });
-        var $status = $('<span>', { 'class': 'cerosflex-import-status' });
-        $status.append($('<span>', { 'class': 'cerosflex-import-spinner', 'aria-hidden': 'true' }));
-        $status.append($('<span>', { 'class': 'cerosflex-import-text' }));
+        var $status = $('<span>', { 'class': 'cerosflex-progress' });
+        $status.append($('<span>', { 'class': 'cerosflex-spinner', 'aria-hidden': 'true' }));
+        $status.append($('<span>', { 'class': 'cerosflex-progress-text' }));
         $wrap.append($file).append($status);
         $section.append($wrap);
 
@@ -178,7 +178,7 @@
     function setStatus($status, text, loading) {
         if (!$status || !$status.length) return;
         $status.toggleClass('is-loading', !!loading);
-        $status.find('.cerosflex-import-text').text(text || '');
+        $status.find('.cerosflex-progress-text').text(text || '');
     }
 
     function resetFile($file, $status) {

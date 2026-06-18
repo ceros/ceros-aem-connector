@@ -27,6 +27,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -173,10 +174,47 @@ public class CerosAssetStorageServiceImpl implements CerosAssetStorageService {
                     assetManager, urlMap, resolver);
         }
 
+        // Catch-all: import every remaining file under assets/ (fonts, icons,
+        // images, videos, …), mirroring the archive layout. Assets referenced
+        // only from CSS url(...) or absent from the manifest's structured lists
+        // are otherwise missed; mirroring the paths means relative url(...) in the
+        // stored CSS still resolves against the DAM copies.
+        for (Map.Entry<String, byte[]> archiveEntry : archive.entrySet()) {
+            String key = archiveEntry.getKey();
+            if (key.startsWith("assets/") && !urlMap.containsKey(key)) {
+                storeArchiveEntry(key, archive, basePath, mimeTypeFor(key),
+                        assetManager, urlMap, resolver);
+            }
+        }
+
         resolver.commit();
 
         rewriteInlineContent(manifest, urlMap);
         return urlMap;
+    }
+
+    /** Best-effort MIME type from a file extension, for archive assets. */
+    private static String mimeTypeFor(String path) {
+        String p = path.toLowerCase(Locale.ROOT);
+        if (p.endsWith(".css")) return "text/css";
+        if (p.endsWith(".js") || p.endsWith(".mjs")) return "application/javascript";
+        if (p.endsWith(".json")) return "application/json";
+        if (p.endsWith(".woff2")) return "font/woff2";
+        if (p.endsWith(".woff")) return "font/woff";
+        if (p.endsWith(".ttf")) return "font/ttf";
+        if (p.endsWith(".otf")) return "font/otf";
+        if (p.endsWith(".eot")) return "application/vnd.ms-fontobject";
+        if (p.endsWith(".svg")) return "image/svg+xml";
+        if (p.endsWith(".png")) return "image/png";
+        if (p.endsWith(".jpg") || p.endsWith(".jpeg")) return "image/jpeg";
+        if (p.endsWith(".gif")) return "image/gif";
+        if (p.endsWith(".webp")) return "image/webp";
+        if (p.endsWith(".ico")) return "image/x-icon";
+        if (p.endsWith(".mp4")) return "video/mp4";
+        if (p.endsWith(".webm")) return "video/webm";
+        if (p.endsWith(".m3u8")) return "application/vnd.apple.mpegurl";
+        if (p.endsWith(".ts")) return "video/mp2t";
+        return "application/octet-stream";
     }
 
     /**
