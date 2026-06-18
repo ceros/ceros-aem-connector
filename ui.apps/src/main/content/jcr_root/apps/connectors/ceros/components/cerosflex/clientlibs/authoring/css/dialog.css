@@ -21,8 +21,8 @@
 }
 
 /* Control rows — one consistent layout for both the Fetch and Import flows.
-   The 18px top margin makes the row sit ~24px below the field above it,
-   matching the rhythm Coral field wrappers get from their info-icon reserve. */
+   18px puts the row ~24px below the field above it, matching the rhythm Coral
+   field wrappers get from their info-icon reserve (consistent across modes). */
 .cerosflex-fetch-controls,
 .cerosflex-import-controls {
     display: flex;
@@ -54,6 +54,18 @@
 .cerosflex-import-file:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+}
+
+/* Muted "last fetched / last imported" timestamp. Inline next to Fetch in the
+   control row; on its own line under the import file picker. */
+.cerosflex-timestamp {
+    color: #707070;
+    font-size: 12px;
+    white-space: nowrap;
+}
+.cerosflex-import-timestamp {
+    display: block;
+    margin-top: 8px;
 }
 
 /* Shared progress indicator (spinner + status text) for both flows. */

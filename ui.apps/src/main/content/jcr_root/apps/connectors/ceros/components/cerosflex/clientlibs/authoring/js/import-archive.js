@@ -28,13 +28,19 @@
         var $file = $('<input>', {
             'type':   'file',
             'class':  'cerosflex-import-file',
-            'accept': '.tar.gz,.tgz,application/gzip'
+            'accept': '.tar.gz,.tgz,application/gzip',
+            'title':  'Upload a Ceros HTML export file (.tar.gz)'
         });
         var $status = $('<span>', { 'class': 'cerosflex-progress' });
         $status.append($('<span>', { 'class': 'cerosflex-spinner', 'aria-hidden': 'true' }));
         $status.append($('<span>', { 'class': 'cerosflex-progress-text' }));
         $wrap.append($file).append($status);
         $section.append($wrap);
+
+        // Muted "last imported" timestamp below the picker.
+        var $ts = $('<div>', { 'class': 'cerosflex-timestamp cerosflex-import-timestamp' });
+        $section.append($ts);
+        updateTimestamp($root, $ts, 'Last imported');
 
         $file.on('change', function () {
             var fileEl = $file[0];
@@ -143,6 +149,7 @@
         $file.removeAttr('disabled');
         var tsEl = $dialog.find('[name="./cerosPrefetchedAt"]')[0];
         if (tsEl && data.fetchedAt) tsEl.value = data.fetchedAt;
+        updateTimestamp($dialog, $dialog.find('.cerosflex-import-timestamp'), 'Last imported');
 
         if (data.saved) {
             setStatus($status, 'Imported ✓', false);
@@ -185,6 +192,21 @@
         $file.removeAttr('disabled');
         if (($file[0]) && $file[0].value !== undefined) $file[0].value = '';
         setStatus($status, '', false);
+    }
+
+    function formatTimestamp(iso) {
+        if (!iso) return '';
+        var d = new Date(iso);
+        if (isNaN(d.getTime())) return iso;
+        return d.toLocaleString();
+    }
+
+    function updateTimestamp($root, $ts, prefix) {
+        if (!$ts || !$ts.length) return;
+        var el = $root.find('[name="./cerosPrefetchedAt"]')[0];
+        var val = el ? $.trim(el.value || $(el).val() || '') : '';
+        var formatted = formatTimestamp(val);
+        $ts.text(formatted ? (prefix + ': ' + formatted) : '');
     }
 
     function notify(type, message) {

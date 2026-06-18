@@ -37,7 +37,7 @@
         var $btn = $(
             '<button is="coral-button" type="button" variant="quiet" ' +
             'icon="folderSearch" iconsize="S" class="cerosflex-browse-btn" ' +
-            'title="Browse Experiences" aria-label="Browse Experiences"></button>'
+            'title="Browse Ceros Experiences" aria-label="Browse Ceros Experiences"></button>'
         );
 
         $affix.append($btn);

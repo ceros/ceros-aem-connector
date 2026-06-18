@@ -16,6 +16,16 @@
     transform: translateY(-50%);
     min-width: 0;
 }
+/* No grey circle / fill on hover, focus, or active — just the icon. */
+.cerosflex-browse-btn,
+.cerosflex-browse-btn:hover,
+.cerosflex-browse-btn:focus,
+.cerosflex-browse-btn:active,
+.cerosflex-browse-btn.is-selected {
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: none;
+}
 
 /* Overlay */
 .cerosflex-browse-overlay {
