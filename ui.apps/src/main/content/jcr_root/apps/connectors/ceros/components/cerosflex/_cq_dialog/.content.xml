@@ -56,13 +56,6 @@
                         pattern="^https://[^\s/]+(?::\d+)?/.+$"
                         name="./manifestUrl"/>
 
-                    <lastFetched
-                        jcr:primaryType="nt:unstructured"
-                        sling:resourceType="granite/ui/components/coral/foundation/form/textfield"
-                        disabled="{Boolean}true"
-                        fieldLabel="Last Fetched"
-                        name="./cerosPrefetchedAt"/>
-
                     <importSection
                         granite:class="cerosflex-mode-toggle cerosflex-import-section hidden"
                         jcr:primaryType="nt:unstructured"
@@ -77,6 +70,13 @@
                                 text="Choose a Ceros HTML export (.tar.gz) to upload."/>
                         </items>
                     </importSection>
+
+                    <lastFetched
+                        jcr:primaryType="nt:unstructured"
+                        sling:resourceType="granite/ui/components/coral/foundation/form/textfield"
+                        disabled="{Boolean}true"
+                        fieldLabel="Last Fetched"
+                        name="./cerosPrefetchedAt"/>
 
                     <embedSection
                         granite:class="cerosflex-mode-toggle hidden"

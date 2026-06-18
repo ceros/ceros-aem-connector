@@ -1,18 +1,19 @@
+/* Light secondary button, matching the HTML-import file picker. Alignment and
+   spacing come from the flex row (.cerosflex-fetch-controls) it sits in. */
 .cerosflex-browse-btn {
     display: inline-block;
-    margin-left: 8px;
-    margin-top: 8px;
-    padding: 6px 16px;
-    background: #0265DC;
-    color: #fff;
-    border: none;
+    padding: 5px 14px;
+    background: #fff;
+    color: #2c2c2c;
+    border: 1px solid #959595;
     border-radius: 4px;
     font-size: 14px;
     cursor: pointer;
     vertical-align: middle;
 }
 .cerosflex-browse-btn:hover {
-    background: #0153B3;
+    background: #f0f0f0;
+    border-color: #6e6e6e;
 }
 .cerosflex-browse-btn:disabled {
     opacity: 0.6;

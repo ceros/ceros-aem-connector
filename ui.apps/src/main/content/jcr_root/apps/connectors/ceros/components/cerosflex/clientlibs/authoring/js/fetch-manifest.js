@@ -207,9 +207,15 @@
         $root.find('.cerosflex-browse-btn').toggle(!isImport);
 
         // Last Fetched is only meaningful for the pre-fetch modes (store, import);
-        // hide it for fetch / inline / iframe-embed.
+        // hide it for fetch / inline / iframe-embed. Import says "Last imported".
         var $tsWrapper = $root.find('[name="./cerosPrefetchedAt"]').closest('.coral-Form-fieldwrapper, coral-formfield');
         $tsWrapper.toggle(isStore || isImport);
+        var labelNode = $tsWrapper.find('label').first().contents().filter(function () {
+            return this.nodeType === 3 && $.trim(this.nodeValue); // first non-empty text node
+        })[0];
+        if (labelNode) {
+            labelNode.nodeValue = isImport ? 'Last Imported' : 'Last Fetched';
+        }
 
         // Manifest URL is irrelevant for import (the source is an uploaded archive).
         var $urlWrapper = $root.find('[name="./manifestUrl"]').closest('.coral-Form-fieldwrapper, coral-formfield');
