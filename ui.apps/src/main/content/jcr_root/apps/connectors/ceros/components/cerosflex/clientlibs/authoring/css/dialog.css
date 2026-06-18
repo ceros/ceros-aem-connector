@@ -20,13 +20,15 @@
     cursor: not-allowed;
 }
 
-/* Control rows — one consistent layout for both the Fetch and Import flows. */
+/* Control rows — one consistent layout for both the Fetch and Import flows.
+   The 18px top margin makes the row sit ~24px below the field above it,
+   matching the rhythm Coral field wrappers get from their info-icon reserve. */
 .cerosflex-fetch-controls,
 .cerosflex-import-controls {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-top: 8px;
+    margin-top: 18px;
     flex-wrap: wrap;
 }
 
