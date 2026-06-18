@@ -16,17 +16,31 @@
         var $field = $root.find('[name="./manifestUrl"]').first();
         if (!$field.length) return;
 
+        // Hide the dialog's Help (?) icon for now — scoped to this dialog (we
+        // only get here when our cerosMode/manifestUrl fields are present) so
+        // other components keep theirs. Restore when we have a real help link.
+        $field.closest('coral-dialog, .coral-Dialog, [role="dialog"]')
+            .find('.cq-dialog-help').hide();
+
         var $container = $field.closest('coral-textfield, .coral-Form-field-wrapper, .coral-Form-fieldwrapper');
         if (!$container.length) $container = $field;
         if ($container.next('.cerosflex-fetch-controls').length) return;
 
-        var $btn = $('<button>', { 'class': 'cerosflex-fetch-btn', 'type': 'button', 'text': 'Fetch' });
+        var $btn = $('<button>', {
+            'class': 'cerosflex-fetch-btn',
+            'type': 'button',
+            'text': 'Fetch',
+            'title': 'Download and save this experience so it loads fast and reliably'
+        });
         var $progress = buildProgress();
-        // Fetch button + progress share a row; the Browse button (injected by
-        // flex-api-browse.js after the Fetch button) lands in here too.
-        var $controls = $('<div>', { 'class': 'cerosflex-fetch-controls' }).append($btn).append($progress);
+        // Fetch button, the muted "last fetched" timestamp, and the progress
+        // indicator all share one row.
+        var $ts = $('<span>', { 'class': 'cerosflex-timestamp' });
+        var $controls = $('<div>', { 'class': 'cerosflex-fetch-controls' })
+            .append($btn).append($ts).append($progress);
         $container.after($controls);
 
+        updateTimestamp($root, $ts, 'Last fetched');
         toggleModeWidgets($root);
 
         $root.find('[name="./cerosMode"]').on('change coral-select:change', function () {
@@ -138,6 +152,7 @@
         resetFetch($btn, $progress);
         var tsEl = $dialog.find('[name="./cerosPrefetchedAt"]')[0];
         if (tsEl && data.fetchedAt) tsEl.value = data.fetchedAt;
+        updateTimestamp($dialog, $dialog.find('.cerosflex-fetch-controls .cerosflex-timestamp'), 'Last fetched');
 
         if (data.saved) {
             notify('success', 'Ceros experience fetched and stored.');
@@ -176,6 +191,23 @@
         setProgress($progress, '', false);
     }
 
+    // ---- muted "last fetched/imported" timestamp ----
+
+    function formatTimestamp(iso) {
+        if (!iso) return '';
+        var d = new Date(iso);
+        if (isNaN(d.getTime())) return iso;
+        return d.toLocaleString();
+    }
+
+    function updateTimestamp($root, $ts, prefix) {
+        if (!$ts || !$ts.length) return;
+        var el = $root.find('[name="./cerosPrefetchedAt"]')[0];
+        var val = el ? $.trim(el.value || $(el).val() || '') : '';
+        var formatted = formatTimestamp(val);
+        $ts.text(formatted ? (prefix + ': ' + formatted) : '');
+    }
+
     function notify(type, message) {
         var ui = $(window).adaptTo('foundation-ui');
         if (ui) ui.notify('', message, type);
@@ -200,16 +232,20 @@
         var isStore = (mode === 'store');
         var isImport = (mode === 'import');
 
-        // Fetch button is store-mode only (import uses its own Import button).
-        $root.find('.cerosflex-fetch-btn').toggle(isStore);
+        // The Fetch control row (Fetch button + progress) is store-mode only;
+        // hide it entirely otherwise so it leaves no empty gap. The Browse icon
+        // now lives as an affix inside the URL field, so it's not in this row.
+        $root.find('.cerosflex-fetch-controls').toggle(isStore);
 
         // Browse Experiences is for picking a CDN experience URL — not for import.
+        // (It sits inside the URL field, which is itself hidden in import mode.)
         $root.find('.cerosflex-browse-btn').toggle(!isImport);
 
-        // Last Fetched is only meaningful for the pre-fetch modes (store, import);
-        // hide it for fetch / inline / iframe-embed.
-        var $tsWrapper = $root.find('[name="./cerosPrefetchedAt"]').closest('.coral-Form-fieldwrapper, coral-formfield');
-        $tsWrapper.toggle(isStore || isImport);
+        // The raw Last Fetched/Imported field is always hidden; its value is
+        // surfaced as a muted timestamp next to Fetch (store) and the file
+        // picker (import).
+        $root.find('[name="./cerosPrefetchedAt"]')
+            .closest('.coral-Form-fieldwrapper, coral-formfield').hide();
 
         // Manifest URL is irrelevant for import (the source is an uploaded archive).
         var $urlWrapper = $root.find('[name="./manifestUrl"]').closest('.coral-Form-fieldwrapper, coral-formfield');

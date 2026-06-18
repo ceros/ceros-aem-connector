@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.7] - 2026-06-18
+
+### Fixed
+- HTML Import now uploads **every** file in the export archive. `uploadAssetsFromArchive` previously stored only manifest-referenced assets, so fonts, icons, backgrounds, and videos under `assets/` were silently skipped; it now bulk-imports every remaining file under `assets/`, mirroring the archive layout, with an extension-to-MIME map for correct content types.
+
+### Changed
+- Cerosflex authoring dialog polish:
+  - Renamed the dialog title from "Properties" to "Ceros Flex".
+  - Browse Experiences is now a compact folder-search icon button (tooltip "Browse Ceros Experiences") sitting inside the right edge of the Ceros Experience URL field, instead of a separate text button.
+  - "Last fetched" / "Last imported" now shows as a muted, human-readable timestamp inline with the Fetch button (store) and under the file picker (import); the disabled field and its standalone label were removed. "Last Fetched" is hidden entirely for the fetch/inline/iframe modes.
+  - Rewrote all field tooltips in plain, non-technical language for designers and marketers; added hover tooltips to the Fetch button and file picker so every control has an info or hover state.
+  - Hid the dialog Help (?) icon (scoped to this dialog) until a real help link is available.
+  - Removed the import help text; unified the Fetch/Import loading spinner; evened out control-row spacing so the import rows match the other modes.
+
 ## [0.0.6] - 2026-06-17
 
 ### Fixed

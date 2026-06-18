@@ -1,22 +1,30 @@
+/* Browse Experiences — compact quiet icon button with a tooltip, sitting as a
+   trailing affix inside the right edge of the Ceros Experience URL field. */
+.cerosflex-url-affix {
+    position: relative;
+    display: block;
+}
+.cerosflex-url-affix > input.coral-Form-field {
+    width: 100%;
+    padding-right: 36px;
+    box-sizing: border-box;
+}
 .cerosflex-browse-btn {
-    display: inline-block;
-    margin-left: 8px;
-    margin-top: 8px;
-    padding: 6px 16px;
-    background: #0265DC;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    font-size: 14px;
-    cursor: pointer;
-    vertical-align: middle;
+    position: absolute;
+    top: 50%;
+    right: 2px;
+    transform: translateY(-50%);
+    min-width: 0;
 }
-.cerosflex-browse-btn:hover {
-    background: #0153B3;
-}
-.cerosflex-browse-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+/* No grey circle / fill on hover, focus, or active — just the icon. */
+.cerosflex-browse-btn,
+.cerosflex-browse-btn:hover,
+.cerosflex-browse-btn:focus,
+.cerosflex-browse-btn:active,
+.cerosflex-browse-btn.is-selected {
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: none;
 }
 
 /* Overlay */

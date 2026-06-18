@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <jcr:root xmlns:sling="http://sling.apache.org/jcr/sling/1.0" xmlns:granite="http://www.adobe.com/jcr/granite/1.0" xmlns:cq="http://www.day.com/jcr/cq/1.0" xmlns:jcr="http://www.jcp.org/jcr/1.0" xmlns:nt="http://www.jcp.org/jcr/nt/1.0"
     jcr:primaryType="nt:unstructured"
-    jcr:title="Properties"
+    jcr:title="Ceros Flex"
     sling:resourceType="cq/gui/components/authoring/dialog"
     extraClientlibs="[ceros.cerosflex.authoring]">
     <content
@@ -18,7 +18,7 @@
                         jcr:primaryType="nt:unstructured"
                         sling:resourceType="granite/ui/components/coral/foundation/form/select"
                         fieldLabel="Delivery Mode"
-                        fieldDescription="Server-side (Always Fetch): loads manifest on every page render. Server-side (Store): fetches once and saves to JCR. Server-side (HTML Import): upload a Ceros .tar.gz export, unpacked into the DAM and served offline. Client-side (Inline embed): injects the Ceros inline marker + flex-client.js, which renders the experience into the page DOM. Client-side (Iframe embed): injects the Ceros embed script that renders the experience in an iframe."
+                        fieldDescription="Choose how your Ceros experience appears on the page. Always Fetch always shows the latest version. Store saves a copy for fast, reliable loading. HTML Import lets you upload an exported file. Inline embed places the experience right in the page. Iframe embed shows it in a self-contained frame."
                         name="./cerosMode">
                         <granite:data
                             jcr:primaryType="nt:unstructured"
@@ -52,16 +52,9 @@
                         jcr:primaryType="nt:unstructured"
                         sling:resourceType="granite/ui/components/coral/foundation/form/textfield"
                         fieldLabel="Ceros Experience URL"
-                        fieldDescription="Paste the full https:// URL to the published Ceros experience"
+                        fieldDescription="Paste the full link (starting with https://) to your published Ceros experience."
                         pattern="^https://[^\s/]+(?::\d+)?/.+$"
                         name="./manifestUrl"/>
-
-                    <lastFetched
-                        jcr:primaryType="nt:unstructured"
-                        sling:resourceType="granite/ui/components/coral/foundation/form/textfield"
-                        disabled="{Boolean}true"
-                        fieldLabel="Last Fetched"
-                        name="./cerosPrefetchedAt"/>
 
                     <importSection
                         granite:class="cerosflex-mode-toggle cerosflex-import-section hidden"
@@ -70,13 +63,15 @@
                         <granite:data
                             jcr:primaryType="nt:unstructured"
                             showhidetargetvalue="import"/>
-                        <items jcr:primaryType="nt:unstructured">
-                            <importHelp
-                                jcr:primaryType="nt:unstructured"
-                                sling:resourceType="granite/ui/components/coral/foundation/text"
-                                text="Choose a Ceros HTML export (.tar.gz) to upload."/>
-                        </items>
+                        <items jcr:primaryType="nt:unstructured"/>
                     </importSection>
+
+                    <lastFetched
+                        jcr:primaryType="nt:unstructured"
+                        sling:resourceType="granite/ui/components/coral/foundation/form/textfield"
+                        disabled="{Boolean}true"
+                        fieldLabel="Last Fetched"
+                        name="./cerosPrefetchedAt"/>
 
                     <embedSection
                         granite:class="cerosflex-mode-toggle hidden"
@@ -91,7 +86,7 @@
                                 jcr:primaryType="nt:unstructured"
                                 sling:resourceType="granite/ui/components/coral/foundation/form/select"
                                 fieldLabel="Iframe Type"
-                                fieldDescription="Full Height: iframe auto-resizes to the experience content (no inner scrollbars). Scrolling: iframe stays at a fixed height and the experience scrolls inside it."
+                                fieldDescription="Choose how the experience fits on the page. Full Height grows to show everything without scrolling. Scrolling keeps a set height and lets people scroll within it."
                                 name="./cerosEmbedType">
                                 <granite:data
                                     jcr:primaryType="nt:unstructured"
@@ -121,7 +116,7 @@
                                         jcr:primaryType="nt:unstructured"
                                         sling:resourceType="granite/ui/components/coral/foundation/form/textfield"
                                         fieldLabel="Iframe Height"
-                                        fieldDescription="CSS length, e.g. 800px or 75vh."
+                                        fieldDescription="How tall the experience should be on the page, for example 800px."
                                         name="./cerosEmbedHeight"
                                         value="800px"/>
                                 </items>
