@@ -1,23 +1,20 @@
-/* Light secondary button, matching the HTML-import file picker. Alignment and
-   spacing come from the flex row (.cerosflex-fetch-controls) it sits in. */
+/* Browse Experiences — compact quiet icon button with a tooltip, sitting as a
+   trailing affix inside the right edge of the Ceros Experience URL field. */
+.cerosflex-url-affix {
+    position: relative;
+    display: block;
+}
+.cerosflex-url-affix > input.coral-Form-field {
+    width: 100%;
+    padding-right: 36px;
+    box-sizing: border-box;
+}
 .cerosflex-browse-btn {
-    display: inline-block;
-    padding: 5px 14px;
-    background: #fff;
-    color: #2c2c2c;
-    border: 1px solid #959595;
-    border-radius: 4px;
-    font-size: 14px;
-    cursor: pointer;
-    vertical-align: middle;
-}
-.cerosflex-browse-btn:hover {
-    background: #f0f0f0;
-    border-color: #6e6e6e;
-}
-.cerosflex-browse-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+    position: absolute;
+    top: 50%;
+    right: 2px;
+    transform: translateY(-50%);
+    min-width: 0;
 }
 
 /* Overlay */

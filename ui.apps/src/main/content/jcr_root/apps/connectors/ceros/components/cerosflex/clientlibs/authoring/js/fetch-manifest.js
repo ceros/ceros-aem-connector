@@ -200,10 +200,13 @@
         var isStore = (mode === 'store');
         var isImport = (mode === 'import');
 
-        // Fetch button is store-mode only (import uses its own Import button).
-        $root.find('.cerosflex-fetch-btn').toggle(isStore);
+        // The Fetch control row (Fetch button + progress) is store-mode only;
+        // hide it entirely otherwise so it leaves no empty gap. The Browse icon
+        // now lives as an affix inside the URL field, so it's not in this row.
+        $root.find('.cerosflex-fetch-controls').toggle(isStore);
 
         // Browse Experiences is for picking a CDN experience URL — not for import.
+        // (It sits inside the URL field, which is itself hidden in import mode.)
         $root.find('.cerosflex-browse-btn').toggle(!isImport);
 
         // Last Fetched is only meaningful for the pre-fetch modes (store, import);

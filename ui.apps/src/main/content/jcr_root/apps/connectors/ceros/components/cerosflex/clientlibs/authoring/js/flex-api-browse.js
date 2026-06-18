@@ -21,23 +21,26 @@
     }
 
     function injectBrowseButton($root, $field) {
-        // Insert after the existing Fetch button if present, otherwise after the field
-        var $fetchBtn = $root.find('.cerosflex-fetch-btn').first();
-        var $insertAfter;
-        if ($fetchBtn.length) {
-            $insertAfter = $fetchBtn;
-        } else {
-            var $container = $field.closest('coral-textfield, .coral-Form-field-wrapper, .coral-Form-fieldwrapper');
-            $insertAfter = $container.length ? $container : $field;
+        var $input = $field.first();
+
+        // Wrap the URL input so the browse icon can sit at its right edge, like
+        // a trailing affix inside the field.
+        var $affix = $input.parent('.cerosflex-url-affix');
+        if (!$affix.length) {
+            $affix = $('<div class="cerosflex-url-affix"></div>');
+            $input.before($affix);
+            $affix.append($input);
         }
 
-        var $btn = $('<button>', {
-            'class': 'cerosflex-browse-btn',
-            'type':  'button',
-            'text':  'Browse Experiences'
-        });
+        // Compact quiet icon button (folder/browse) with a tooltip, sitting
+        // inside the right edge of the Ceros Experience URL field.
+        var $btn = $(
+            '<button is="coral-button" type="button" variant="quiet" ' +
+            'icon="folderSearch" iconsize="S" class="cerosflex-browse-btn" ' +
+            'title="Browse Experiences" aria-label="Browse Experiences"></button>'
+        );
 
-        $insertAfter.after($btn);
+        $affix.append($btn);
 
         // Browse picks a CDN experience URL — irrelevant in HTML-import mode.
         // Hide on inject (this runs async, after the mode toggler) so it never
@@ -49,14 +52,14 @@
         }
 
         $btn.on('click', function () {
-            $btn.attr('disabled', true).text('Loading\u2026');
+            $btn.prop('disabled', true);
             $.getJSON(TREE_URL)
                 .done(function (data) {
-                    $btn.removeAttr('disabled').text('Browse Experiences');
+                    $btn.prop('disabled', false);
                     showOverlay($root, $field, data);
                 })
                 .fail(function (xhr) {
-                    $btn.removeAttr('disabled').text('Browse Experiences');
+                    $btn.prop('disabled', false);
                     var ui = $(window).adaptTo('foundation-ui');
                     if (ui) ui.notify('', 'Could not load experiences (HTTP ' + xhr.status + ')', 'error');
                 });
