@@ -74,7 +74,7 @@
                             <importHelp
                                 jcr:primaryType="nt:unstructured"
                                 sling:resourceType="granite/ui/components/coral/foundation/text"
-                                text="Choose a Ceros HTML export (.tar.gz) below. It uploads and unpacks into the DAM automatically — served offline, no CDN dependency."/>
+                                text="Choose a Ceros HTML export (.tar.gz) to upload."/>
                         </items>
                     </importSection>
 

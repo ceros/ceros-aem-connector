@@ -1,9 +1,10 @@
+/* cerosflex authoring dialog — Fetch (store mode) + Import (HTML-import mode). */
+
+/* Primary action button (Fetch). */
 .cerosflex-fetch-btn {
     display: inline-block;
-    margin-left: 8px;
-    margin-top: 8px;
     padding: 6px 16px;
-    background: #0265DC;
+    background: #0265dc;
     color: #fff;
     border: none;
     border-radius: 4px;
@@ -12,46 +13,67 @@
     vertical-align: middle;
 }
 .cerosflex-fetch-btn:hover {
-    background: #0153B3;
+    background: #0153b3;
 }
 .cerosflex-fetch-btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
 }
 
+/* Control rows — one consistent layout for both the Fetch and Import flows. */
+.cerosflex-fetch-controls,
 .cerosflex-import-controls {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     margin-top: 8px;
     flex-wrap: wrap;
 }
+
+/* File picker, brought in line with Coral's look. */
 .cerosflex-import-file {
     font-size: 13px;
+    color: #4b4b4b;
+}
+.cerosflex-import-file::file-selector-button {
+    font: inherit;
+    margin-right: 12px;
+    padding: 5px 14px;
+    border: 1px solid #959595;
+    border-radius: 4px;
+    background: #fff;
+    color: #2c2c2c;
+    cursor: pointer;
+}
+.cerosflex-import-file::file-selector-button:hover {
+    background: #f0f0f0;
+    border-color: #6e6e6e;
 }
 .cerosflex-import-file:disabled {
     opacity: 0.6;
     cursor: not-allowed;
 }
-.cerosflex-import-status {
+
+/* Shared progress indicator (spinner + status text) for both flows. */
+.cerosflex-progress {
     display: inline-flex;
     align-items: center;
     gap: 8px;
     font-size: 13px;
-    color: #505050;
+    color: #4b4b4b;
 }
-.cerosflex-import-spinner {
+.cerosflex-spinner {
     display: none;
     width: 14px;
     height: 14px;
-    border: 2px solid #c8c8c8;
-    border-top-color: #0265DC;
+    border: 2px solid #d4d4d4;
+    border-top-color: #0265dc;
     border-radius: 50%;
-    animation: cerosflex-import-spin 0.7s linear infinite;
+    animation: cerosflex-spin 0.7s linear infinite;
 }
-.cerosflex-import-status.is-loading .cerosflex-import-spinner {
+.cerosflex-progress.is-loading .cerosflex-spinner {
     display: inline-block;
 }
-@keyframes cerosflex-import-spin {
+@keyframes cerosflex-spin {
     to { transform: rotate(360deg); }
 }

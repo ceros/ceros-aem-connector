@@ -18,15 +18,14 @@
 
         var $container = $field.closest('coral-textfield, .coral-Form-field-wrapper, .coral-Form-fieldwrapper');
         if (!$container.length) $container = $field;
-        if ($container.next('.cerosflex-fetch-btn').length) return;
+        if ($container.next('.cerosflex-fetch-controls').length) return;
 
-        var $btn = $('<button>', {
-            'class': 'cerosflex-fetch-btn',
-            'type':  'button',
-            'text':  'Fetch'
-        });
-
-        $container.after($btn);
+        var $btn = $('<button>', { 'class': 'cerosflex-fetch-btn', 'type': 'button', 'text': 'Fetch' });
+        var $progress = buildProgress();
+        // Fetch button + progress share a row; the Browse button (injected by
+        // flex-api-browse.js after the Fetch button) lands in here too.
+        var $controls = $('<div>', { 'class': 'cerosflex-fetch-controls' }).append($btn).append($progress);
+        $container.after($controls);
 
         toggleModeWidgets($root);
 
@@ -45,19 +44,18 @@
                 $urlInput.attr('invalid', true);
                 return;
             }
-
             if (!componentPath || componentPath.indexOf('*') !== -1) {
-                var ui = $(window).adaptTo('foundation-ui');
-                if (ui) ui.notify('', 'Save the dialog once before fetching.', 'error');
+                notify('error', 'Save the dialog once before fetching.');
                 return;
             }
 
-            startFetch($dialog, $btn, url, componentPath);
+            startFetch($dialog, $btn, $progress, url, componentPath);
         });
     }
 
-    function startFetch($dialog, $btn, url, componentPath) {
-        $btn.attr('disabled', true).text('Fetching…');
+    function startFetch($dialog, $btn, $progress, url, componentPath) {
+        $btn.attr('disabled', true);
+        setProgress($progress, 'Fetching…', true);
 
         var tsEl = $dialog.find('[name="./cerosPrefetchedAt"]')[0];
         if (tsEl) tsEl.value = '';
@@ -70,21 +68,21 @@
         })
         .done(function (data) {
             if (!data || !data.jobId) {
-                resetButton($btn);
+                resetFetch($btn, $progress);
                 notify('error', 'Fetch failed — unexpected response from server.');
                 return;
             }
-            pollFetchStatus($dialog, $btn, data.jobId, componentPath, Date.now());
+            pollFetchStatus($dialog, $btn, $progress, data.jobId, componentPath, Date.now());
         })
         .fail(function (xhr) {
-            resetButton($btn);
+            resetFetch($btn, $progress);
             notify('error', describeError(xhr, 'Fetch failed — check the manifest URL and try again.'));
         });
     }
 
-    function pollFetchStatus($dialog, $btn, jobId, componentPath, startedAt) {
+    function pollFetchStatus($dialog, $btn, $progress, jobId, componentPath, startedAt) {
         if (Date.now() - startedAt > MAX_POLL_MS) {
-            resetButton($btn);
+            resetFetch($btn, $progress);
             notify('error', 'Fetch is taking too long — check the job status in /var/ceros/fetch-jobs.');
             return;
         }
@@ -97,48 +95,47 @@
         })
         .done(function (data) {
             if (!data || !data.status) {
-                scheduleNextPoll($dialog, $btn, jobId, componentPath, startedAt);
+                scheduleNextPoll($dialog, $btn, $progress, jobId, componentPath, startedAt);
                 return;
             }
 
-            updateButtonLabel($btn, data);
+            setProgress($progress, phaseLabel(data), data.status !== 'success' && data.status !== 'failed');
 
             if (data.status === 'success') {
-                onFetchSuccess($dialog, $btn, componentPath, data);
+                onFetchSuccess($dialog, $btn, $progress, componentPath, data);
             } else if (data.status === 'failed') {
-                resetButton($btn);
+                resetFetch($btn, $progress);
                 notify('error', data.error || 'Fetch failed.');
             } else {
-                scheduleNextPoll($dialog, $btn, jobId, componentPath, startedAt);
+                scheduleNextPoll($dialog, $btn, $progress, jobId, componentPath, startedAt);
             }
         })
         .fail(function (xhr) {
             // Treat transient 5xx / network blips as recoverable; only stop on 404 (unknown job).
             if (xhr.status === 404) {
-                resetButton($btn);
+                resetFetch($btn, $progress);
                 notify('error', 'Fetch job not found — it may have been cleaned up.');
                 return;
             }
-            scheduleNextPoll($dialog, $btn, jobId, componentPath, startedAt);
+            scheduleNextPoll($dialog, $btn, $progress, jobId, componentPath, startedAt);
         });
     }
 
-    function scheduleNextPoll($dialog, $btn, jobId, componentPath, startedAt) {
+    function scheduleNextPoll($dialog, $btn, $progress, jobId, componentPath, startedAt) {
         setTimeout(function () {
-            pollFetchStatus($dialog, $btn, jobId, componentPath, startedAt);
+            pollFetchStatus($dialog, $btn, $progress, jobId, componentPath, startedAt);
         }, POLL_INTERVAL_MS);
     }
 
-    function updateButtonLabel($btn, data) {
-        var label = PHASE_LABELS[data.phase] || 'Fetching…';
+    function phaseLabel(data) {
         if (data.phase === 'uploading-assets' && data.pagesTotal) {
-            label = 'Uploading assets (' + (data.pagesProcessed || 0) + '/' + data.pagesTotal + ')…';
+            return 'Uploading assets (' + (data.pagesProcessed || 0) + '/' + data.pagesTotal + ')…';
         }
-        $btn.text(label);
+        return PHASE_LABELS[data.phase] || 'Fetching…';
     }
 
-    function onFetchSuccess($dialog, $btn, componentPath, data) {
-        resetButton($btn);
+    function onFetchSuccess($dialog, $btn, $progress, componentPath, data) {
+        resetFetch($btn, $progress);
         var tsEl = $dialog.find('[name="./cerosPrefetchedAt"]')[0];
         if (tsEl && data.fetchedAt) tsEl.value = data.fetchedAt;
 
@@ -159,8 +156,24 @@
         }
     }
 
-    function resetButton($btn) {
+    // ---- shared progress (spinner + status text), matching import-archive.js ----
+
+    function buildProgress() {
+        var $p = $('<span>', { 'class': 'cerosflex-progress' });
+        $p.append($('<span>', { 'class': 'cerosflex-spinner', 'aria-hidden': 'true' }));
+        $p.append($('<span>', { 'class': 'cerosflex-progress-text' }));
+        return $p;
+    }
+
+    function setProgress($progress, text, loading) {
+        if (!$progress || !$progress.length) return;
+        $progress.toggleClass('is-loading', !!loading);
+        $progress.find('.cerosflex-progress-text').text(text || '');
+    }
+
+    function resetFetch($btn, $progress) {
         $btn.removeAttr('disabled').text('Fetch');
+        setProgress($progress, '', false);
     }
 
     function notify(type, message) {
@@ -193,10 +206,12 @@
         // Browse Experiences is for picking a CDN experience URL — not for import.
         $root.find('.cerosflex-browse-btn').toggle(!isImport);
 
-        // Last Fetched / Manifest URL belong to the CDN fetch flow — hide for import.
+        // Last Fetched is only meaningful for the pre-fetch modes (store, import);
+        // hide it for fetch / inline / iframe-embed.
         var $tsWrapper = $root.find('[name="./cerosPrefetchedAt"]').closest('.coral-Form-fieldwrapper, coral-formfield');
-        $tsWrapper.toggle(!isImport);
+        $tsWrapper.toggle(isStore || isImport);
 
+        // Manifest URL is irrelevant for import (the source is an uploaded archive).
         var $urlWrapper = $root.find('[name="./manifestUrl"]').closest('.coral-Form-fieldwrapper, coral-formfield');
         $urlWrapper.toggle(!isImport);
     }
