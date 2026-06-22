@@ -13,13 +13,35 @@ runmode folder, e.g.:
 
 ---
 
-## Manifest Service (`CerosPublicManifestServiceImpl`)
+## Manifest Service (`CerosManifestServiceImpl`)
 
 Fetches and parses Ceros experience manifests from public URLs.
 
 | Property | Default | Description |
 |----------|---------|-------------|
 | `httpTimeoutSeconds` | `30` | HTTP timeout for fetching manifests |
+| `allowHttpScheme` | `false` | Accept `http://` manifest URLs in addition to `https://`. Dev/test only. |
+| `allowLocalAddresses` | `false` | Accept manifest URLs whose host is an IP literal or `localhost` alias. Dev/test only (SSRF guard). |
+| `cerosOwnedDomains` | `ceros.com`, `ceros.site`, `cerosdev.site`, `cerosstage.site` | Apex domains trusted to serve manifests. A pasted URL is only fetched and injected when the resolved manifest host exactly equals — or is a dotted subdomain of — one of these. Look-alikes (`evilceros.com`, `ceros.com.evil.com`) are rejected. |
+| `allowUntrustedManifestHost` | `false` | Skip the Ceros-owned domain whitelist (and the `x-flex-manifest` discovery step) and trust any host that passes the SSRF policy. Dev/test only (manifests served from localhost). Leave **off** in production. |
+
+### Trusting pasted experience URLs
+
+Pasted URLs are not trusted by default. Authors may paste **any** experience
+URL — including a customer vanity domain — but the connector only ever fetches a
+manifest, and injects the scripts it references, from a **Ceros-owned** host:
+
+- A URL already on a Ceros-owned domain resolves to its manifest directly.
+- A vanity domain is asked to advertise its canonical, Ceros-hosted manifest URL
+  via the [`x-flex-manifest`](https://github.com/ceros/ceros-spark/pull/9861)
+  response header on the published page. The advertised URL must itself pass the
+  Ceros-owned whitelist before it is fetched, so a spoofed header pointing
+  off-Ceros is rejected.
+- Anything that does not resolve to a Ceros-owned manifest is refused.
+
+In production, leave `allowUntrustedManifestHost` off so this whitelist is
+enforced. The author-SDK config enables it (and the other dev relaxations)
+because local experiences are served from `localhost`.
 
 ---
 

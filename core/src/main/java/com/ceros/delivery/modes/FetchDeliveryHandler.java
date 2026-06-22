@@ -39,6 +39,10 @@ public final class FetchDeliveryHandler implements DeliveryHandler {
                     context.manifestUrl);
             return DeliveryResult.EMPTY;
         }
+        // The pasted URL is validated and canonicalised to a trusted,
+        // Ceros-owned manifest URL at authoring time (CerosFlexInlinePostProcessor),
+        // so render does no resolution or extra network call. fetchPublicManifestFromUrl
+        // still enforces the Ceros-owned whitelist as a defence-in-depth gate.
         String url = normaliseManifestUrl(context.manifestUrl);
         try {
             CerosManifestV1 manifest = manifestService.fetchPublicManifestFromUrl(url);

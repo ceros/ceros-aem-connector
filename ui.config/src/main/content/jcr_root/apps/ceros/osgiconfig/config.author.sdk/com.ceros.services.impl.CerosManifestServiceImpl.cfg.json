@@ -1,5 +1,6 @@
 {
     "httpTimeoutSeconds:Integer": 30,
     "allowHttpScheme:Boolean": true,
-    "allowLocalAddresses:Boolean": true
+    "allowLocalAddresses:Boolean": true,
+    "allowUntrustedManifestHost:Boolean": true
 }

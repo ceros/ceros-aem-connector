@@ -52,6 +52,30 @@ public interface CerosManifestService {
     void validateManifestUrl(String manifestUrl);
 
     /**
+     * Resolves a user-supplied (pasted) experience or manifest URL into a
+     * trusted, Ceros-owned manifest URL — the security gate for the keyless
+     * paste flow.
+     *
+     * <p>We do not trust the pasted host by default. If it is already a
+     * Ceros-owned host the manifest URL is constructed directly; otherwise the
+     * pasted page is treated as a (possibly attacker-influenced) vanity domain
+     * and asked to advertise its canonical manifest URL via the
+     * {@code x-flex-manifest} response header. Either way the resolved manifest
+     * URL must itself be Ceros-owned before it is returned, so only manifests —
+     * and the scripts they reference — served from a Ceros TLD are ever fetched
+     * and injected.</p>
+     *
+     * @param rawUrl the URL pasted by the author
+     * @return a validated, Ceros-owned manifest URL safe to fetch
+     * @throws IllegalArgumentException if the URL cannot be resolved to a
+     *                                  Ceros-owned manifest (untrusted host, no
+     *                                  discovery header, policy violation)
+     * @throws IOException              if the experience page could not be
+     *                                  reached to read its discovery header
+     */
+    String resolveTrustedManifestUrl(String rawUrl) throws IOException;
+
+    /**
      * Runs the full fetch + asset upload + persist pipeline for store mode.
      *
      * <p>Progress is reported through {@code progress} so a background

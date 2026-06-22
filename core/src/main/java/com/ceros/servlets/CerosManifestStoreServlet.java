@@ -1,6 +1,5 @@
 package com.ceros.servlets;
 
-import com.ceros.CerosConstants;
 import com.ceros.jobs.CerosFetchManifestJobConsumer;
 import com.ceros.jobs.JcrFetchProgress;
 import com.ceros.services.CerosManifestService;
@@ -22,7 +21,6 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.regex.Pattern;
 
 /**
  * Authoring endpoint hit by the dialog's "Fetch" button. Validates input
@@ -41,8 +39,6 @@ import java.util.regex.Pattern;
 public class CerosManifestStoreServlet extends SlingAllMethodsServlet {
 
     private static final Logger log = LoggerFactory.getLogger(CerosManifestStoreServlet.class);
-    private static final Pattern MANIFEST_JSON_PATTERN =
-            Pattern.compile("manifest(\\.v[0-9.]+)?\\.json$");
 
     static final String STATUS_URL_PATH = "/bin/ceros/fetch-manifest-status";
 
@@ -58,19 +54,28 @@ public class CerosManifestStoreServlet extends SlingAllMethodsServlet {
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
-        String manifestUrl = StringUtils.trimToNull(request.getParameter("manifestUrl"));
-        if (manifestUrl == null) {
+        String pastedUrl = StringUtils.trimToNull(request.getParameter("manifestUrl"));
+        if (pastedUrl == null) {
             ServletUtils.writeError(response, SlingHttpServletResponse.SC_BAD_REQUEST,
                     "manifestUrl parameter is required");
             return;
         }
-        manifestUrl = normaliseManifestUrl(manifestUrl);
 
+        // Resolve the pasted URL into a trusted, Ceros-owned manifest URL. A
+        // vanity domain is supported by reading its x-flex-manifest header; any
+        // URL that doesn't resolve to a Ceros-owned manifest is rejected here,
+        // before anything is fetched or injected.
+        String manifestUrl;
         try {
-            cerosManifestService.validateManifestUrl(manifestUrl);
+            manifestUrl = cerosManifestService.resolveTrustedManifestUrl(pastedUrl);
         } catch (IllegalArgumentException e) {
-            log.warn("Rejected manifest URL {}: {}", manifestUrl, e.getMessage());
+            log.warn("Rejected manifest URL {}: {}", pastedUrl, e.getMessage());
             ServletUtils.writeError(response, SlingHttpServletResponse.SC_BAD_REQUEST, e.getMessage());
+            return;
+        } catch (IOException e) {
+            log.warn("Could not reach experience to verify {}: {}", pastedUrl, e.getMessage());
+            ServletUtils.writeError(response, SlingHttpServletResponse.SC_BAD_GATEWAY,
+                    "Could not reach the experience to verify it. Please try again in a moment.");
             return;
         }
 
@@ -101,15 +106,5 @@ public class CerosManifestStoreServlet extends SlingAllMethodsServlet {
                 "status", "accepted",
                 "jobId", jobId,
                 "statusUrl", STATUS_URL_PATH + ".json?jobId=" + jobId));
-    }
-
-    private String normaliseManifestUrl(String manifestUrl) {
-        if (!MANIFEST_JSON_PATTERN.matcher(manifestUrl).find()) {
-            if (!manifestUrl.endsWith("/")) {
-                manifestUrl += "/";
-            }
-            manifestUrl += CerosConstants.DEFAULT_ASSET_FILE_PATH;
-        }
-        return manifestUrl;
     }
 }

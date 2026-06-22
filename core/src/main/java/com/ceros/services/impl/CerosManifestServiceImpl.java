@@ -1,6 +1,9 @@
 package com.ceros.services.impl;
 
+import com.ceros.CerosConstants;
+import com.ceros.delivery.DeliveryResult;
 import com.ceros.delivery.modes.CerosDeliveryMode;
+import com.ceros.delivery.modes.FetchDeliveryHandler;
 import com.ceros.models.cerosflex.CerosManifestV1;
 import com.ceros.models.cerosflex.StoredManifestBundle;
 import com.ceros.services.CerosAssetStorageService;
@@ -27,8 +30,11 @@ import javax.jcr.Session;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Component(service = CerosManifestService.class)
 @Designate(ocd = CerosManifestServiceImpl.Config.class)
@@ -53,6 +59,23 @@ public class CerosManifestServiceImpl implements CerosManifestService {
                         "production to defend against SSRF to cloud metadata services " +
                         "and internal hosts.")
         boolean allowLocalAddresses() default false;
+
+        @AttributeDefinition(name = "Ceros-owned manifest domains",
+                description = "Apex domains trusted to serve manifests and the scripts " +
+                        "they reference. A pasted URL is only fetched and injected when " +
+                        "the resolved manifest host exactly equals — or is a dotted " +
+                        "subdomain of — one of these. Look-alikes are rejected.")
+        String[] cerosOwnedDomains() default {
+                "ceros.com", "ceros.site", "cerosdev.site", "cerosstage.site"
+        };
+
+        @AttributeDefinition(name = "Allow untrusted manifest hosts",
+                description = "Skip the Ceros-owned domain whitelist (and the " +
+                        "x-flex-manifest discovery step) and trust any host that " +
+                        "passes the SSRF policy. Intended for dev/test where manifests " +
+                        "are served from localhost; leave off in production so only " +
+                        "Ceros-owned manifests are ever fetched and injected.")
+        boolean allowUntrustedManifestHost() default false;
     }
 
     /** Zip-bomb guard: cap on the summed uncompressed size of an import archive. */
@@ -68,6 +91,8 @@ public class CerosManifestServiceImpl implements CerosManifestService {
     private int httpTimeoutMillis;
     private boolean allowHttpScheme;
     private boolean allowLocalAddresses;
+    private boolean allowUntrustedManifestHost;
+    private List<String> cerosOwnedDomains = Arrays.asList(CerosConstants.DEFAULT_CEROS_OWNED_DOMAINS);
 
     @Activate
     @Modified
@@ -75,6 +100,11 @@ public class CerosManifestServiceImpl implements CerosManifestService {
         httpTimeoutMillis = config.httpTimeoutSeconds() * 1000;
         allowHttpScheme = config.allowHttpScheme();
         allowLocalAddresses = config.allowLocalAddresses();
+        allowUntrustedManifestHost = config.allowUntrustedManifestHost();
+        String[] domains = config.cerosOwnedDomains();
+        cerosOwnedDomains = (domains != null && domains.length > 0)
+                ? Arrays.asList(domains)
+                : Arrays.asList(CerosConstants.DEFAULT_CEROS_OWNED_DOMAINS);
     }
 
     @Override
@@ -85,6 +115,11 @@ public class CerosManifestServiceImpl implements CerosManifestService {
         // Throws IllegalArgumentException for non-https / IP-literal / localhost
         // when the corresponding OSGi flags are off (production posture).
         HttpUtils.validateOutboundUrl(manifestUrl, allowHttpScheme, allowLocalAddresses);
+        // Whitelist gate (defence in depth): never fetch — and so never inject
+        // the scripts it references — a manifest that is not Ceros-owned, even
+        // if a caller passed an unresolved or stale URL. Entry points resolve
+        // vanity domains to a Ceros host up front via resolveTrustedManifestUrl.
+        requireCerosOwnedManifestHost(manifestUrl);
         log.debug("Fetching Ceros manifest from {}", manifestUrl);
 
         String json = HttpUtils.fetchString(manifestUrl, httpTimeoutMillis,
@@ -97,6 +132,64 @@ public class CerosManifestServiceImpl implements CerosManifestService {
         HttpUtils.validateOutboundUrl(
                 manifestUrl == null ? null : manifestUrl.trim(),
                 allowHttpScheme, allowLocalAddresses);
+    }
+
+    @Override
+    public String resolveTrustedManifestUrl(String rawUrl) throws IOException {
+        String pasted = rawUrl == null ? null : rawUrl.trim();
+        // SSRF gate the pasted URL before any outbound request.
+        HttpUtils.validateOutboundUrl(pasted, allowHttpScheme, allowLocalAddresses);
+
+        String manifestUrl;
+        if (allowUntrustedManifestHost || HttpUtils.isUrlInAllowedDomains(pasted, cerosOwnedDomains)) {
+            // Trusted host (Ceros-owned, or any host in the dev/test posture):
+            // construct the manifest URL directly from the pasted experience URL.
+            manifestUrl = FetchDeliveryHandler.normaliseManifestUrl(pasted);
+        } else {
+            // Vanity / unknown host: do not trust it. Ask the experience page to
+            // advertise its canonical, Ceros-owned manifest URL via the
+            // x-flex-manifest header. HEAD the experience URL (the header rides
+            // the HTML page, not the .json content route).
+            String experienceUrl = DeliveryResult.deriveExperienceUrl(pasted);
+            Optional<String> advertised = fetchFlexManifestHeader(experienceUrl);
+            manifestUrl = advertised.map(String::trim).filter(s -> !s.isEmpty()).orElse(null);
+            if (manifestUrl == null) {
+                throw new IllegalArgumentException(
+                        "This URL isn't on a recognized Ceros domain and didn't advertise "
+                                + "a Ceros manifest, so it can't be trusted.");
+            }
+        }
+
+        // The advertised/constructed URL is attacker-influenced for a vanity
+        // domain, so re-apply both gates before returning it: it must be a valid
+        // outbound target AND served from a Ceros-owned TLD.
+        HttpUtils.validateOutboundUrl(manifestUrl, allowHttpScheme, allowLocalAddresses);
+        requireCerosOwnedManifestHost(manifestUrl);
+        return manifestUrl;
+    }
+
+    /**
+     * Reads the {@code x-flex-manifest} discovery header off a published Flex
+     * experience page via a {@code HEAD} request. Extracted as a seam so the
+     * vanity-domain resolution path is unit-testable without a live host.
+     */
+    protected Optional<String> fetchFlexManifestHeader(String experienceUrl) throws IOException {
+        return HttpUtils.headResponseHeader(experienceUrl, httpTimeoutMillis,
+                CerosConstants.FLEX_MANIFEST_HEADER);
+    }
+
+    /**
+     * Enforces that {@code manifestUrl} is served from a Ceros-owned TLD, unless
+     * the dev/test {@code allowUntrustedManifestHost} relaxation is on.
+     */
+    private void requireCerosOwnedManifestHost(String manifestUrl) {
+        if (allowUntrustedManifestHost) {
+            return;
+        }
+        if (!HttpUtils.isUrlInAllowedDomains(manifestUrl, cerosOwnedDomains)) {
+            throw new IllegalArgumentException(
+                    "Manifest host is not a recognized Ceros domain: " + manifestUrl);
+        }
     }
 
     @Override

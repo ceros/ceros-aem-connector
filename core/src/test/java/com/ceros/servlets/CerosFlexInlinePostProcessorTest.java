@@ -66,11 +66,65 @@ class CerosFlexInlinePostProcessorTest {
         when(props.get("cerosMode", String.class)).thenReturn("inline");
         when(props.get("manifestUrl", String.class)).thenReturn(MANIFEST_URL);
         when(props.get("cerosInlineScriptUrl", String.class)).thenReturn(null);
+        when(manifestService.resolveTrustedManifestUrl(MANIFEST_URL)).thenReturn(MANIFEST_URL);
         when(manifestService.fetchPublicManifestFromUrl(MANIFEST_URL)).thenReturn(manifestWithInline());
 
         processor.process(request, changes);
 
         verify(props).put("cerosInlineScriptUrl", CLIENT_URL);
+        // Manifest URL already canonical → not rewritten; only the script URL is stored.
+        verify(props, never()).put(eq("manifestUrl"), anyString());
+        assertEquals(1, changes.size());
+    }
+
+    @Test
+    void inlineModeRewritesManifestUrlToResolvedCanonical() throws Exception {
+        // A vanity experience URL resolves (via x-flex-manifest) to a Ceros host;
+        // the canonical URL is persisted so the browser fetches from Ceros.
+        String vanityUrl = "https://look.customer.com/exp";
+        when(props.get("cerosMode", String.class)).thenReturn("inline");
+        when(props.get("manifestUrl", String.class)).thenReturn(vanityUrl);
+        when(props.get("cerosInlineScriptUrl", String.class)).thenReturn(null);
+        when(manifestService.resolveTrustedManifestUrl(vanityUrl)).thenReturn(MANIFEST_URL);
+        when(manifestService.fetchPublicManifestFromUrl(MANIFEST_URL)).thenReturn(manifestWithInline());
+
+        processor.process(request, changes);
+
+        verify(props).put("manifestUrl", MANIFEST_URL);
+        verify(props).put("cerosInlineScriptUrl", CLIENT_URL);
+        assertEquals(2, changes.size());
+    }
+
+    @Test
+    void inlineModeUntrustedUrlClearsScriptAndDoesNotInject() throws Exception {
+        when(props.get("cerosMode", String.class)).thenReturn("inline");
+        when(props.get("manifestUrl", String.class)).thenReturn("https://customer.com/exp");
+        when(props.get("cerosInlineScriptUrl", String.class)).thenReturn(CLIENT_URL);
+        when(manifestService.resolveTrustedManifestUrl("https://customer.com/exp"))
+                .thenThrow(new IllegalArgumentException("not a recognized Ceros domain"));
+
+        processor.process(request, changes);
+
+        verify(props).remove("cerosInlineScriptUrl");
+        verify(manifestService, never()).fetchPublicManifestFromUrl(anyString());
+        assertEquals(1, changes.size());
+    }
+
+    @Test
+    void fetchModeCanonicalisesManifestUrlWithoutGrabbingScript() throws Exception {
+        // Fetch (live) mode: the pasted URL is validated/canonicalised at save
+        // so render trusts it, but no inline script is grabbed.
+        String vanityUrl = "https://look.customer.com/exp";
+        when(props.get("cerosMode", String.class)).thenReturn("fetch");
+        when(props.get("manifestUrl", String.class)).thenReturn(vanityUrl);
+        when(props.get("cerosInlineScriptUrl", String.class)).thenReturn(null);
+        when(manifestService.resolveTrustedManifestUrl(vanityUrl)).thenReturn(MANIFEST_URL);
+
+        processor.process(request, changes);
+
+        verify(props).put("manifestUrl", MANIFEST_URL);
+        verify(manifestService, never()).fetchPublicManifestFromUrl(anyString());
+        verify(props, never()).put(eq("cerosInlineScriptUrl"), anyString());
         assertEquals(1, changes.size());
     }
 
@@ -101,6 +155,7 @@ class CerosFlexInlinePostProcessorTest {
         when(props.get("cerosMode", String.class)).thenReturn("inline");
         when(props.get("manifestUrl", String.class)).thenReturn(MANIFEST_URL);
         when(props.get("cerosInlineScriptUrl", String.class)).thenReturn(CLIENT_URL);
+        when(manifestService.resolveTrustedManifestUrl(MANIFEST_URL)).thenReturn(MANIFEST_URL);
         when(manifestService.fetchPublicManifestFromUrl(MANIFEST_URL))
                 .thenThrow(new IOException("connection refused"));
 
@@ -115,6 +170,7 @@ class CerosFlexInlinePostProcessorTest {
         when(props.get("cerosMode", String.class)).thenReturn("inline");
         when(props.get("manifestUrl", String.class)).thenReturn(MANIFEST_URL);
         when(props.get("cerosInlineScriptUrl", String.class)).thenReturn(CLIENT_URL);
+        when(manifestService.resolveTrustedManifestUrl(MANIFEST_URL)).thenReturn(MANIFEST_URL);
         when(manifestService.fetchPublicManifestFromUrl(MANIFEST_URL)).thenReturn(manifestWithInline());
 
         processor.process(request, changes);

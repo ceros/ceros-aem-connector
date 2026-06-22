@@ -2,10 +2,17 @@ package com.ceros.util;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class HttpUtilsTest {
+
+    private static final List<String> CEROS_DOMAINS =
+            List.of("ceros.com", "ceros.site", "cerosdev.site", "cerosstage.site");
 
     @Test
     void validateOutboundUrl_acceptsHttps() {
@@ -103,5 +110,56 @@ class HttpUtilsTest {
         assertThrows(IllegalArgumentException.class, () ->
                 HttpUtils.validateOutboundUrl("//cdn.ceros.com/exp/manifest.v1.json",
                         false, false));
+    }
+
+    // ---- isUrlInAllowedDomains ----
+
+    @Test
+    void isUrlInAllowedDomains_acceptsExactApex() {
+        assertTrue(HttpUtils.isUrlInAllowedDomains("https://ceros.com/exp", CEROS_DOMAINS));
+    }
+
+    @Test
+    void isUrlInAllowedDomains_acceptsSubdomain() {
+        assertTrue(HttpUtils.isUrlInAllowedDomains(
+                "https://acme.ceros.site/exp/manifest.v1.json", CEROS_DOMAINS));
+        assertTrue(HttpUtils.isUrlInAllowedDomains(
+                "https://view.ceros.com/exp", CEROS_DOMAINS));
+        assertTrue(HttpUtils.isUrlInAllowedDomains(
+                "https://a.b.cerosdev.site/exp", CEROS_DOMAINS));
+    }
+
+    @Test
+    void isUrlInAllowedDomains_rejectsHttp() {
+        assertFalse(HttpUtils.isUrlInAllowedDomains("http://ceros.com/exp", CEROS_DOMAINS));
+    }
+
+    @Test
+    void isUrlInAllowedDomains_rejectsLookalikePrefix() {
+        // Substring match would wrongly accept this; exact-suffix must reject it.
+        assertFalse(HttpUtils.isUrlInAllowedDomains("https://evilceros.com/exp", CEROS_DOMAINS));
+    }
+
+    @Test
+    void isUrlInAllowedDomains_rejectsLookalikeSuffix() {
+        assertFalse(HttpUtils.isUrlInAllowedDomains("https://ceros.com.evil.com/exp", CEROS_DOMAINS));
+        assertFalse(HttpUtils.isUrlInAllowedDomains("https://ceros.site.attacker.net/exp", CEROS_DOMAINS));
+    }
+
+    @Test
+    void isUrlInAllowedDomains_rejectsUnrelatedHost() {
+        assertFalse(HttpUtils.isUrlInAllowedDomains("https://customer.com/exp", CEROS_DOMAINS));
+    }
+
+    @Test
+    void isUrlInAllowedDomains_rejectsNullBlankOrEmptyDomains() {
+        assertFalse(HttpUtils.isUrlInAllowedDomains(null, CEROS_DOMAINS));
+        assertFalse(HttpUtils.isUrlInAllowedDomains("   ", CEROS_DOMAINS));
+        assertFalse(HttpUtils.isUrlInAllowedDomains("https://ceros.com/exp", List.of()));
+    }
+
+    @Test
+    void isUrlInAllowedDomains_rejectsUnparseableUrl() {
+        assertFalse(HttpUtils.isUrlInAllowedDomains("ht!tp://no", CEROS_DOMAINS));
     }
 }
