@@ -18,10 +18,14 @@ public final class CerosConstants {
      * Default set of Ceros-owned TLDs trusted to serve manifests and the
      * scripts they reference. A manifest URL is only fetched and injected when
      * its host exactly equals — or is a dotted subdomain of — one of these.
-     * Overridable via OSGi config on {@code CerosManifestServiceImpl}.
+     *
+     * <p>Production domains only — the non-production TLDs ({@code cerosdev.site},
+     * {@code cerosstage.site}) are deliberately excluded so customer-facing
+     * installs never reference internal environments. Add them via the
+     * {@code cerosOwnedDomains} OSGi config for local/dev testing.</p>
      */
     public static final String[] DEFAULT_CEROS_OWNED_DOMAINS = {
-        "ceros.com", "ceros.site", "cerosdev.site", "cerosstage.site"
+        "ceros.com", "ceros.site"
     };
 
     private CerosConstants() {}

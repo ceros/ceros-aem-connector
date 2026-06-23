@@ -1,7 +1,9 @@
 package com.ceros.util;
 
+import com.ceros.CerosConstants;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -161,5 +163,16 @@ class HttpUtilsTest {
     @Test
     void isUrlInAllowedDomains_rejectsUnparseableUrl() {
         assertFalse(HttpUtils.isUrlInAllowedDomains("ht!tp://no", CEROS_DOMAINS));
+    }
+
+    @Test
+    void defaultDomains_areProductionOnly_excludingDevAndStage() {
+        List<String> defaults = Arrays.asList(CerosConstants.DEFAULT_CEROS_OWNED_DOMAINS);
+        // Production hosts are trusted out of the box.
+        assertTrue(HttpUtils.isUrlInAllowedDomains("https://acme.ceros.site/exp/manifest.v1.json", defaults));
+        assertTrue(HttpUtils.isUrlInAllowedDomains("https://view.ceros.com/exp", defaults));
+        // Non-production TLDs are NOT trusted by default (add via config for dev).
+        assertFalse(HttpUtils.isUrlInAllowedDomains("https://acme.cerosdev.site/exp/manifest.v1.json", defaults));
+        assertFalse(HttpUtils.isUrlInAllowedDomains("https://acme.cerosstage.site/exp/manifest.v1.json", defaults));
     }
 }

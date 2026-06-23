@@ -64,9 +64,11 @@ public class CerosManifestServiceImpl implements CerosManifestService {
                 description = "Apex domains trusted to serve manifests and the scripts " +
                         "they reference. A pasted URL is only fetched and injected when " +
                         "the resolved manifest host exactly equals — or is a dotted " +
-                        "subdomain of — one of these. Look-alikes are rejected.")
+                        "subdomain of — one of these. Look-alikes are rejected. " +
+                        "Production domains only by default; add cerosdev.site / " +
+                        "cerosstage.site here for local/dev testing.")
         String[] cerosOwnedDomains() default {
-                "ceros.com", "ceros.site", "cerosdev.site", "cerosstage.site"
+                "ceros.com", "ceros.site"
         };
 
         @AttributeDefinition(name = "Allow untrusted manifest hosts",

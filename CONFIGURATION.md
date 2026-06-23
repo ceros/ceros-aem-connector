@@ -22,7 +22,7 @@ Fetches and parses Ceros experience manifests from public URLs.
 | `httpTimeoutSeconds` | `30` | HTTP timeout for fetching manifests |
 | `allowHttpScheme` | `false` | Accept `http://` manifest URLs in addition to `https://`. Dev/test only. |
 | `allowLocalAddresses` | `false` | Accept manifest URLs whose host is an IP literal or `localhost` alias. Dev/test only (SSRF guard). |
-| `cerosOwnedDomains` | `ceros.com`, `ceros.site`, `cerosdev.site`, `cerosstage.site` | Apex domains trusted to serve manifests. A pasted URL is only fetched and injected when the resolved manifest host exactly equals — or is a dotted subdomain of — one of these. Look-alikes (`evilceros.com`, `ceros.com.evil.com`) are rejected. |
+| `cerosOwnedDomains` | `ceros.com`, `ceros.site` | Apex domains trusted to serve manifests. A pasted URL is only fetched and injected when the resolved manifest host exactly equals — or is a dotted subdomain of — one of these. Look-alikes (`evilceros.com`, `ceros.com.evil.com`) are rejected. **Production domains only** — non-prod TLDs (`cerosdev.site`, `cerosstage.site`) are intentionally excluded so customer installs never reference internal environments; add them here for local/dev testing (the author-SDK config does). |
 | `allowUntrustedManifestHost` | `false` | Skip the Ceros-owned domain whitelist (and the `x-flex-manifest` discovery step) and trust any host that passes the SSRF policy. Dev/test only (manifests served from localhost). Leave **off** in production. |
 
 ### Trusting pasted experience URLs
@@ -40,8 +40,9 @@ manifest, and injects the scripts it references, from a **Ceros-owned** host:
 - Anything that does not resolve to a Ceros-owned manifest is refused.
 
 In production, leave `allowUntrustedManifestHost` off so this whitelist is
-enforced. The author-SDK config enables it (and the other dev relaxations)
-because local experiences are served from `localhost`.
+enforced. The author-SDK config enables it (and the other dev relaxations), and
+adds `cerosdev.site` / `cerosstage.site` to `cerosOwnedDomains`, because local
+experiences are served from `localhost` or non-prod environments.
 
 ---
 
