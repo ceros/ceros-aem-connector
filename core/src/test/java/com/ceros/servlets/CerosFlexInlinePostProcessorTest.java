@@ -30,8 +30,8 @@ class CerosFlexInlinePostProcessorTest {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String RESOURCE_TYPE = "connectors/ceros/components/cerosflex";
     private static final String PATH = "/content/site/page/jcr:content/root/cerosflex";
-    private static final String MANIFEST_URL = "https://ceros-qa.latest.cerosdev.site/exp/manifest.v1.json";
-    private static final String CLIENT_URL = "https://assets.latest.cerosdev.site/js/flex-client.js";
+    private static final String MANIFEST_URL = "https://ceros-qa.latest.ceros.site/exp/manifest.v1.json";
+    private static final String CLIENT_URL = "https://assets.latest.ceros.site/js/flex-client.js";
 
     @Mock private CerosManifestService manifestService;
     @Mock private SlingHttpServletRequest request;

@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class HttpUtilsTest {
 
     private static final List<String> CEROS_DOMAINS =
-            List.of("ceros.site", "cerosdev.site", "cerosstage.site");
+            List.of("ceros.site", "example.com");
 
     @Test
     void validateOutboundUrl_acceptsHttps() {
@@ -128,7 +128,7 @@ class HttpUtilsTest {
         assertTrue(HttpUtils.isUrlInAllowedDomains(
                 "https://acme.ceros.site/exp", CEROS_DOMAINS));
         assertTrue(HttpUtils.isUrlInAllowedDomains(
-                "https://a.b.cerosdev.site/exp", CEROS_DOMAINS));
+                "https://a.b.example.com/exp", CEROS_DOMAINS));
     }
 
     @Test
@@ -166,14 +166,13 @@ class HttpUtilsTest {
     }
 
     @Test
-    void defaultDomains_areProductionOnly_excludingDevAndStage() {
+    void defaultDomains_trustOnlyFlexProductionHost() {
         List<String> defaults = Arrays.asList(CerosConstants.DEFAULT_CEROS_OWNED_DOMAINS);
         // The Flex production host is trusted out of the box.
         assertTrue(HttpUtils.isUrlInAllowedDomains("https://acme.ceros.site/exp/manifest.v1.json", defaults));
-        // ceros.com is Studio, not Flex — not trusted by default.
+        // Nothing else is — not Studio (ceros.com), and no non-production host
+        // (those must be added per environment via OSGi config).
         assertFalse(HttpUtils.isUrlInAllowedDomains("https://view.ceros.com/exp", defaults));
-        // Non-production TLDs are NOT trusted by default (add via config for dev).
-        assertFalse(HttpUtils.isUrlInAllowedDomains("https://acme.cerosdev.site/exp/manifest.v1.json", defaults));
-        assertFalse(HttpUtils.isUrlInAllowedDomains("https://acme.cerosstage.site/exp/manifest.v1.json", defaults));
+        assertFalse(HttpUtils.isUrlInAllowedDomains("https://acme.example.com/exp/manifest.v1.json", defaults));
     }
 }
