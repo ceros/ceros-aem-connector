@@ -1,5 +1,6 @@
 package com.ceros.servlets;
 
+import com.ceros.CerosConstants;
 import com.ceros.delivery.modes.CerosDeliveryMode;
 import com.ceros.models.cerosflex.CerosManifestV1;
 import com.ceros.services.CerosManifestService;
@@ -15,26 +16,30 @@ import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 
 /**
- * Runs after a Ceros Flex component dialog is saved. For the live delivery
- * modes (inline and fetch) it validates the pasted manifest URL up front:
- * {@code resolveTrustedManifestUrl} resolves it to a trusted, Ceros-owned
- * manifest URL (supporting vanity domains via the {@code x-flex-manifest}
- * header) and persists that canonical URL back onto the component, so render
- * trusts the stored URL and makes no extra network call. For inline mode it
- * additionally grabs the {@code flex-client.js} URL from the manifest's inline
- * delivery mode and persists it as {@code cerosInlineScriptUrl}, so the render
- * path can emit the inline {@code <script>} with no network call.
+ * Runs after a Ceros Flex component dialog is saved and validates the pasted
+ * experience URL for every URL-based delivery mode (inline, fetch, embed and
+ * store). {@code resolveTrustedManifestUrl} confirms the URL resolves to a
+ * trusted, Ceros-owned manifest — supporting vanity domains via the
+ * {@code x-flex-manifest} header — and an untrusted or unreachable URL makes
+ * the post-processor throw, which aborts the Sling POST so the dialog refuses
+ * to save: an invalid URL can never be persisted.
+ *
+ * <p>On success the live modes (inline and fetch) additionally have their
+ * manifest URL canonicalised to the resolved Ceros host (so render trusts the
+ * stored URL and makes no extra network call), and inline mode grabs the
+ * {@code flex-client.js} URL from the manifest's inline delivery mode and
+ * persists it as {@code cerosInlineScriptUrl} for the render path. Embed mode
+ * is validated only — its (possibly vanity) URL is left as pasted, since the
+ * experience is loaded in a client-side iframe rather than fetched server-side.
  *
  * <p>This is the live-mode analogue of Store mode's fetch step, but lightweight
  * — at most one HEAD + one manifest fetch, no asset download — so it runs inline
- * with the save rather than off a background job. Fail-soft: any problem
- * (untrusted host, unreachable page, no inline delivery mode) is logged and the
- * inline script URL is cleared, so the save always succeeds and an untrusted
- * experience renders the placeholder rather than injecting a non-Ceros script.
+ * with the save rather than off a background job.
  */
 @Component(service = SlingPostProcessor.class)
 public class CerosFlexInlinePostProcessor implements SlingPostProcessor {
@@ -65,17 +70,88 @@ public class CerosFlexInlinePostProcessor implements SlingPostProcessor {
         String mode = props.get(PROP_MODE, String.class);
         boolean inlineMode = CerosDeliveryMode.INLINE.value().equals(mode);
         boolean fetchMode = CerosDeliveryMode.FETCH.value().equals(mode);
+        boolean embedMode = CerosDeliveryMode.EMBED.value().equals(mode);
+        boolean storeMode = CerosDeliveryMode.STORE.value().equals(mode);
+        boolean urlMode = inlineMode || fetchMode || embedMode || storeMode;
         String manifestUrl = StringUtils.trimToNull(props.get(PROP_MANIFEST_URL, String.class));
 
-        // Validate the pasted URL and canonicalise it for the live modes at save
-        // time, so render trusts the stored URL. null = untrusted/unreachable.
-        String canonical = (inlineMode || fetchMode) && manifestUrl != null
-                ? canonicaliseManifestUrl(props, changes, resource, manifestUrl)
-                : null;
+        // Validate the pasted URL on save for every URL-based mode. A failure
+        // throws, which aborts the Sling POST so the dialog won't save an
+        // untrusted or unreachable experience. (Import mode has no URL.)
+        String scriptUrl = null;
+        if (urlMode && manifestUrl != null) {
+            String canonical = resolveOrReject(manifestUrl);
 
-        // Inline mode additionally grabs the flex-client.js runtime URL up front.
-        String scriptUrl = inlineMode && canonical != null ? grabInlineScriptUrl(canonical) : null;
+            // The live modes fetch/inject server-side, so they must point at the
+            // canonical Ceros host; embed and store keep the pasted URL (embed
+            // loads it in an iframe; store resolves it via its own Fetch action).
+            if ((inlineMode || fetchMode) && !canonical.equals(manifestUrl)) {
+                props.put(PROP_MANIFEST_URL, canonical);
+                changes.add(Modification.onModified(resource.getPath() + "/" + PROP_MANIFEST_URL));
+            }
 
+            // Inline mode also needs a usable flex-client.js runtime up front.
+            if (inlineMode) {
+                scriptUrl = grabInlineScriptUrlOrReject(canonical);
+            }
+        }
+
+        writeScriptUrl(props, changes, resource, scriptUrl);
+    }
+
+    /**
+     * Resolves the pasted URL to a trusted, Ceros-owned manifest URL, throwing a
+     * user-facing {@link IllegalArgumentException} when it isn't a recognized
+     * Ceros experience (propagating the resolver's own message) or can't be
+     * reached. The thrown exception aborts the save.
+     */
+    private String resolveOrReject(String manifestUrl) {
+        try {
+            return cerosManifestService.resolveTrustedManifestUrl(manifestUrl);
+        } catch (IllegalArgumentException e) {
+            // Not https / IP-literal / not a recognized Ceros domain.
+            log.warn("Rejected manifest URL {}: {}", manifestUrl, e.getMessage());
+            throw e;
+        } catch (IOException e) {
+            log.warn("Could not reach experience to verify manifest URL {}: {}", manifestUrl, e.getMessage());
+            throw new IllegalArgumentException(CerosConstants.MSG_UNREACHABLE_EXPERIENCE);
+        }
+    }
+
+    /**
+     * Fetches the (already trusted) manifest and returns its inline
+     * {@code flex-client.js} URL, resolved against the manifest URL — a no-op for
+     * the absolute URLs the live endpoint serves; absolutises a relative URL from
+     * an exported manifest. Throws {@link IllegalArgumentException} (aborting the
+     * save) when the experience can't be reached or exposes no usable inline
+     * delivery mode.
+     */
+    private String grabInlineScriptUrlOrReject(String canonical) {
+        CerosManifestV1 manifest;
+        try {
+            manifest = cerosManifestService.fetchPublicManifestFromUrl(canonical);
+        } catch (IOException e) {
+            log.warn("Could not fetch manifest to grab inline runtime URL from {}: {}", canonical, e.getMessage());
+            throw new IllegalArgumentException(CerosConstants.MSG_UNREACHABLE_EXPERIENCE);
+        }
+        CerosManifestV1.DeliveryMode inline = manifest != null
+                ? manifest.getDeliveryMode(INLINE_DELIVERY_MODE) : null;
+        String scriptUrl = inline != null && !inline.getScripts().isEmpty()
+                ? inline.getScripts().get(0).getUrl() : null;
+        if (StringUtils.isBlank(scriptUrl)) {
+            log.warn("Manifest {} has no inline delivery-mode script", canonical);
+            throw new IllegalArgumentException(CerosConstants.MSG_NO_INLINE_MODE);
+        }
+        return URI.create(canonical).resolve(scriptUrl).toString();
+    }
+
+    /**
+     * Keeps the persisted inline runtime URL in sync with the latest save: sets
+     * it when present, clears a stale value otherwise (e.g. after switching away
+     * from inline mode), recording a modification only when it actually changes.
+     */
+    private void writeScriptUrl(ModifiableValueMap props, List<Modification> changes,
+                                Resource resource, String scriptUrl) {
         String existing = props.get(PROP_INLINE_SCRIPT_URL, String.class);
         if (scriptUrl != null) {
             if (!scriptUrl.equals(existing)) {
@@ -83,61 +159,8 @@ public class CerosFlexInlinePostProcessor implements SlingPostProcessor {
                 changes.add(Modification.onModified(resource.getPath() + "/" + PROP_INLINE_SCRIPT_URL));
             }
         } else if (existing != null) {
-            // Not inline, URL cleared, or grab failed — drop the stale value.
             props.remove(PROP_INLINE_SCRIPT_URL);
             changes.add(Modification.onModified(resource.getPath() + "/" + PROP_INLINE_SCRIPT_URL));
-        }
-    }
-
-    /**
-     * Resolves the pasted manifest URL to a trusted, Ceros-owned manifest URL
-     * (supporting vanity domains via {@code x-flex-manifest}) and persists the
-     * canonical URL back onto the component, so the browser's
-     * {@code data-flex-manifest-url} / the live fetch points at Ceros and not the
-     * (possibly attacker-influenced) vanity host. Returns {@code null} when the
-     * URL can't be resolved to a Ceros-owned manifest — render then refuses it
-     * via the whitelist gate rather than fetching anything off-Ceros.
-     */
-    private String canonicaliseManifestUrl(ModifiableValueMap props, List<Modification> changes,
-                                           Resource resource, String manifestUrl) {
-        String canonical;
-        try {
-            canonical = cerosManifestService.resolveTrustedManifestUrl(manifestUrl);
-        } catch (Exception e) {
-            log.warn("Could not resolve a trusted manifest URL from {}: {}", manifestUrl, e.getMessage());
-            return null;
-        }
-        if (!canonical.equals(manifestUrl)) {
-            props.put(PROP_MANIFEST_URL, canonical);
-            changes.add(Modification.onModified(resource.getPath() + "/" + PROP_MANIFEST_URL));
-        }
-        return canonical;
-    }
-
-    /**
-     * Fetches the (already trusted) manifest and returns its inline
-     * {@code flex-client.js} URL, resolved against the manifest URL — a no-op for
-     * the absolute URLs the live endpoint serves; absolutises a relative URL from
-     * an exported manifest. Returns {@code null} on any failure (unreachable page,
-     * no inline delivery mode), which the caller treats as "clear".
-     */
-    private String grabInlineScriptUrl(String canonical) {
-        try {
-            CerosManifestV1 manifest = cerosManifestService.fetchPublicManifestFromUrl(canonical);
-            CerosManifestV1.DeliveryMode inline = manifest != null
-                    ? manifest.getDeliveryMode(INLINE_DELIVERY_MODE) : null;
-            if (inline == null || inline.getScripts().isEmpty()) {
-                log.warn("Manifest {} has no inline delivery-mode script; clearing inline runtime URL", canonical);
-                return null;
-            }
-            String scriptUrl = inline.getScripts().get(0).getUrl();
-            if (StringUtils.isBlank(scriptUrl)) {
-                return null;
-            }
-            return URI.create(canonical).resolve(scriptUrl).toString();
-        } catch (Exception e) {
-            log.warn("Could not grab inline runtime URL from {}: {}", canonical, e.getMessage());
-            return null;
         }
     }
 }

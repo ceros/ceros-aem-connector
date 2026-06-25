@@ -96,18 +96,17 @@ class CerosFlexInlinePostProcessorTest {
     }
 
     @Test
-    void inlineModeUntrustedUrlClearsScriptAndDoesNotInject() throws Exception {
+    void inlineModeUntrustedUrlAbortsSave() throws Exception {
         when(props.get("cerosMode", String.class)).thenReturn("inline");
         when(props.get("manifestUrl", String.class)).thenReturn("https://customer.com/exp");
-        when(props.get("cerosInlineScriptUrl", String.class)).thenReturn(CLIENT_URL);
         when(manifestService.resolveTrustedManifestUrl("https://customer.com/exp"))
                 .thenThrow(new IllegalArgumentException("not a recognized Ceros domain"));
 
-        processor.process(request, changes);
+        // Throwing aborts the Sling POST, so the dialog refuses to save.
+        assertThrows(IllegalArgumentException.class, () -> processor.process(request, changes));
 
-        verify(props).remove("cerosInlineScriptUrl");
         verify(manifestService, never()).fetchPublicManifestFromUrl(anyString());
-        assertEquals(1, changes.size());
+        verify(props, never()).put(eq("manifestUrl"), anyString());
     }
 
     @Test
@@ -151,18 +150,66 @@ class CerosFlexInlinePostProcessorTest {
     }
 
     @Test
-    void fetchFailureClearsStaleScriptUrlAndDoesNotThrow() throws Exception {
+    void inlineModeUnreachableAbortsSave() throws Exception {
         when(props.get("cerosMode", String.class)).thenReturn("inline");
         when(props.get("manifestUrl", String.class)).thenReturn(MANIFEST_URL);
-        when(props.get("cerosInlineScriptUrl", String.class)).thenReturn(CLIENT_URL);
         when(manifestService.resolveTrustedManifestUrl(MANIFEST_URL)).thenReturn(MANIFEST_URL);
         when(manifestService.fetchPublicManifestFromUrl(MANIFEST_URL))
                 .thenThrow(new IOException("connection refused"));
 
+        assertThrows(IllegalArgumentException.class, () -> processor.process(request, changes));
+    }
+
+    @Test
+    void inlineModeNoInlineDeliveryModeAbortsSave() throws Exception {
+        // Manifest resolves and is reachable, but exposes no inline delivery mode.
+        when(props.get("cerosMode", String.class)).thenReturn("inline");
+        when(props.get("manifestUrl", String.class)).thenReturn(MANIFEST_URL);
+        when(manifestService.resolveTrustedManifestUrl(MANIFEST_URL)).thenReturn(MANIFEST_URL);
+        when(manifestService.fetchPublicManifestFromUrl(MANIFEST_URL))
+                .thenReturn(MAPPER.readValue("{\"deliveryModes\":{}}", CerosManifestV1.class));
+
+        assertThrows(IllegalArgumentException.class, () -> processor.process(request, changes));
+        verify(props, never()).put(eq("cerosInlineScriptUrl"), anyString());
+    }
+
+    @Test
+    void embedModeUntrustedUrlAbortsSave() throws Exception {
+        // Iframe (embed) mode is now validated on save too.
+        when(props.get("cerosMode", String.class)).thenReturn("embed");
+        when(props.get("manifestUrl", String.class)).thenReturn("https://customer.com/exp");
+        when(manifestService.resolveTrustedManifestUrl("https://customer.com/exp"))
+                .thenThrow(new IllegalArgumentException("not a recognized Ceros domain"));
+
+        assertThrows(IllegalArgumentException.class, () -> processor.process(request, changes));
+    }
+
+    @Test
+    void embedModeValidUrlSavesWithoutRewritingOrGrabbing() throws Exception {
+        // Embed validates the URL but keeps the pasted (possibly vanity) URL —
+        // the experience is loaded in a client-side iframe, not fetched.
+        String vanityUrl = "https://look.customer.com/exp";
+        when(props.get("cerosMode", String.class)).thenReturn("embed");
+        when(props.get("manifestUrl", String.class)).thenReturn(vanityUrl);
+        when(props.get("cerosInlineScriptUrl", String.class)).thenReturn(null);
+        when(manifestService.resolveTrustedManifestUrl(vanityUrl)).thenReturn(MANIFEST_URL);
+
         processor.process(request, changes);
 
-        verify(props).remove("cerosInlineScriptUrl");
-        assertEquals(1, changes.size());
+        verify(manifestService).resolveTrustedManifestUrl(vanityUrl);
+        verify(props, never()).put(eq("manifestUrl"), anyString());
+        verify(manifestService, never()).fetchPublicManifestFromUrl(anyString());
+        assertTrue(changes.isEmpty());
+    }
+
+    @Test
+    void storeModeUntrustedUrlAbortsSave() throws Exception {
+        when(props.get("cerosMode", String.class)).thenReturn("store");
+        when(props.get("manifestUrl", String.class)).thenReturn("https://customer.com/exp");
+        when(manifestService.resolveTrustedManifestUrl("https://customer.com/exp"))
+                .thenThrow(new IllegalArgumentException("not a recognized Ceros domain"));
+
+        assertThrows(IllegalArgumentException.class, () -> processor.process(request, changes));
     }
 
     @Test
