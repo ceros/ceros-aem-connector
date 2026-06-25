@@ -40,9 +40,21 @@ manifest, and injects the scripts it references, from a **Ceros-owned** host:
 - Anything that does not resolve to a Ceros-owned manifest is refused.
 
 In production, leave `allowUntrustedManifestHost` off so this whitelist is
-enforced. The author-SDK config enables it (and the other dev relaxations), and
-adds `cerosdev.site` / `cerosstage.site` to `cerosOwnedDomains`, because local
-experiences are served from `localhost` or non-prod environments.
+enforced. The connector ships **production-safe defaults only** and does not
+bundle any dev relaxations. For local/dev — where experiences are served from
+`localhost` or non-prod environments — apply a run-mode OSGi config in your
+**consuming project** (e.g. `config.author.sdk/com.ceros.services.impl.CerosManifestServiceImpl.cfg.json`)
+that enables `allowHttpScheme`, `allowLocalAddresses` and `allowUntrustedManifestHost`
+and adds `cerosdev.site` / `cerosstage.site` to `cerosOwnedDomains`:
+
+```json
+{
+    "allowHttpScheme:Boolean": true,
+    "allowLocalAddresses:Boolean": true,
+    "allowUntrustedManifestHost:Boolean": true,
+    "cerosOwnedDomains": ["ceros.com", "ceros.site", "cerosdev.site", "cerosstage.site"]
+}
+```
 
 ---
 
