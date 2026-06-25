@@ -14,26 +14,26 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class HttpUtilsTest {
 
     private static final List<String> CEROS_DOMAINS =
-            List.of("ceros.com", "ceros.site", "cerosdev.site", "cerosstage.site");
+            List.of("ceros.site", "cerosdev.site", "cerosstage.site");
 
     @Test
     void validateOutboundUrl_acceptsHttps() {
         assertDoesNotThrow(() ->
-                HttpUtils.validateOutboundUrl("https://cdn.ceros.com/exp/manifest.v1.json",
+                HttpUtils.validateOutboundUrl("https://cdn.ceros.site/exp/manifest.v1.json",
                         false, false));
     }
 
     @Test
     void validateOutboundUrl_rejectsHttpByDefault() {
         assertThrows(IllegalArgumentException.class, () ->
-                HttpUtils.validateOutboundUrl("http://cdn.ceros.com/exp/manifest.v1.json",
+                HttpUtils.validateOutboundUrl("http://cdn.ceros.site/exp/manifest.v1.json",
                         false, false));
     }
 
     @Test
     void validateOutboundUrl_acceptsHttpWhenAllowed() {
         assertDoesNotThrow(() ->
-                HttpUtils.validateOutboundUrl("http://cdn.ceros.com/exp/manifest.v1.json",
+                HttpUtils.validateOutboundUrl("http://cdn.ceros.site/exp/manifest.v1.json",
                         true, false));
     }
 
@@ -110,7 +110,7 @@ class HttpUtilsTest {
     @Test
     void validateOutboundUrl_rejectsMissingScheme() {
         assertThrows(IllegalArgumentException.class, () ->
-                HttpUtils.validateOutboundUrl("//cdn.ceros.com/exp/manifest.v1.json",
+                HttpUtils.validateOutboundUrl("//cdn.ceros.site/exp/manifest.v1.json",
                         false, false));
     }
 
@@ -118,7 +118,7 @@ class HttpUtilsTest {
 
     @Test
     void isUrlInAllowedDomains_acceptsExactApex() {
-        assertTrue(HttpUtils.isUrlInAllowedDomains("https://ceros.com/exp", CEROS_DOMAINS));
+        assertTrue(HttpUtils.isUrlInAllowedDomains("https://ceros.site/exp", CEROS_DOMAINS));
     }
 
     @Test
@@ -126,25 +126,25 @@ class HttpUtilsTest {
         assertTrue(HttpUtils.isUrlInAllowedDomains(
                 "https://acme.ceros.site/exp/manifest.v1.json", CEROS_DOMAINS));
         assertTrue(HttpUtils.isUrlInAllowedDomains(
-                "https://view.ceros.com/exp", CEROS_DOMAINS));
+                "https://acme.ceros.site/exp", CEROS_DOMAINS));
         assertTrue(HttpUtils.isUrlInAllowedDomains(
                 "https://a.b.cerosdev.site/exp", CEROS_DOMAINS));
     }
 
     @Test
     void isUrlInAllowedDomains_rejectsHttp() {
-        assertFalse(HttpUtils.isUrlInAllowedDomains("http://ceros.com/exp", CEROS_DOMAINS));
+        assertFalse(HttpUtils.isUrlInAllowedDomains("http://ceros.site/exp", CEROS_DOMAINS));
     }
 
     @Test
     void isUrlInAllowedDomains_rejectsLookalikePrefix() {
         // Substring match would wrongly accept this; exact-suffix must reject it.
-        assertFalse(HttpUtils.isUrlInAllowedDomains("https://evilceros.com/exp", CEROS_DOMAINS));
+        assertFalse(HttpUtils.isUrlInAllowedDomains("https://evilceros.site/exp", CEROS_DOMAINS));
     }
 
     @Test
     void isUrlInAllowedDomains_rejectsLookalikeSuffix() {
-        assertFalse(HttpUtils.isUrlInAllowedDomains("https://ceros.com.evil.com/exp", CEROS_DOMAINS));
+        assertFalse(HttpUtils.isUrlInAllowedDomains("https://ceros.site.evil.com/exp", CEROS_DOMAINS));
         assertFalse(HttpUtils.isUrlInAllowedDomains("https://ceros.site.attacker.net/exp", CEROS_DOMAINS));
     }
 
@@ -157,7 +157,7 @@ class HttpUtilsTest {
     void isUrlInAllowedDomains_rejectsNullBlankOrEmptyDomains() {
         assertFalse(HttpUtils.isUrlInAllowedDomains(null, CEROS_DOMAINS));
         assertFalse(HttpUtils.isUrlInAllowedDomains("   ", CEROS_DOMAINS));
-        assertFalse(HttpUtils.isUrlInAllowedDomains("https://ceros.com/exp", List.of()));
+        assertFalse(HttpUtils.isUrlInAllowedDomains("https://ceros.site/exp", List.of()));
     }
 
     @Test
@@ -168,9 +168,10 @@ class HttpUtilsTest {
     @Test
     void defaultDomains_areProductionOnly_excludingDevAndStage() {
         List<String> defaults = Arrays.asList(CerosConstants.DEFAULT_CEROS_OWNED_DOMAINS);
-        // Production hosts are trusted out of the box.
+        // The Flex production host is trusted out of the box.
         assertTrue(HttpUtils.isUrlInAllowedDomains("https://acme.ceros.site/exp/manifest.v1.json", defaults));
-        assertTrue(HttpUtils.isUrlInAllowedDomains("https://view.ceros.com/exp", defaults));
+        // ceros.com is Studio, not Flex — not trusted by default.
+        assertFalse(HttpUtils.isUrlInAllowedDomains("https://view.ceros.com/exp", defaults));
         // Non-production TLDs are NOT trusted by default (add via config for dev).
         assertFalse(HttpUtils.isUrlInAllowedDomains("https://acme.cerosdev.site/exp/manifest.v1.json", defaults));
         assertFalse(HttpUtils.isUrlInAllowedDomains("https://acme.cerosstage.site/exp/manifest.v1.json", defaults));

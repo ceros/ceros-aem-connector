@@ -65,10 +65,10 @@ public class CerosManifestServiceImpl implements CerosManifestService {
                         "they reference. A pasted URL is only fetched and injected when " +
                         "the resolved manifest host exactly equals — or is a dotted " +
                         "subdomain of — one of these. Look-alikes are rejected. " +
-                        "Production domains only by default; add cerosdev.site / " +
-                        "cerosstage.site here for local/dev testing.")
+                        "Production domains only by default; add non-production Ceros " +
+                        "domains here for local/dev testing.")
         String[] cerosOwnedDomains() default {
-                "ceros.com", "ceros.site"
+                "ceros.site"
         };
 
         @AttributeDefinition(name = "Allow untrusted manifest hosts",

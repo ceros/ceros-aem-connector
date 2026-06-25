@@ -27,7 +27,7 @@ class CerosManifestServiceImplTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final List<String> CEROS_DOMAINS =
-            Arrays.asList("ceros.com", "ceros.site", "cerosdev.site", "cerosstage.site");
+            Arrays.asList("ceros.site", "cerosdev.site", "cerosstage.site");
 
     private CerosManifestServiceImpl service;
 
