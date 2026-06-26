@@ -56,29 +56,18 @@ public class CerosAssetStorageServiceImpl implements CerosAssetStorageService {
         @AttributeDefinition(name = "DAM base path",
                 description = "Root DAM folder for Ceros assets")
         String damBasePath() default "/content/dam/ceros";
-
-        @AttributeDefinition(name = "Media CDN base URL",
-                description = "Base URL for media assets embedded in HTML content (e.g. images). "
-                        + "All URLs starting with this prefix will be extracted, downloaded, and uploaded to DAM.")
-        String mediaCdnBaseUrl() default "https://media.cdn.ceros.site/";
     }
 
     private static final ObjectMapper MANIFEST_MAPPER = new ObjectMapper();
 
     private int httpTimeoutMillis;
     private String damBasePath;
-    private String mediaCdnBaseUrl;
 
     @Activate
     @Modified
     protected void activate(Config config) {
         this.httpTimeoutMillis = config.httpTimeoutSeconds() * 1000;
         this.damBasePath = config.damBasePath();
-        String cdn = config.mediaCdnBaseUrl();
-        if (cdn != null && !cdn.endsWith("/")) {
-            cdn += "/";
-        }
-        this.mediaCdnBaseUrl = cdn;
     }
 
     @Override

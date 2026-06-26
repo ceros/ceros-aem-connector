@@ -93,14 +93,12 @@ Downloads manifest-referenced assets and uploads them to AEM DAM. Used by
 |----------|---------|-------------|
 | `httpTimeoutSeconds` | `30` | HTTP timeout for downloading assets |
 | `damBasePath` | `/content/dam/ceros` | Root DAM folder for uploaded assets |
-| `mediaCdnBaseUrl` | `https://media.cdn.ceros.site/` | Base URL for media assets in HTML |
 
 Example `.cfg.json`:
 
 ```json
 {
     "httpTimeoutSeconds:Integer": 30,
-    "damBasePath": "/content/dam/ceros",
-    "mediaCdnBaseUrl": "https://media.cdn.ceros.site/"
+    "damBasePath": "/content/dam/ceros"
 }
 ```
