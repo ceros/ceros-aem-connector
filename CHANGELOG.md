@@ -5,13 +5,16 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.0.8] - 2026-06-26
 
 ### Security
 - Pasted experience URLs are no longer trusted by default. A manifest is only fetched — and the scripts it references only injected — when it is served from a **Ceros-owned** domain (`ceros.site` by default; configurable). Authors may still paste any URL: a customer **vanity domain** is resolved by reading the new [`x-flex-manifest`](https://github.com/ceros/ceros-spark/pull/9861) header off the published page to discover its canonical, Ceros-hosted manifest URL, and the advertised URL must itself pass the Ceros-owned whitelist (so a spoofed header pointing off-Ceros is rejected). Mirrors the WordPress connector's keyless paste hardening ([ceros-plugin-wordpress#3](https://github.com/ceros/ceros-plugin-wordpress/pull/3)).
   - New `CerosManifestService.resolveTrustedManifestUrl` performs the whitelist + `x-flex-manifest` resolution. Pasted URLs are validated **on save for every URL-based delivery mode** (inline, fetch, embed and store): the dialog post-processor resolves the URL and **aborts the save** if it isn't a trusted Ceros experience, so an untrusted or unreachable URL can never be persisted. It also canonicalises the stored `manifestUrl` for the live inline/fetch modes so render trusts the stored URL and makes no extra network call. `fetchPublicManifestFromUrl` enforces the whitelist at render as a defence-in-depth choke point.
   - Authoring dialog validates the pasted URL **on submit** for all modes via the new `/bin/ceros/validate-manifest-url` servlet, surfacing the reason in an error notification before the save — matching the feedback Store mode's **Fetch** button already gave. Client-side validation is UX only; the post-processor gate above is the authoritative, non-bypassable check.
   - New OSGi config on `CerosManifestServiceImpl`: `cerosOwnedDomains` (trusted apex domains; **production domains only by default** so customer installs never reference internal environments — non-production Ceros domains are added per environment via OSGi config for local/dev) and `allowUntrustedManifestHost` (dev/test relaxation so localhost manifests still work; **off** in production). The connector ships **production-safe defaults only** — dev relaxations must be configured by the consuming project.
+
+### Removed
+- Dropped the unused `mediaCdnBaseUrl` OSGi property from `CerosAssetStorageService`. It was declared but never read — manifest/archive asset URLs are resolved directly — so removing it has no functional effect.
 
 ## [0.0.7] - 2026-06-18
 
@@ -90,7 +93,8 @@ Initial release.
 - OSGi configuration support (timeouts, HTTP scheme allowlist, local-address allowlist) via `CerosManifestServiceImpl.cfg.json`.
 - Authenticated browsing of Ceros Flex experiences in the authoring dialog via `CerosAuthenticatedApiService`.
 
-[Unreleased]: https://github.com/ceros/ceros-aem-connector/compare/release-0.0.3...HEAD
+[Unreleased]: https://github.com/ceros/ceros-aem-connector/compare/release-0.0.8...HEAD
+[0.0.8]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-0.0.8
 [0.0.3]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-0.0.3
 [0.0.2]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-0.0.2
 [0.0.1]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-0.0.1
