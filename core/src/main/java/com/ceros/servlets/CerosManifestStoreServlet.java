@@ -54,8 +54,8 @@ public class CerosManifestStoreServlet extends SlingAllMethodsServlet {
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
-        String pastedUrl = StringUtils.trimToNull(request.getParameter("manifestUrl"));
-        if (pastedUrl == null) {
+        String incomingUrl = StringUtils.trimToNull(request.getParameter("manifestUrl"));
+        if (incomingUrl == null) {
             ServletUtils.writeError(response, SlingHttpServletResponse.SC_BAD_REQUEST,
                     "manifestUrl parameter is required");
             return;
@@ -67,13 +67,13 @@ public class CerosManifestStoreServlet extends SlingAllMethodsServlet {
         // before anything is fetched or injected.
         String manifestUrl;
         try {
-            manifestUrl = cerosManifestService.resolveTrustedManifestUrl(pastedUrl);
+            manifestUrl = cerosManifestService.resolveTrustedManifestUrl(incomingUrl);
         } catch (IllegalArgumentException e) {
-            log.warn("Rejected manifest URL {}: {}", pastedUrl, e.getMessage());
+            log.warn("Rejected manifest URL {}: {}", incomingUrl, e.getMessage());
             ServletUtils.writeError(response, SlingHttpServletResponse.SC_BAD_REQUEST, e.getMessage());
             return;
         } catch (IOException e) {
-            log.warn("Could not reach experience to verify {}: {}", pastedUrl, e.getMessage());
+            log.warn("Could not reach experience to verify {}: {}", incomingUrl, e.getMessage());
             ServletUtils.writeError(response, SlingHttpServletResponse.SC_BAD_GATEWAY,
                     "Could not reach the experience to verify it. Please try again in a moment.");
             return;

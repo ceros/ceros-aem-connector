@@ -56,7 +56,7 @@ public final class HttpUtils {
      * @param allowLocalAddresses  if true, accept IP literals and {@code localhost}-style hosts
      * @throws IllegalArgumentException if the URL is null, unparseable, or violates the policy
      */
-    public static void validateOutboundUrl(String url,
+    public static void requireSafeFetchUrl(String url,
                                            boolean allowHttpScheme,
                                            boolean allowLocalAddresses) {
         if (url == null || url.isBlank()) {
