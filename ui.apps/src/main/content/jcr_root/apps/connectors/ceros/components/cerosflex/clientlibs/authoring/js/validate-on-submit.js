@@ -3,7 +3,7 @@
  * Ceros Flex dialog, for every URL-based delivery mode — so all modes give the
  * same up-front feedback the Store mode's Fetch button does. On an invalid URL
  * it blocks the save and shows the server's reason in an error toast; on a
- * valid URL it lets the save proceed. The CerosFlexInlinePostProcessor performs
+ * valid URL it lets the save proceed. The CerosFlexManifestUrlPostProcessor performs
  * the same check server-side as the authoritative gate; this is the UX layer.
  */
 (function ($) {

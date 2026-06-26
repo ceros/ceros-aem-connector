@@ -42,9 +42,9 @@ import java.util.List;
  * with the save rather than off a background job.
  */
 @Component(service = SlingPostProcessor.class)
-public class CerosFlexInlinePostProcessor implements SlingPostProcessor {
+public class CerosFlexManifestUrlPostProcessor implements SlingPostProcessor {
 
-    private static final Logger log = LoggerFactory.getLogger(CerosFlexInlinePostProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(CerosFlexManifestUrlPostProcessor.class);
 
     private static final String RESOURCE_TYPE = "connectors/ceros/components/cerosflex";
     private static final String PROP_MODE = "cerosMode";
@@ -90,9 +90,10 @@ public class CerosFlexInlinePostProcessor implements SlingPostProcessor {
                 changes.add(Modification.onModified(resource.getPath() + "/" + PROP_MANIFEST_URL));
             }
 
-            // Inline mode also needs a usable flex-client.js runtime up front.
+            // Inline mode also grabs the flex-client.js runtime URL to persist
+            // for the render path.
             if (inlineMode) {
-                scriptUrl = grabInlineScriptUrlOrReject(canonical);
+                scriptUrl = grabInlineScriptUrl(canonical);
             }
         }
 
@@ -122,11 +123,12 @@ public class CerosFlexInlinePostProcessor implements SlingPostProcessor {
      * Fetches the (already trusted) manifest and returns its inline
      * {@code flex-client.js} URL, resolved against the manifest URL — a no-op for
      * the absolute URLs the live endpoint serves; absolutises a relative URL from
-     * an exported manifest. Throws {@link IllegalArgumentException} (aborting the
-     * save) when the experience can't be reached or exposes no usable inline
-     * delivery mode.
+     * an exported manifest. Returns {@code null} when the manifest exposes no
+     * inline script (nothing is persisted then). Throws
+     * {@link IllegalArgumentException} (aborting the save) only when the
+     * experience can't be reached.
      */
-    private String grabInlineScriptUrlOrReject(String canonical) {
+    private String grabInlineScriptUrl(String canonical) {
         CerosManifestV1 manifest;
         try {
             manifest = cerosManifestService.fetchPublicManifestFromUrl(canonical);
@@ -140,7 +142,7 @@ public class CerosFlexInlinePostProcessor implements SlingPostProcessor {
                 ? inline.getScripts().get(0).getUrl() : null;
         if (StringUtils.isBlank(scriptUrl)) {
             log.warn("Manifest {} has no inline delivery-mode script", canonical);
-            throw new IllegalArgumentException(CerosConstants.MSG_NO_INLINE_MODE);
+            return null;
         }
         return URI.create(canonical).resolve(scriptUrl).toString();
     }

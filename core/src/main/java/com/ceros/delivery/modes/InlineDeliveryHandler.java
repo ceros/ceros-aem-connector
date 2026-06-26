@@ -11,7 +11,7 @@ import org.apache.commons.lang3.StringUtils;
  *
  * <p>The runtime URL is not resolved here. It is grabbed from the manifest's
  * inline delivery mode and persisted on the component at authoring time (see
- * {@code CerosFlexInlinePostProcessor}); this handler simply reads that stored
+ * {@code CerosFlexManifestUrlPostProcessor}); this handler simply reads that stored
  * value. So render makes no network call and applies no host heuristics.
  */
 public final class InlineDeliveryHandler implements DeliveryHandler {

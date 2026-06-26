@@ -51,7 +51,7 @@ public class CerosFlexModel {
 
     /**
      * The {@code flex-client.js} URL for inline mode, grabbed from the manifest
-     * and persisted by {@code CerosFlexInlinePostProcessor} when the dialog is
+     * and persisted by {@code CerosFlexManifestUrlPostProcessor} when the dialog is
      * saved. Read at render time — no fetch on the request path.
      */
     @ValueMapValue

@@ -31,9 +31,5 @@ public final class CerosConstants {
     public static final String MSG_UNREACHABLE_EXPERIENCE =
             "Could not reach the experience to verify it. Please check the URL and try again in a moment.";
 
-    /** User-facing message when a (trusted) experience exposes no inline delivery mode. */
-    public static final String MSG_NO_INLINE_MODE =
-            "This experience doesn't support inline embedding. Choose a different delivery mode, such as Iframe embed.";
-
     private CerosConstants() {}
 }

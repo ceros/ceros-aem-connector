@@ -25,7 +25,7 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-class CerosFlexInlinePostProcessorTest {
+class CerosFlexManifestUrlPostProcessorTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String RESOURCE_TYPE = "connectors/ceros/components/cerosflex";
@@ -38,13 +38,13 @@ class CerosFlexInlinePostProcessorTest {
     @Mock private Resource resource;
     @Mock private ModifiableValueMap props;
 
-    private CerosFlexInlinePostProcessor processor;
+    private CerosFlexManifestUrlPostProcessor processor;
     private List<Modification> changes;
 
     @BeforeEach
     void setUp() throws Exception {
-        processor = new CerosFlexInlinePostProcessor();
-        Field f = CerosFlexInlinePostProcessor.class.getDeclaredField("cerosManifestService");
+        processor = new CerosFlexManifestUrlPostProcessor();
+        Field f = CerosFlexManifestUrlPostProcessor.class.getDeclaredField("cerosManifestService");
         f.setAccessible(true);
         f.set(processor, manifestService);
 
@@ -161,15 +161,18 @@ class CerosFlexInlinePostProcessorTest {
     }
 
     @Test
-    void inlineModeNoInlineDeliveryModeAbortsSave() throws Exception {
-        // Manifest resolves and is reachable, but exposes no inline delivery mode.
+    void inlineModeNoInlineDeliveryModeSavesWithoutScript() throws Exception {
+        // Manifest resolves and is reachable but exposes no inline delivery mode.
+        // Inline is always offered, so this no longer aborts the save — we simply
+        // persist no script URL.
         when(props.get("cerosMode", String.class)).thenReturn("inline");
         when(props.get("manifestUrl", String.class)).thenReturn(MANIFEST_URL);
         when(manifestService.resolveTrustedManifestUrl(MANIFEST_URL)).thenReturn(MANIFEST_URL);
         when(manifestService.fetchPublicManifestFromUrl(MANIFEST_URL))
                 .thenReturn(MAPPER.readValue("{\"deliveryModes\":{}}", CerosManifestV1.class));
 
-        assertThrows(IllegalArgumentException.class, () -> processor.process(request, changes));
+        processor.process(request, changes);
+
         verify(props, never()).put(eq("cerosInlineScriptUrl"), anyString());
     }
 
