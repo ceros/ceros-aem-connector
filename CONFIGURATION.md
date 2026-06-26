@@ -51,14 +51,19 @@ Example `.cfg.json`:
 
 ## Asset Storage Service (`CerosAssetStorageServiceImpl`)
 
-Downloads manifest-referenced assets and uploads them to AEM DAM. Used by
-**Store** mode. All properties have sensible defaults — no secrets required.
+Mirrors assets into AEM DAM. Used by **Store** and **Import** modes. All
+properties have sensible defaults — no secrets required.
+
+In Store mode the URL-rewriting is owned by flex-shield: the manifest is
+requested with `?baseUrl=` and comes back with its asset URLs already pointing
+under the DAM base path plus an `assetRewrites` map this service mirrors
+(downloads each `from`, writes it at its `path`).
 
 | Property | Default | Description |
 |----------|---------|-------------|
 | `httpTimeoutSeconds` | `30` | HTTP timeout for downloading assets |
 | `damBasePath` | `/content/dam/ceros` | Root DAM folder for uploaded assets |
-| `mediaCdnBaseUrl` | `https://media.cdn.ceros.site/` | Base URL for media assets in HTML |
+| `assetRewriteHost` | `https://ceros-dam.invalid` | Sentinel origin used to build the `baseUrl` sent to flex-shield's `?baseUrl=` rewrite. Must be a valid http(s) origin to pass server validation, but is stripped from the response so stored manifests keep root-relative DAM paths. The default uses the reserved `.invalid` TLD so it can never resolve. |
 
 Example `.cfg.json`:
 
@@ -66,6 +71,6 @@ Example `.cfg.json`:
 {
     "httpTimeoutSeconds:Integer": 30,
     "damBasePath": "/content/dam/ceros",
-    "mediaCdnBaseUrl": "https://media.cdn.ceros.site/"
+    "assetRewriteHost": "https://ceros-dam.invalid"
 }
 ```

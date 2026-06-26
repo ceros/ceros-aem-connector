@@ -1,6 +1,7 @@
 package com.ceros.models.cerosflex;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -41,6 +42,17 @@ public class CerosManifestV1 {
     @JsonProperty("pages")
     private List<PageRef> pages;
 
+    /**
+     * Server-side rewrite map returned by flex-shield when the manifest is
+     * requested with {@code ?baseUrl=}. Additive and transient: it tells the
+     * Store pipeline which original Ceros URLs to mirror and at which paths,
+     * then is cleared ({@link #clearAssetRewrites()}) before the manifest is
+     * persisted. Omitted from JSON when null so stored manifests stay clean.
+     */
+    @JsonProperty("assetRewrites")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private AssetRewrites assetRewrites;
+
     public String getSchemaVersion() { return schemaVersion; }
     public String getPublishedAt() { return publishedAt; }
     public Experience getExperience() { return experience; }
@@ -49,6 +61,11 @@ public class CerosManifestV1 {
     public List<AssetEntry> getAssets() { return assets != null ? assets : Collections.emptyList(); }
     public List<MediaEntry> getMedia() { return media != null ? media : Collections.emptyList(); }
     public List<PageRef> getPages() { return pages != null ? pages : Collections.emptyList(); }
+
+    public AssetRewrites getAssetRewrites() { return assetRewrites; }
+
+    /** Drops the transient rewrite map so it never lands in stored manifests. */
+    public void clearAssetRewrites() { this.assetRewrites = null; }
 
     public Map<String, DeliveryMode> getDeliveryModes() {
         return deliveryModes != null ? deliveryModes : Collections.emptyMap();
@@ -542,5 +559,40 @@ public class CerosManifestV1 {
         public boolean isCurrent() { return current; }
 
         public void setManifestUrl(String manifestUrl) { this.manifestUrl = manifestUrl; }
+    }
+
+    // ---- AssetRewrites (server-side ?baseUrl= rewrite map) ----
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class AssetRewrites {
+        @JsonProperty("baseUrl")
+        private String baseUrl;
+
+        @JsonProperty("assets")
+        private List<AssetRewrite> assets;
+
+        public String getBaseUrl() { return baseUrl; }
+        public List<AssetRewrite> getAssets() {
+            return assets != null ? assets : Collections.emptyList();
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class AssetRewrite {
+        /** Original Ceros URL to download. */
+        @JsonProperty("from")
+        private String from;
+
+        /** Path, relative to {@code baseUrl}, the asset should be served at. */
+        @JsonProperty("path")
+        private String path;
+
+        /** Fully-rewritten URL ({@code baseUrl + "/" + path}); already in the manifest. */
+        @JsonProperty("to")
+        private String to;
+
+        public String getFrom() { return from; }
+        public String getPath() { return path; }
+        public String getTo() { return to; }
     }
 }

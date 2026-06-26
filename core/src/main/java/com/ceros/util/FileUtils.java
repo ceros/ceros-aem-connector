@@ -34,4 +34,41 @@ public final class FileUtils {
         return url;
     }
 
+    /**
+     * Validates a server-supplied relative path before it is joined onto a DAM
+     * base path. Strips a leading slash, then rejects any {@code .}/{@code ..}
+     * traversal or empty segment and any segment containing characters outside
+     * the rewrite alphabet ({@code [A-Za-z0-9._-]}). Mirrors the WordPress
+     * connector's {@code safe_rel_path} guard.
+     *
+     * @param path the relative path from the {@code assetRewrites} map
+     * @return the validated relative path, or {@code null} when unsafe or blank
+     */
+    public static String safeRelativePath(String path) {
+        if (path == null) {
+            return null;
+        }
+        String trimmed = path;
+        while (trimmed.startsWith("/")) {
+            trimmed = trimmed.substring(1);
+        }
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        for (String segment : trimmed.split("/", -1)) {
+            if (segment.isEmpty() || ".".equals(segment) || "..".equals(segment)) {
+                return null;
+            }
+            for (int i = 0; i < segment.length(); i++) {
+                char c = segment.charAt(i);
+                boolean ok = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
+                        || (c >= '0' && c <= '9') || c == '.' || c == '_' || c == '-';
+                if (!ok) {
+                    return null;
+                }
+            }
+        }
+        return trimmed;
+    }
+
 }

@@ -13,8 +13,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import javax.jcr.Session;
 import java.lang.reflect.Field;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -35,7 +37,7 @@ class CerosAssetStorageServiceImplTest {
         service = new CerosAssetStorageServiceImpl();
         setField("httpTimeoutMillis", 5000);
         setField("damBasePath", "/content/dam/ceros");
-        setField("mediaCdnBaseUrl", "https://media.cdn.ceros.site/");
+        setField("assetRewriteHost", "https://ceros-dam.invalid");
     }
 
     private void setField(String name, Object value) throws Exception {
@@ -44,33 +46,90 @@ class CerosAssetStorageServiceImplTest {
         f.set(service, value);
     }
 
-    // --- uploadAssets tests ---
+    // --- ?baseUrl= rewrite plumbing ---
 
     @Test
-    void uploadAssetsReturnsEmptyMapForNoSlug() throws Exception {
-        CerosManifestV1 manifest = MAPPER.readValue("{}", CerosManifestV1.class);
-        Map<String, String> result = service.uploadAssets(manifest, resolver);
+    void assetRewriteBaseUrlJoinsHostDamRootAndSlug() {
+        assertEquals("https://ceros-dam.invalid/content/dam/ceros/my-exp",
+                service.assetRewriteBaseUrl("my-exp"));
+    }
+
+    @Test
+    void assetRewriteOriginIsTheConfiguredHost() {
+        assertEquals("https://ceros-dam.invalid", service.assetRewriteOrigin());
+    }
+
+    // --- mirrorRewrittenAssets tests ---
+
+    @Test
+    void mirrorRewrittenAssetsReturnsEmptyForNoSlug() throws Exception {
+        CerosManifestV1 manifest = MAPPER.readValue(
+                "{\"assetRewrites\":{\"assets\":[{\"from\":\"https://cdn/a.css\",\"path\":\"a.css\"}]}}",
+                CerosManifestV1.class);
+        Map<String, String> result = service.mirrorRewrittenAssets(manifest, resolver, new HashSet<>());
         assertTrue(result.isEmpty());
     }
 
     @Test
-    void uploadAssetsWithNoAssetsInManifest() throws Exception {
+    void mirrorRewrittenAssetsReturnsEmptyWhenNoRewriteMap() throws Exception {
+        CerosManifestV1 manifest = MAPPER.readValue(
+                "{\"experience\":{\"slug\":\"exp\",\"pageSlug\":\"page-1\"}}", CerosManifestV1.class);
+        Map<String, String> result = service.mirrorRewrittenAssets(manifest, resolver, new HashSet<>());
+        assertTrue(result.isEmpty());
+        verify(resolver, never()).adaptTo(AssetManager.class);
+    }
+
+    @Test
+    void mirrorRewrittenAssetsSkipsUnsafePaths() throws Exception {
+        when(resolver.adaptTo(AssetManager.class)).thenReturn(assetManager);
+
+        // Both entries carry traversal/absolute paths the safe-path guard rejects,
+        // so nothing is downloaded or written — no network call in this test.
+        CerosManifestV1 manifest = MAPPER.readValue(
+                "{\"experience\":{\"slug\":\"exp\",\"pageSlug\":\"page-1\"},"
+                        + "\"assetRewrites\":{\"assets\":["
+                        + "  {\"from\":\"https://cdn/a.css\",\"path\":\"../escape.css\"},"
+                        + "  {\"from\":\"https://cdn/b.css\",\"path\":\"sub/has space.css\"}"
+                        + "]}}",
+                CerosManifestV1.class);
+
+        Set<String> seen = new HashSet<>();
+        Map<String, String> result = service.mirrorRewrittenAssets(manifest, resolver, seen);
+
+        assertTrue(result.isEmpty());
+        assertTrue(seen.isEmpty());
+        verify(assetManager, never()).createAsset(anyString());
+    }
+
+    @Test
+    void mirrorRewrittenAssetsDedupesAlreadySeenPaths() throws Exception {
         when(resolver.adaptTo(AssetManager.class)).thenReturn(assetManager);
 
         CerosManifestV1 manifest = MAPPER.readValue(
-                "{\"experience\":{\"slug\":\"my-exp\",\"pageSlug\":\"page-1\"}}", CerosManifestV1.class);
-        Map<String, String> result = service.uploadAssets(manifest, resolver);
+                "{\"experience\":{\"slug\":\"exp\",\"pageSlug\":\"page-1\"},"
+                        + "\"assetRewrites\":{\"assets\":["
+                        + "  {\"from\":\"https://cdn/shared.js\",\"path\":\"assets/shared.js\"}"
+                        + "]}}",
+                CerosManifestV1.class);
+
+        Set<String> seen = new HashSet<>();
+        seen.add("assets/shared.js"); // already mirrored by an earlier page
+
+        Map<String, String> result = service.mirrorRewrittenAssets(manifest, resolver, seen);
+
         assertTrue(result.isEmpty());
-        verify(resolver).commit();
+        verify(assetManager, never()).createAsset(anyString());
     }
 
     @Test
-    void uploadAssetsReturnsEmptyMapWhenAssetManagerUnavailable() throws Exception {
+    void mirrorRewrittenAssetsReturnsEmptyWhenAssetManagerUnavailable() throws Exception {
         when(resolver.adaptTo(AssetManager.class)).thenReturn(null);
 
         CerosManifestV1 manifest = MAPPER.readValue(
-                "{\"experience\":{\"slug\":\"my-exp\",\"pageSlug\":\"page-1\"}}", CerosManifestV1.class);
-        Map<String, String> result = service.uploadAssets(manifest, resolver);
+                "{\"experience\":{\"slug\":\"exp\",\"pageSlug\":\"page-1\"},"
+                        + "\"assetRewrites\":{\"assets\":[{\"from\":\"https://cdn/a.css\",\"path\":\"a.css\"}]}}",
+                CerosManifestV1.class);
+        Map<String, String> result = service.mirrorRewrittenAssets(manifest, resolver, new HashSet<>());
         assertTrue(result.isEmpty());
     }
 
