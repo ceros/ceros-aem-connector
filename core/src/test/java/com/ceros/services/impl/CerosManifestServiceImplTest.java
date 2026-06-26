@@ -11,8 +11,11 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -23,6 +26,8 @@ import static org.mockito.Mockito.*;
 class CerosManifestServiceImplTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final List<String> CEROS_DOMAINS =
+            Arrays.asList("ceros.site");
 
     private CerosManifestServiceImpl service;
 
@@ -30,6 +35,17 @@ class CerosManifestServiceImplTest {
     void setUp() throws Exception {
         service = new CerosManifestServiceImpl();
         setField(service, "httpTimeoutMillis", 10000);
+        setField(service, "cerosOwnedDomains", CEROS_DOMAINS);
+        setField(service, "allowUntrustedManifestHost", false);
+    }
+
+    /** Production-posture spy with the Ceros whitelist enforced. */
+    private CerosManifestServiceImpl prodSpy() throws Exception {
+        CerosManifestServiceImpl spy = spy(new CerosManifestServiceImpl());
+        setField(spy, "httpTimeoutMillis", 10000);
+        setField(spy, "cerosOwnedDomains", CEROS_DOMAINS);
+        setField(spy, "allowUntrustedManifestHost", false);
+        return spy;
     }
 
     private static void setField(Object target, String name, Object value) throws Exception {
@@ -49,8 +65,83 @@ class CerosManifestServiceImplTest {
 
     @Test
     void fetchPublicManifestFromUrlTrimsUrl() {
+        // Ceros-owned host so it passes the whitelist gate; the DNS miss then
+        // surfaces as an IOException (proving the URL was trimmed and fetched).
         assertThrows(IOException.class,
-                () -> service.fetchPublicManifestFromUrl("  https://nonexistent.invalid/manifest.json  "));
+                () -> service.fetchPublicManifestFromUrl("  https://nonexistent.ceros.site/manifest.json  "));
+    }
+
+    @Test
+    void fetchPublicManifestFromUrlRejectsNonCerosHost() {
+        // The whitelist gate fires before any network call.
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> service.fetchPublicManifestFromUrl("https://customer.com/exp/manifest.v1.json"));
+        assertTrue(e.getMessage().contains("Ceros"));
+    }
+
+    // ---- resolveTrustedManifestUrl ----
+
+    @Test
+    void resolveTrustedManifestUrlAppendsManifestFilenameForCerosHost() throws Exception {
+        assertEquals("https://acme.ceros.site/exp/manifest.v1.json",
+                service.resolveTrustedManifestUrl("https://acme.ceros.site/exp"));
+    }
+
+    @Test
+    void resolveTrustedManifestUrlKeepsExistingManifestUrlForCerosHost() throws Exception {
+        assertEquals("https://acme.ceros.site/exp/manifest.v1.json",
+                service.resolveTrustedManifestUrl("https://acme.ceros.site/exp/manifest.v1.json"));
+    }
+
+    @Test
+    void resolveTrustedManifestUrlUsesFlexManifestHeaderForVanityHost() throws Exception {
+        CerosManifestServiceImpl spy = prodSpy();
+        // Vanity page advertises its canonical Ceros-owned manifest URL.
+        doReturn(Optional.of("https://acme.ceros.site/exp/manifest.v1.json"))
+                .when(spy).fetchFlexManifestHeader("https://look.customer.com/exp");
+
+        assertEquals("https://acme.ceros.site/exp/manifest.v1.json",
+                spy.resolveTrustedManifestUrl("https://look.customer.com/exp"));
+    }
+
+    @Test
+    void resolveTrustedManifestUrlRejectsVanityHostWithNoHeader() throws Exception {
+        CerosManifestServiceImpl spy = prodSpy();
+        doReturn(Optional.empty()).when(spy).fetchFlexManifestHeader("https://look.customer.com/exp");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> spy.resolveTrustedManifestUrl("https://look.customer.com/exp"));
+    }
+
+    @Test
+    void resolveTrustedManifestUrlRejectsSpoofedHeaderPointingOffCeros() throws Exception {
+        CerosManifestServiceImpl spy = prodSpy();
+        // A malicious page advertises a non-Ceros manifest — must be rejected.
+        doReturn(Optional.of("https://evil.com/exp/manifest.v1.json"))
+                .when(spy).fetchFlexManifestHeader("https://look.customer.com/exp");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> spy.resolveTrustedManifestUrl("https://look.customer.com/exp"));
+    }
+
+    @Test
+    void resolveTrustedManifestUrlRejectsNonHttps() {
+        assertThrows(IllegalArgumentException.class,
+                () -> service.resolveTrustedManifestUrl("http://acme.ceros.site/exp"));
+    }
+
+    @Test
+    void resolveTrustedManifestUrlTrustsAnyHostWhenRelaxationOn() throws Exception {
+        // Dev/test posture: localhost manifests are accepted without the header.
+        CerosManifestServiceImpl dev = new CerosManifestServiceImpl();
+        setField(dev, "httpTimeoutMillis", 10000);
+        setField(dev, "cerosOwnedDomains", CEROS_DOMAINS);
+        setField(dev, "allowUntrustedManifestHost", true);
+        setField(dev, "allowHttpScheme", true);
+        setField(dev, "allowLocalAddresses", true);
+
+        assertEquals("http://ceros-qa.localhost:8900/exp/manifest.v1.json",
+                dev.resolveTrustedManifestUrl("http://ceros-qa.localhost:8900/exp"));
     }
 
     @Test

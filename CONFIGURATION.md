@@ -13,13 +13,48 @@ runmode folder, e.g.:
 
 ---
 
-## Manifest Service (`CerosPublicManifestServiceImpl`)
+## Manifest Service (`CerosManifestServiceImpl`)
 
 Fetches and parses Ceros experience manifests from public URLs.
 
 | Property | Default | Description |
 |----------|---------|-------------|
 | `httpTimeoutSeconds` | `30` | HTTP timeout for fetching manifests |
+| `allowHttpScheme` | `false` | Accept `http://` manifest URLs in addition to `https://`. Dev/test only. |
+| `allowLocalAddresses` | `false` | Accept manifest URLs whose host is an IP literal or `localhost` alias. Dev/test only (SSRF guard). |
+| `cerosOwnedDomains` | `ceros.site` | Apex domains trusted to serve manifests. A pasted URL is only fetched and injected when the resolved manifest host exactly equals — or is a dotted subdomain of — one of these. Look-alikes (`evilceros.site`, `ceros.site.evil.com`) are rejected. Production domains only; override per environment where needed. |
+| `allowUntrustedManifestHost` | `false` | Skip the Ceros-owned domain whitelist (and the `x-flex-manifest` discovery step) and trust any host that passes the SSRF policy. Dev/test only (manifests served from localhost). Leave **off** in production. |
+
+### Trusting pasted experience URLs
+
+Pasted URLs are not trusted by default. Authors may paste **any** experience
+URL — including a customer vanity domain — but the connector only ever fetches a
+manifest, and injects the scripts it references, from a **Ceros-owned** host:
+
+- A URL already on a Ceros-owned domain resolves to its manifest directly.
+- A vanity domain is asked to advertise its canonical, Ceros-hosted manifest URL
+  via the [`x-flex-manifest`](https://github.com/ceros/ceros-spark/pull/9861)
+  response header on the published page. The advertised URL must itself pass the
+  Ceros-owned whitelist before it is fetched, so a spoofed header pointing
+  off-Ceros is rejected.
+- Anything that does not resolve to a Ceros-owned manifest is refused.
+
+In production, leave `allowUntrustedManifestHost` off so this whitelist is
+enforced. The connector ships **production-safe defaults only** and does not
+bundle any dev relaxations. For local/dev — where experiences are served from
+`localhost` or non-production environments — apply a run-mode OSGi config in
+your **consuming project** (e.g. `config.author.sdk/com.ceros.services.impl.CerosManifestServiceImpl.cfg.json`)
+that enables `allowHttpScheme`, `allowLocalAddresses` and `allowUntrustedManifestHost`
+and adds your non-production Ceros manifest domains to `cerosOwnedDomains`:
+
+```json
+{
+    "allowHttpScheme:Boolean": true,
+    "allowLocalAddresses:Boolean": true,
+    "allowUntrustedManifestHost:Boolean": true,
+    "cerosOwnedDomains": ["ceros.site"]
+}
+```
 
 ---
 
@@ -58,14 +93,12 @@ Downloads manifest-referenced assets and uploads them to AEM DAM. Used by
 |----------|---------|-------------|
 | `httpTimeoutSeconds` | `30` | HTTP timeout for downloading assets |
 | `damBasePath` | `/content/dam/ceros` | Root DAM folder for uploaded assets |
-| `mediaCdnBaseUrl` | `https://media.cdn.ceros.site/` | Base URL for media assets in HTML |
 
 Example `.cfg.json`:
 
 ```json
 {
     "httpTimeoutSeconds:Integer": 30,
-    "damBasePath": "/content/dam/ceros",
-    "mediaCdnBaseUrl": "https://media.cdn.ceros.site/"
+    "damBasePath": "/content/dam/ceros"
 }
 ```

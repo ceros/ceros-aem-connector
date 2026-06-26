@@ -35,7 +35,6 @@ class CerosAssetStorageServiceImplTest {
         service = new CerosAssetStorageServiceImpl();
         setField("httpTimeoutMillis", 5000);
         setField("damBasePath", "/content/dam/ceros");
-        setField("mediaCdnBaseUrl", "https://media.cdn.ceros.site/");
     }
 
     private void setField(String name, Object value) throws Exception {

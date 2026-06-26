@@ -4,7 +4,6 @@ import com.ceros.CerosConstants;
 import com.ceros.delivery.DeepLinkResolver;
 import com.ceros.delivery.DeliveryResult;
 import com.ceros.delivery.ManifestRenderer;
-import com.ceros.delivery.DeliveryResult.Builder;
 import com.ceros.models.cerosflex.CerosManifestV1;
 import com.ceros.services.CerosManifestService;
 import org.slf4j.Logger;
@@ -39,6 +38,10 @@ public final class FetchDeliveryHandler implements DeliveryHandler {
                     context.manifestUrl);
             return DeliveryResult.EMPTY;
         }
+        // The pasted URL is validated and canonicalised to a trusted,
+        // Ceros-owned manifest URL at authoring time (CerosFlexManifestUrlPostProcessor),
+        // so render does no resolution or extra network call. fetchPublicManifestFromUrl
+        // still enforces the Ceros-owned whitelist as a defence-in-depth gate.
         String url = normaliseManifestUrl(context.manifestUrl);
         try {
             CerosManifestV1 manifest = manifestService.fetchPublicManifestFromUrl(url);

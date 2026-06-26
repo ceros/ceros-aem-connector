@@ -81,7 +81,7 @@ the same stored bundle on the component. Because the end state is identical to
 runtime, which fetches the manifest in the browser and renders the experience
 into a Shadow Root in the host page DOM — no SSR markup and no iframe. The
 runtime URL is grabbed from the manifest at authoring time and persisted on the
-component (see `CerosFlexInlinePostProcessor`), so render makes no network call.
+component (see `CerosFlexManifestUrlPostProcessor`), so render makes no network call.
 
 ### Embed — client-side (`embed`)
 
