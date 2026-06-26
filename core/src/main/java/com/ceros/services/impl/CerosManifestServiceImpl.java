@@ -26,9 +26,13 @@ import javax.jcr.Node;
 import javax.jcr.Session;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 @Component(service = CerosManifestService.class)
 @Designate(ocd = CerosManifestServiceImpl.Config.class)
@@ -101,15 +105,26 @@ public class CerosManifestServiceImpl implements CerosManifestService {
 
     @Override
     public StoredManifestBundle fetchManifestBundle(String manifestUrl) throws IOException {
-        CerosManifestV1 primary = fetchPublicManifestFromUrl(manifestUrl);
+        // 1. Metadata fetch (no baseUrl) to learn the experience, page list, and
+        //    the clean CDN page URLs — we need the experience slug to build the
+        //    DAM baseUrl the per-page rewrite is requested against.
+        CerosManifestV1 metadata = fetchPublicManifestFromUrl(manifestUrl);
 
-        LinkedHashMap<String, CerosManifestV1> pages = new LinkedHashMap<>();
-        String primarySlug = ManifestUtils.primarySlugOf(primary);
-        pages.put(primarySlug != null ? primarySlug : "", primary);
+        String expSlug = metadata.getExperience() != null ? metadata.getExperience().getSlug() : null;
+        if (expSlug == null || expSlug.isEmpty()) {
+            throw new IOException("Manifest has no experience slug; cannot build asset baseUrl");
+        }
+        String baseUrl = cerosAssetStorageService.assetRewriteBaseUrl(expSlug);
 
-        for (CerosManifestV1.PageRef page : primary.getPages()) {
+        String primarySlug = ManifestUtils.primarySlugOf(metadata);
+        String primaryKey = primarySlug != null ? primarySlug : "";
+
+        // Clean CDN manifest URL per slug: primary + every linked page (deduped).
+        LinkedHashMap<String, String> cleanUrlBySlug = new LinkedHashMap<>();
+        cleanUrlBySlug.put(primaryKey, manifestUrl);
+        for (CerosManifestV1.PageRef page : metadata.getPages()) {
             String slug = page.getSlug();
-            if (slug == null || slug.isEmpty() || page.isCurrent() || pages.containsKey(slug)) {
+            if (slug == null || slug.isEmpty() || page.isCurrent() || cleanUrlBySlug.containsKey(slug)) {
                 continue;
             }
             String pageManifestUrl = page.getManifestUrl();
@@ -117,15 +132,88 @@ public class CerosManifestServiceImpl implements CerosManifestService {
                 log.warn("Skipping page {}: no manifestUrl", slug);
                 continue;
             }
+            cleanUrlBySlug.put(slug, pageManifestUrl);
+        }
+
+        // 2. Fetch each page through the server-side ?baseUrl= rewrite. The
+        //    primary must succeed and must come back rewritten (fail loudly if
+        //    the host doesn't support it); secondary pages are best-effort.
+        LinkedHashMap<String, CerosManifestV1> pages = new LinkedHashMap<>();
+        for (Map.Entry<String, String> e : cleanUrlBySlug.entrySet()) {
+            String slug = e.getKey();
+            String cleanUrl = e.getValue();
+            boolean isPrimary = slug.equals(primaryKey);
+
+            CerosManifestV1 rewritten;
             try {
-                pages.put(slug, fetchPublicManifestFromUrl(pageManifestUrl));
-            } catch (IOException | IllegalArgumentException e) {
-                log.warn("Failed to fetch manifest for page {} ({}); skipping: {}",
-                        slug, pageManifestUrl, e.getMessage());
+                rewritten = fetchRewrittenManifest(cleanUrl, baseUrl);
+            } catch (IOException | IllegalArgumentException ex) {
+                if (isPrimary) {
+                    throw (ex instanceof IOException) ? (IOException) ex : new IOException(ex.getMessage(), ex);
+                }
+                log.warn("Failed to fetch rewritten manifest for page {} ({}); skipping: {}",
+                        slug, cleanUrl, ex.getMessage());
+                continue;
             }
+            if (rewritten.getAssetRewrites() == null) {
+                if (isPrimary) {
+                    throw new IOException("The Ceros experience host did not return rewrite data; "
+                            + "it must support the ?baseUrl manifest rewrite to use Store mode.");
+                }
+                log.warn("Page {} ({}) returned no rewrite data; skipping", slug, cleanUrl);
+                continue;
+            }
+
+            // The bundle keeps clean CDN pages[].manifestUrl (those drive
+            // experienceUrl for the author iframe preview); the DAM copy gets
+            // pages[] rewritten to DAM manifest paths later in uploadManifest.
+            restoreCleanPageUrls(rewritten, cleanUrlBySlug);
+            pages.put(slug, rewritten);
         }
 
         return new StoredManifestBundle(primarySlug, pages);
+    }
+
+    /**
+     * Fetches {@code manifestUrl} through flex-shield's server-side
+     * {@code ?baseUrl=} rewrite, then collapses the sentinel rewrite origin to a
+     * root-relative DAM path so stored manifests reference assets the same
+     * origin-agnostic way the connector always has. The returned manifest still
+     * carries its {@code assetRewrites} map for the caller to mirror.
+     */
+    CerosManifestV1 fetchRewrittenManifest(String manifestUrl, String baseUrl) throws IOException {
+        if (manifestUrl != null) {
+            manifestUrl = manifestUrl.trim();
+        }
+        HttpUtils.validateOutboundUrl(manifestUrl, allowHttpScheme, allowLocalAddresses);
+
+        String separator = manifestUrl.contains("?") ? "&" : "?";
+        String requestUrl = manifestUrl + separator + "baseUrl="
+                + URLEncoder.encode(baseUrl, StandardCharsets.UTF_8);
+        log.debug("Fetching rewritten Ceros manifest from {} (baseUrl={})", manifestUrl, baseUrl);
+
+        String json = HttpUtils.fetchString(requestUrl, httpTimeoutMillis,
+                Map.of("Accept", "application/json"));
+
+        String origin = cerosAssetStorageService.assetRewriteOrigin();
+        if (origin != null && !origin.isEmpty()) {
+            json = json.replace(origin, "");
+        }
+        return objectMapper.readValue(json, CerosManifestV1.class);
+    }
+
+    /**
+     * Resets each {@code pages[].manifestUrl} on the (server-rewritten) manifest
+     * back to the clean CDN URL the metadata fetch gave us, undoing the
+     * {@code ?baseUrl=} the server appends to deep-link targets.
+     */
+    private static void restoreCleanPageUrls(CerosManifestV1 manifest, Map<String, String> cleanUrlBySlug) {
+        for (CerosManifestV1.PageRef page : manifest.getPages()) {
+            String clean = cleanUrlBySlug.get(page.getSlug());
+            if (clean != null) {
+                page.setManifestUrl(clean);
+            }
+        }
     }
 
     @Override
@@ -190,20 +278,27 @@ public class CerosManifestServiceImpl implements CerosManifestService {
         progress.onPhase(FetchProgress.PHASE_UPLOADING_ASSETS);
         progress.onPageProgress(0, total);
 
+        // Mirror each page's server-side assetRewrites map into the DAM,
+        // deduping shared bundles across pages. The manifest's own URLs were
+        // already rewritten by the server, so we only download + store; the
+        // transient rewrite map is then dropped so it never lands in the
+        // persisted manifest.
         Map<String, String> urlMap = new LinkedHashMap<>();
+        Set<String> seenPaths = new HashSet<>();
         int processed = 0;
         for (CerosManifestV1 manifest : bundle.getPagesBySlug().values()) {
-            urlMap.putAll(cerosAssetStorageService.uploadAssets(manifest, resolver));
+            urlMap.putAll(cerosAssetStorageService.mirrorRewrittenAssets(manifest, resolver, seenPaths));
+            manifest.clearAssetRewrites();
             processed++;
             progress.onPageProgress(processed, total);
         }
 
-        // After every page's assets are in DAM, rewrite each manifest's
-        // pages[].manifestUrl to point at the sibling DAM-stored manifests, then
-        // write each manifest itself to DAM. This is what `data-flex-manifest-url`
-        // resolves to in store mode — the in-browser SPA router fetches the
-        // current page's manifest from DAM and uses its (now-local) pages[] for
-        // sibling navigation, so a click never reaches the external CDN.
+        // After every page's assets are in DAM, write each manifest itself to
+        // DAM with its pages[].manifestUrl rewritten to the sibling DAM-stored
+        // manifests. This is what `data-flex-manifest-url` resolves to in store
+        // mode — the in-browser SPA router fetches the current page's manifest
+        // from DAM and uses its (now-local) pages[] for sibling navigation, so a
+        // click never reaches the external CDN.
         for (CerosManifestV1 manifest : bundle.getPagesBySlug().values()) {
             String damPath = cerosAssetStorageService.uploadManifest(manifest, resolver);
             if (damPath != null) {

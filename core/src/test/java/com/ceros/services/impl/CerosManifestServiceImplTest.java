@@ -18,19 +18,16 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 class CerosManifestServiceImplTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private CerosManifestServiceImpl service;
-
-    @BeforeEach
-    void setUp() throws Exception {
-        service = new CerosManifestServiceImpl();
-        setField(service, "httpTimeoutMillis", 10000);
-    }
+    /** baseUrl the mocked asset service hands back for experience slug "e". */
+    private static final String BASE_URL = "https://ceros-dam.invalid/content/dam/ceros/e";
 
     private static void setField(Object target, String name, Object value) throws Exception {
         Field f = CerosManifestServiceImpl.class.getDeclaredField(name);
@@ -42,52 +39,75 @@ class CerosManifestServiceImplTest {
         return MAPPER.readValue(json, CerosManifestV1.class);
     }
 
+    /** A spy wired with a 10s timeout and a mock asset storage service. */
+    private static CerosManifestServiceImpl spyWithAssets(CerosAssetStorageService assets) throws Exception {
+        CerosManifestServiceImpl spy = spy(new CerosManifestServiceImpl());
+        setField(spy, "httpTimeoutMillis", 10000);
+        setField(spy, "cerosAssetStorageService", assets);
+        return spy;
+    }
+
     @Test
-    void fetchPublicManifestFromUrlThrowsOnInvalidUrl() {
+    void fetchPublicManifestFromUrlThrowsOnInvalidUrl() throws Exception {
+        CerosManifestServiceImpl service = new CerosManifestServiceImpl();
+        setField(service, "httpTimeoutMillis", 10000);
         assertThrows(Exception.class, () -> service.fetchPublicManifestFromUrl("not-a-url"));
     }
 
     @Test
-    void fetchPublicManifestFromUrlTrimsUrl() {
+    void fetchPublicManifestFromUrlTrimsUrl() throws Exception {
+        CerosManifestServiceImpl service = new CerosManifestServiceImpl();
+        setField(service, "httpTimeoutMillis", 10000);
         assertThrows(IOException.class,
                 () -> service.fetchPublicManifestFromUrl("  https://nonexistent.invalid/manifest.json  "));
     }
 
+    // ---- fetchManifestBundle (server-side ?baseUrl= rewrite) ----
+
     @Test
     void fetchManifestBundleIncludesPrimaryUnderPageSlug() throws Exception {
-        CerosManifestServiceImpl spy = spy(new CerosManifestServiceImpl());
-        setField(spy, "httpTimeoutMillis", 10000);
+        CerosAssetStorageService assets = mock(CerosAssetStorageService.class);
+        when(assets.assetRewriteBaseUrl("e")).thenReturn(BASE_URL);
+        CerosManifestServiceImpl spy = spyWithAssets(assets);
 
-        CerosManifestV1 primary = parse(""
-                + "{"
+        CerosManifestV1 meta = parse("{"
                 + "  \"experience\":{\"slug\":\"e\",\"pageSlug\":\"home\"},"
                 + "  \"pages\":[{\"slug\":\"home\",\"manifestUrl\":\"https://x/home/manifest.json\",\"current\":true}]"
                 + "}");
-        doReturn(primary).when(spy).fetchPublicManifestFromUrl("https://x/home/manifest.json");
+        doReturn(meta).when(spy).fetchPublicManifestFromUrl("https://x/home/manifest.json");
+
+        CerosManifestV1 rewritten = parse("{\"experience\":{\"slug\":\"e\",\"pageSlug\":\"home\"},"
+                + "\"assetRewrites\":{\"baseUrl\":\"" + BASE_URL + "\",\"assets\":[]}}");
+        doReturn(rewritten).when(spy).fetchRewrittenManifest("https://x/home/manifest.json", BASE_URL);
 
         StoredManifestBundle bundle = spy.fetchManifestBundle("https://x/home/manifest.json");
 
         assertEquals("home", bundle.getPrimarySlug());
         assertEquals(1, bundle.getPagesBySlug().size());
-        assertSame(primary, bundle.manifestFor("home"));
+        assertSame(rewritten, bundle.manifestFor("home"));
     }
 
     @Test
     void fetchManifestBundleFetchesNonCurrentPages() throws Exception {
-        CerosManifestServiceImpl spy = spy(new CerosManifestServiceImpl());
-        setField(spy, "httpTimeoutMillis", 10000);
+        CerosAssetStorageService assets = mock(CerosAssetStorageService.class);
+        when(assets.assetRewriteBaseUrl("e")).thenReturn(BASE_URL);
+        CerosManifestServiceImpl spy = spyWithAssets(assets);
 
-        CerosManifestV1 primary = parse(""
-                + "{"
+        CerosManifestV1 meta = parse("{"
                 + "  \"experience\":{\"slug\":\"e\",\"pageSlug\":\"home\"},"
                 + "  \"pages\":["
                 + "    {\"slug\":\"home\",\"manifestUrl\":\"https://x/home/manifest.json\",\"current\":true},"
                 + "    {\"slug\":\"about\",\"manifestUrl\":\"https://x/about/manifest.json\"}"
                 + "  ]"
                 + "}");
-        CerosManifestV1 about = parse("{\"experience\":{\"slug\":\"e\",\"pageSlug\":\"about\"}}");
-        doReturn(primary).when(spy).fetchPublicManifestFromUrl("https://x/home/manifest.json");
-        doReturn(about).when(spy).fetchPublicManifestFromUrl("https://x/about/manifest.json");
+        doReturn(meta).when(spy).fetchPublicManifestFromUrl("https://x/home/manifest.json");
+
+        CerosManifestV1 home = parse("{\"experience\":{\"slug\":\"e\",\"pageSlug\":\"home\"},"
+                + "\"assetRewrites\":{\"assets\":[]}}");
+        CerosManifestV1 about = parse("{\"experience\":{\"slug\":\"e\",\"pageSlug\":\"about\"},"
+                + "\"assetRewrites\":{\"assets\":[]}}");
+        doReturn(home).when(spy).fetchRewrittenManifest("https://x/home/manifest.json", BASE_URL);
+        doReturn(about).when(spy).fetchRewrittenManifest("https://x/about/manifest.json", BASE_URL);
 
         StoredManifestBundle bundle = spy.fetchManifestBundle("https://x/home/manifest.json");
 
@@ -97,32 +117,35 @@ class CerosManifestServiceImplTest {
 
     @Test
     void fetchManifestBundleSkipsPagesMissingManifestUrl() throws Exception {
-        CerosManifestServiceImpl spy = spy(new CerosManifestServiceImpl());
-        setField(spy, "httpTimeoutMillis", 10000);
+        CerosAssetStorageService assets = mock(CerosAssetStorageService.class);
+        when(assets.assetRewriteBaseUrl("e")).thenReturn(BASE_URL);
+        CerosManifestServiceImpl spy = spyWithAssets(assets);
 
-        CerosManifestV1 primary = parse(""
-                + "{"
+        CerosManifestV1 meta = parse("{"
                 + "  \"experience\":{\"slug\":\"e\",\"pageSlug\":\"home\"},"
                 + "  \"pages\":["
                 + "    {\"slug\":\"home\",\"current\":true},"
                 + "    {\"slug\":\"about\"}"
                 + "  ]"
                 + "}");
-        doReturn(primary).when(spy).fetchPublicManifestFromUrl("https://x/home/manifest.json");
+        doReturn(meta).when(spy).fetchPublicManifestFromUrl("https://x/home/manifest.json");
+        CerosManifestV1 home = parse("{\"experience\":{\"slug\":\"e\",\"pageSlug\":\"home\"},"
+                + "\"assetRewrites\":{\"assets\":[]}}");
+        doReturn(home).when(spy).fetchRewrittenManifest("https://x/home/manifest.json", BASE_URL);
 
         StoredManifestBundle bundle = spy.fetchManifestBundle("https://x/home/manifest.json");
 
         assertEquals(1, bundle.getPagesBySlug().size());
-        verify(spy, times(1)).fetchPublicManifestFromUrl(anyString());
+        verify(spy, times(1)).fetchRewrittenManifest(anyString(), eq(BASE_URL));
     }
 
     @Test
     void fetchManifestBundleSwallowsPerPageFetchErrors() throws Exception {
-        CerosManifestServiceImpl spy = spy(new CerosManifestServiceImpl());
-        setField(spy, "httpTimeoutMillis", 10000);
+        CerosAssetStorageService assets = mock(CerosAssetStorageService.class);
+        when(assets.assetRewriteBaseUrl("e")).thenReturn(BASE_URL);
+        CerosManifestServiceImpl spy = spyWithAssets(assets);
 
-        CerosManifestV1 primary = parse(""
-                + "{"
+        CerosManifestV1 meta = parse("{"
                 + "  \"experience\":{\"slug\":\"e\",\"pageSlug\":\"home\"},"
                 + "  \"pages\":["
                 + "    {\"slug\":\"home\",\"manifestUrl\":\"https://x/home/manifest.json\",\"current\":true},"
@@ -130,10 +153,15 @@ class CerosManifestServiceImplTest {
                 + "    {\"slug\":\"contact\",\"manifestUrl\":\"https://x/contact/manifest.json\"}"
                 + "  ]"
                 + "}");
-        CerosManifestV1 contact = parse("{\"experience\":{\"slug\":\"e\",\"pageSlug\":\"contact\"}}");
-        doReturn(primary).when(spy).fetchPublicManifestFromUrl("https://x/home/manifest.json");
-        doThrow(new IOException("boom")).when(spy).fetchPublicManifestFromUrl("https://x/about/manifest.json");
-        doReturn(contact).when(spy).fetchPublicManifestFromUrl("https://x/contact/manifest.json");
+        doReturn(meta).when(spy).fetchPublicManifestFromUrl("https://x/home/manifest.json");
+
+        CerosManifestV1 home = parse("{\"experience\":{\"slug\":\"e\",\"pageSlug\":\"home\"},"
+                + "\"assetRewrites\":{\"assets\":[]}}");
+        CerosManifestV1 contact = parse("{\"experience\":{\"slug\":\"e\",\"pageSlug\":\"contact\"},"
+                + "\"assetRewrites\":{\"assets\":[]}}");
+        doReturn(home).when(spy).fetchRewrittenManifest("https://x/home/manifest.json", BASE_URL);
+        doThrow(new IOException("boom")).when(spy).fetchRewrittenManifest("https://x/about/manifest.json", BASE_URL);
+        doReturn(contact).when(spy).fetchRewrittenManifest("https://x/contact/manifest.json", BASE_URL);
 
         StoredManifestBundle bundle = spy.fetchManifestBundle("https://x/home/manifest.json");
 
@@ -145,24 +173,117 @@ class CerosManifestServiceImplTest {
     }
 
     @Test
-    void fetchManifestBundlePropagatesPrimaryFetchFailure() throws Exception {
-        CerosManifestServiceImpl spy = spy(new CerosManifestServiceImpl());
-        setField(spy, "httpTimeoutMillis", 10000);
-        doThrow(new IOException("nope")).when(spy).fetchPublicManifestFromUrl("https://x/home/manifest.json");
+    void fetchManifestBundleSkipsSecondaryPagesWithoutRewriteData() throws Exception {
+        CerosAssetStorageService assets = mock(CerosAssetStorageService.class);
+        when(assets.assetRewriteBaseUrl("e")).thenReturn(BASE_URL);
+        CerosManifestServiceImpl spy = spyWithAssets(assets);
+
+        CerosManifestV1 meta = parse("{"
+                + "  \"experience\":{\"slug\":\"e\",\"pageSlug\":\"home\"},"
+                + "  \"pages\":["
+                + "    {\"slug\":\"home\",\"manifestUrl\":\"https://x/home/manifest.json\",\"current\":true},"
+                + "    {\"slug\":\"about\",\"manifestUrl\":\"https://x/about/manifest.json\"}"
+                + "  ]"
+                + "}");
+        doReturn(meta).when(spy).fetchPublicManifestFromUrl("https://x/home/manifest.json");
+
+        CerosManifestV1 home = parse("{\"experience\":{\"slug\":\"e\",\"pageSlug\":\"home\"},"
+                + "\"assetRewrites\":{\"assets\":[]}}");
+        // about comes back with NO assetRewrites — host didn't rewrite it; skip.
+        CerosManifestV1 about = parse("{\"experience\":{\"slug\":\"e\",\"pageSlug\":\"about\"}}");
+        doReturn(home).when(spy).fetchRewrittenManifest("https://x/home/manifest.json", BASE_URL);
+        doReturn(about).when(spy).fetchRewrittenManifest("https://x/about/manifest.json", BASE_URL);
+
+        StoredManifestBundle bundle = spy.fetchManifestBundle("https://x/home/manifest.json");
+
+        assertEquals(1, bundle.getPagesBySlug().size());
+        assertNull(bundle.getPagesBySlug().get("about"));
+    }
+
+    @Test
+    void fetchManifestBundleThrowsWhenPrimaryHasNoRewriteData() throws Exception {
+        CerosAssetStorageService assets = mock(CerosAssetStorageService.class);
+        when(assets.assetRewriteBaseUrl("e")).thenReturn(BASE_URL);
+        CerosManifestServiceImpl spy = spyWithAssets(assets);
+
+        CerosManifestV1 meta = parse("{\"experience\":{\"slug\":\"e\",\"pageSlug\":\"home\"},"
+                + "\"pages\":[{\"slug\":\"home\",\"manifestUrl\":\"https://x/home/manifest.json\",\"current\":true}]}");
+        doReturn(meta).when(spy).fetchPublicManifestFromUrl("https://x/home/manifest.json");
+        // No assetRewrites on the primary → host doesn't support the rewrite.
+        CerosManifestV1 home = parse("{\"experience\":{\"slug\":\"e\",\"pageSlug\":\"home\"}}");
+        doReturn(home).when(spy).fetchRewrittenManifest("https://x/home/manifest.json", BASE_URL);
 
         assertThrows(IOException.class, () -> spy.fetchManifestBundle("https://x/home/manifest.json"));
+    }
+
+    @Test
+    void fetchManifestBundleThrowsWhenExperienceSlugMissing() throws Exception {
+        CerosAssetStorageService assets = mock(CerosAssetStorageService.class);
+        CerosManifestServiceImpl spy = spyWithAssets(assets);
+
+        CerosManifestV1 meta = parse("{\"pages\":[]}");
+        doReturn(meta).when(spy).fetchPublicManifestFromUrl("https://x/home/manifest.json");
+
+        assertThrows(IOException.class, () -> spy.fetchManifestBundle("https://x/home/manifest.json"));
+        verify(spy, never()).fetchRewrittenManifest(anyString(), anyString());
+    }
+
+    @Test
+    void fetchManifestBundlePropagatesPrimaryFetchFailure() throws Exception {
+        CerosAssetStorageService assets = mock(CerosAssetStorageService.class);
+        when(assets.assetRewriteBaseUrl("e")).thenReturn(BASE_URL);
+        CerosManifestServiceImpl spy = spyWithAssets(assets);
+
+        CerosManifestV1 meta = parse("{\"experience\":{\"slug\":\"e\",\"pageSlug\":\"home\"},"
+                + "\"pages\":[{\"slug\":\"home\",\"manifestUrl\":\"https://x/home/manifest.json\",\"current\":true}]}");
+        doReturn(meta).when(spy).fetchPublicManifestFromUrl("https://x/home/manifest.json");
+        doThrow(new IOException("nope")).when(spy).fetchRewrittenManifest("https://x/home/manifest.json", BASE_URL);
+
+        assertThrows(IOException.class, () -> spy.fetchManifestBundle("https://x/home/manifest.json"));
+    }
+
+    @Test
+    void fetchManifestBundleRestoresCleanPageUrls() throws Exception {
+        CerosAssetStorageService assets = mock(CerosAssetStorageService.class);
+        when(assets.assetRewriteBaseUrl("e")).thenReturn(BASE_URL);
+        CerosManifestServiceImpl spy = spyWithAssets(assets);
+
+        CerosManifestV1 meta = parse("{"
+                + "  \"experience\":{\"slug\":\"e\",\"pageSlug\":\"home\"},"
+                + "  \"pages\":["
+                + "    {\"slug\":\"home\",\"manifestUrl\":\"https://x/home/manifest.json\",\"current\":true},"
+                + "    {\"slug\":\"about\",\"manifestUrl\":\"https://x/about/manifest.json\"}"
+                + "  ]"
+                + "}");
+        doReturn(meta).when(spy).fetchPublicManifestFromUrl("https://x/home/manifest.json");
+
+        // The server appended ?baseUrl= to the deep-link pages[].manifestUrl.
+        CerosManifestV1 home = parse("{\"experience\":{\"slug\":\"e\",\"pageSlug\":\"home\"},"
+                + "\"assetRewrites\":{\"assets\":[]},"
+                + "\"pages\":["
+                + "  {\"slug\":\"home\",\"manifestUrl\":\"https://x/home/manifest.json?baseUrl=foo\"},"
+                + "  {\"slug\":\"about\",\"manifestUrl\":\"https://x/about/manifest.json?baseUrl=foo\"}"
+                + "]}");
+        CerosManifestV1 about = parse("{\"experience\":{\"slug\":\"e\",\"pageSlug\":\"about\"},"
+                + "\"assetRewrites\":{\"assets\":[]}}");
+        doReturn(home).when(spy).fetchRewrittenManifest("https://x/home/manifest.json", BASE_URL);
+        doReturn(about).when(spy).fetchRewrittenManifest("https://x/about/manifest.json", BASE_URL);
+
+        StoredManifestBundle bundle = spy.fetchManifestBundle("https://x/home/manifest.json");
+
+        CerosManifestV1 served = bundle.manifestFor("home");
+        assertEquals("https://x/home/manifest.json", served.getPages().get(0).getManifestUrl());
+        assertEquals("https://x/about/manifest.json", served.getPages().get(1).getManifestUrl());
     }
 
     // ---- performFetchAndStore ----
 
     @Test
     void performFetchAndStoreDrivesProgressThroughEveryPhase() throws Exception {
-        CerosManifestServiceImpl spy = spy(new CerosManifestServiceImpl());
-        setField(spy, "httpTimeoutMillis", 10000);
-
         CerosAssetStorageService assets = mock(CerosAssetStorageService.class);
-        setField(spy, "cerosAssetStorageService", assets);
-        when(assets.uploadAssets(any(), any())).thenReturn(Map.of("https://cdn/a.css", "/dam/a.css"));
+        CerosManifestServiceImpl spy = spyWithAssets(assets);
+        when(assets.mirrorRewrittenAssets(any(), any(), any()))
+                .thenReturn(Map.of("https://cdn/a.css", "/dam/a.css"));
 
         LinkedHashMap<String, CerosManifestV1> pages = new LinkedHashMap<>();
         pages.put("home", parse("{}"));
@@ -181,8 +302,8 @@ class CerosManifestServiceImplTest {
         assertEquals(FetchProgress.PHASE_UPLOADING_ASSETS, progress.phases.get(1));
         assertEquals(FetchProgress.PHASE_PERSISTING, progress.phases.get(2));
 
-        // Asset upload called for every page in the bundle.
-        verify(assets, times(2)).uploadAssets(any(), eq(resolver));
+        // Asset mirror called for every page in the bundle.
+        verify(assets, times(2)).mirrorRewrittenAssets(any(), eq(resolver), any());
 
         // Final page-progress count equals total page count.
         assertEquals(2, progress.lastProcessed.get());
@@ -196,12 +317,9 @@ class CerosManifestServiceImplTest {
 
     @Test
     void performFetchAndStoreSkipsPersistWhenComponentPathNull() throws Exception {
-        CerosManifestServiceImpl spy = spy(new CerosManifestServiceImpl());
-        setField(spy, "httpTimeoutMillis", 10000);
-
         CerosAssetStorageService assets = mock(CerosAssetStorageService.class);
-        setField(spy, "cerosAssetStorageService", assets);
-        when(assets.uploadAssets(any(), any())).thenReturn(Map.of());
+        CerosManifestServiceImpl spy = spyWithAssets(assets);
+        when(assets.mirrorRewrittenAssets(any(), any(), any())).thenReturn(Map.of());
 
         LinkedHashMap<String, CerosManifestV1> pages = new LinkedHashMap<>();
         pages.put("home", parse("{}"));
@@ -218,9 +336,8 @@ class CerosManifestServiceImplTest {
 
     @Test
     void performFetchAndStorePropagatesFetchFailures() throws Exception {
-        CerosManifestServiceImpl spy = spy(new CerosManifestServiceImpl());
-        setField(spy, "httpTimeoutMillis", 10000);
-        setField(spy, "cerosAssetStorageService", mock(CerosAssetStorageService.class));
+        CerosAssetStorageService assets = mock(CerosAssetStorageService.class);
+        CerosManifestServiceImpl spy = spyWithAssets(assets);
         doThrow(new IOException("bad gateway"))
                 .when(spy).fetchManifestBundle("https://x/manifest.json");
 

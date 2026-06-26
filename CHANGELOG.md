@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Store** mode now delegates URL-rewriting to flex-shield's server-side `?baseUrl=` rewrite instead of scanning and rewriting manifests itself. The pipeline does a metadata fetch (no `baseUrl`) to learn the experience and page list, then re-fetches each page as `manifest.v1.json?baseUrl=<DAM root>` and **mirrors** the returned `assetRewrites` map — downloading each `assets[].from` and writing it at the server-supplied `assets[].path` (deduped across pages). The server's rewrite also covers inline `html-body`/`srcset`/CSS `url()` references that the old client-side scan missed.
+  - Store mode now **fails loudly** if the experience host doesn't return `assetRewrites` (i.e. doesn't support the rewrite) rather than silently storing CDN-dependent assets.
+  - The sentinel rewrite origin is stripped from the response, so stored manifests keep today's origin-agnostic **root-relative** DAM paths (`/content/dam/ceros/…`).
+  - Removed the client-side delivery-mode/webfont-CSS/HLS-playlist/media downloaders and the inline URL-map rewrite that Store mode used. **Import** mode (HTML `.tar.gz`) is unchanged — it has no server to ask, so it still resolves and rewrites assets from the archive.
+  - Server-supplied asset paths are validated (`FileUtils.safeRelativePath`: no `..`/absolute, `[A-Za-z0-9._-]` segments only) before being joined onto the DAM root.
+  - New OSGi property `assetRewriteHost` on the Asset Storage Service (default `https://ceros-dam.invalid`); removed the now-unused `mediaCdnBaseUrl`.
+
 ## [0.0.7] - 2026-06-18
 
 ### Fixed

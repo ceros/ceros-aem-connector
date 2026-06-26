@@ -5,26 +5,55 @@ import org.apache.sling.api.resource.ResourceResolver;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Set;
 // (Map<String, byte[]> archive entries are produced by com.ceros.util.ArchiveUtils)
 
 /**
  * Downloads assets referenced by a Ceros manifest and uploads them to AEM DAM.
  *
- * <p>After upload, the manifest's internal URLs are rewritten to point at the
- * DAM copies so the published page has no runtime CDN dependency.</p>
+ * <p>For live "Store" mode the URL-rewriting is owned by flex-shield: the
+ * manifest is requested with {@code ?baseUrl=} (see
+ * {@link #assetRewriteBaseUrl(String)}) and comes back with its asset URLs
+ * already pointing under the DAM base path plus an {@code assetRewrites} map
+ * this service {@linkplain #mirrorRewrittenAssets mirrors} into the DAM. For
+ * HTML-import mode there is no server, so the archive counterpart still
+ * rewrites the manifest URLs in-place.</p>
  */
 public interface CerosAssetStorageService {
 
     /**
-     * Downloads all CSS, JS, font, and media assets referenced by the manifest
-     * and stores them under the configured DAM base path.
-     *
-     * @param manifest the parsed Ceros manifest whose asset URLs will be rewritten in-place
-     * @param resolver a live resource resolver used to obtain the Granite {@code AssetManager}
-     * @return a map of original CDN URLs to their new DAM paths
-     * @throws IOException if a critical download or storage operation fails
+     * The absolute {@code baseUrl} to request the flex-shield server-side
+     * rewrite against for {@code experienceSlug}. Its path component is the DAM
+     * root every asset will be served under; its origin is a sentinel
+     * ({@link #assetRewriteOrigin()}) stripped from the response so stored
+     * manifests reference assets by root-relative DAM path.
      */
-    Map<String, String> uploadAssets(CerosManifestV1 manifest, ResourceResolver resolver) throws IOException;
+    String assetRewriteBaseUrl(String experienceSlug);
+
+    /**
+     * The sentinel origin baked into {@link #assetRewriteBaseUrl(String)}. The
+     * Store pipeline strips this prefix from the server-rewritten manifest so
+     * the {@code to} URLs collapse to root-relative DAM paths.
+     */
+    String assetRewriteOrigin();
+
+    /**
+     * Mirrors the server's {@code assetRewrites} map: downloads each entry's
+     * {@code from} URL and writes it into the DAM at the path the rewrite
+     * specifies (under the experience's DAM root). Deduped across pages via
+     * {@code seenPaths} so shared bundles download once. The manifest's own
+     * asset URLs were already rewritten by the server, so nothing on the
+     * manifest is modified here.
+     *
+     * @param manifest  a server-rewritten manifest carrying {@code assetRewrites}
+     * @param resolver  a live resource resolver used to obtain the Granite {@code AssetManager}
+     * @param seenPaths relative DAM paths already written this run (mutated)
+     * @return a map of original Ceros URL to DAM path for every asset stored
+     * @throws IOException if obtaining the {@code AssetManager} or committing fails
+     */
+    Map<String, String> mirrorRewrittenAssets(CerosManifestV1 manifest,
+                                              ResourceResolver resolver,
+                                              Set<String> seenPaths) throws IOException;
 
     /**
      * Archive-sourced counterpart of {@link #uploadAssets}: instead of

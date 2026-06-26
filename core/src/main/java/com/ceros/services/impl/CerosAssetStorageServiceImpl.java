@@ -24,21 +24,22 @@ import javax.jcr.Session;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * OSGi implementation of {@link CerosAssetStorageService}.
  *
- * <p>Downloads structured assets (CSS/JS), webfonts, and media files from the
- * Ceros CDN and uploads them to AEM DAM under a configurable base path.
- * After upload, manifest URLs are rewritten to reference the DAM copies.</p>
+ * <p>For live "Store" mode, flex-shield owns the URL-rewriting: the manifest is
+ * requested with {@code ?baseUrl=} and this service simply
+ * {@linkplain #mirrorRewrittenAssets mirrors} the returned {@code assetRewrites}
+ * map into the DAM (download each {@code from}, write it at its {@code path}).
+ * For HTML-import mode there is no server, so the archive counterpart
+ * ({@link #uploadAssetsFromArchive}) still resolves each referenced asset from
+ * the extracted export and rewrites the manifest URLs in-place.</p>
  */
 @Component(service = CerosAssetStorageService.class)
 @Designate(ocd = CerosAssetStorageServiceImpl.Config.class)
@@ -57,55 +58,100 @@ public class CerosAssetStorageServiceImpl implements CerosAssetStorageService {
                 description = "Root DAM folder for Ceros assets")
         String damBasePath() default "/content/dam/ceros";
 
-        @AttributeDefinition(name = "Media CDN base URL",
-                description = "Base URL for media assets embedded in HTML content (e.g. images). "
-                        + "All URLs starting with this prefix will be extracted, downloaded, and uploaded to DAM.")
-        String mediaCdnBaseUrl() default "https://media.cdn.ceros.site/";
+        @AttributeDefinition(name = "Asset rewrite host",
+                description = "Absolute origin (scheme + host) used to build the baseUrl "
+                        + "sent to flex-shield's server-side ?baseUrl= rewrite. It must be a "
+                        + "valid http(s) origin to pass server validation, but is stripped "
+                        + "from the response so stored manifests keep root-relative DAM paths. "
+                        + "The default uses the reserved .invalid TLD so it can never resolve.")
+        String assetRewriteHost() default "https://ceros-dam.invalid";
     }
 
     private static final ObjectMapper MANIFEST_MAPPER = new ObjectMapper();
 
     private int httpTimeoutMillis;
     private String damBasePath;
-    private String mediaCdnBaseUrl;
+    private String assetRewriteHost;
 
     @Activate
     @Modified
     protected void activate(Config config) {
         this.httpTimeoutMillis = config.httpTimeoutSeconds() * 1000;
-        this.damBasePath = config.damBasePath();
-        String cdn = config.mediaCdnBaseUrl();
-        if (cdn != null && !cdn.endsWith("/")) {
-            cdn += "/";
+        this.damBasePath = trimTrailingSlash(config.damBasePath());
+        this.assetRewriteHost = trimTrailingSlash(config.assetRewriteHost());
+    }
+
+    private static String trimTrailingSlash(String value) {
+        if (value == null) {
+            return null;
         }
-        this.mediaCdnBaseUrl = cdn;
+        String v = value;
+        while (v.endsWith("/")) {
+            v = v.substring(0, v.length() - 1);
+        }
+        return v;
     }
 
     @Override
-    public Map<String, String> uploadAssets(CerosManifestV1 manifest, ResourceResolver resolver) throws IOException {
+    public String assetRewriteOrigin() {
+        return assetRewriteHost;
+    }
+
+    @Override
+    public String assetRewriteBaseUrl(String experienceSlug) {
+        return assetRewriteHost + damRootFor(experienceSlug);
+    }
+
+    /** Root-relative DAM folder every asset for {@code experienceSlug} lives under. */
+    private String damRootFor(String experienceSlug) {
+        return damBasePath + "/" + experienceSlug;
+    }
+
+    @Override
+    public Map<String, String> mirrorRewrittenAssets(CerosManifestV1 manifest,
+                                                     ResourceResolver resolver,
+                                                     Set<String> seenPaths) throws IOException {
         String slug = manifest.getExperience() != null ? manifest.getExperience().getSlug() : null;
         if (StringUtils.isBlank(slug)) {
-            log.warn("No experience slug in manifest, skipping asset upload");
+            log.warn("No experience slug in manifest, skipping asset mirror");
+            return Map.of();
+        }
+        CerosManifestV1.AssetRewrites rewrites = manifest.getAssetRewrites();
+        if (rewrites == null || rewrites.getAssets().isEmpty()) {
             return Map.of();
         }
 
         AssetManager assetManager = resolver.adaptTo(AssetManager.class);
         if (assetManager == null) {
-            log.warn("Could not obtain AssetManager, skipping asset upload");
+            log.warn("Could not obtain AssetManager, skipping asset mirror");
             return Map.of();
         }
 
-        String pageSlug = StringUtils.defaultIfBlank(manifest.getExperience().getPageSlug(), "page-1");
-        String basePath = damBasePath + "/" + slug + "/" + pageSlug;
+        String damRoot = damRootFor(slug);
         Map<String, String> urlMap = new LinkedHashMap<>();
-
-        handleDeliveryModeAssets(manifest, assetManager, basePath, urlMap, resolver);
-        handleWebfonts(manifest, assetManager, basePath, urlMap, resolver);
-        handleMedia(manifest, assetManager, basePath, urlMap, resolver);
+        for (CerosManifestV1.AssetRewrite asset : rewrites.getAssets()) {
+            String from = asset.getFrom();
+            String rel = FileUtils.safeRelativePath(asset.getPath());
+            if (StringUtils.isBlank(from) || rel == null) {
+                if (StringUtils.isNotBlank(from)) {
+                    log.warn("Skipping rewrite asset with unsafe path '{}' (from {})", asset.getPath(), from);
+                }
+                continue;
+            }
+            if (!seenPaths.add(rel)) {
+                continue; // shared bundle already mirrored by an earlier page
+            }
+            String damPath = damRoot + "/" + rel;
+            try (InputStream stream = HttpUtils.downloadStream(from, httpTimeoutMillis)) {
+                createOrReplaceAsset(assetManager, damPath, stream, mimeTypeFor(rel), resolver);
+                urlMap.put(from, damPath);
+                log.info("Mirrored rewrite asset: {} -> {}", from, damPath);
+            } catch (Exception e) {
+                log.warn("Failed to mirror rewrite asset {} -> {}: {}", from, damPath, e.getMessage());
+            }
+        }
 
         resolver.commit();
-
-        rewriteInlineContent(manifest, urlMap);
         return urlMap;
     }
 
@@ -245,73 +291,6 @@ public class CerosAssetStorageServiceImpl implements CerosAssetStorageService {
         return damPath;
     }
 
-    private void handleDeliveryModeAssets(CerosManifestV1 manifest, AssetManager assetManager,
-                                            String basePath, Map<String, String> urlMap,
-                                            ResourceResolver resolver) {
-        CerosManifestV1.DeliveryMode ssr = manifest.getDeliveryMode("ssr");
-        if (ssr == null) {
-            return;
-        }
-        for (CerosManifestV1.Style style : ssr.getStyles()) {
-            if (style.getUrl() != null) {
-                String damPath = basePath + "/" + FileUtils.extractFilename(style.getUrl());
-                uploadFile(style.getUrl(), damPath, "text/css", assetManager, urlMap, resolver);
-                if (urlMap.containsKey(style.getUrl())) {
-                    style.setUrl(damPath);
-                }
-            }
-        }
-        for (CerosManifestV1.Script script : ssr.getScripts()) {
-            if (script.getUrl() != null) {
-                String damPath = basePath + "/" + FileUtils.extractFilename(script.getUrl());
-                uploadFile(script.getUrl(), damPath, "application/javascript", assetManager, urlMap, resolver);
-                if (urlMap.containsKey(script.getUrl())) {
-                    script.setUrl(damPath);
-                }
-            }
-        }
-    }
-
-    private void handleWebfonts(CerosManifestV1 manifest, AssetManager assetManager,
-                                 String basePath, Map<String, String> urlMap,
-                                 ResourceResolver resolver) {
-        for (CerosManifestV1.AssetEntry entry : manifest.getAssets()) {
-            if ("webfont".equals(entry.getType()) && entry.getSrc() != null
-                    && entry.getSrc().getUrl() != null) {
-                uploadWebfont(entry.getSrc().getUrl(), basePath + "/fonts", assetManager, urlMap, resolver);
-                String damPath = urlMap.get(entry.getSrc().getUrl());
-                if (damPath != null) {
-                    entry.getSrc().setUrl(damPath);
-                }
-            }
-        }
-    }
-
-    private void handleMedia(CerosManifestV1 manifest, AssetManager assetManager,
-                              String basePath, Map<String, String> urlMap,
-                              ResourceResolver resolver) {
-        Set<String> seen = new LinkedHashSet<>();
-        for (CerosManifestV1.MediaEntry entry : manifest.getMedia()) {
-            if (entry.getUrl() == null) {
-                continue;
-            }
-            String baseUrl = FileUtils.stripQueryParams(entry.getUrl());
-            if (!seen.add(baseUrl)) {
-                continue;
-            }
-            String filename = StringUtils.defaultIfBlank(entry.getFilename(),
-                    FileUtils.extractFilename(baseUrl));
-            String damPath = basePath + "/media/" + filename;
-            String mimeType = StringUtils.defaultIfBlank(entry.getMimeType(), "application/octet-stream");
-
-            if (filename.endsWith(".m3u8")) {
-                uploadHlsStream(baseUrl, damPath, basePath + "/media", assetManager, urlMap, resolver);
-            } else {
-                uploadFile(baseUrl, damPath, mimeType, assetManager, urlMap, resolver);
-            }
-        }
-    }
-
     @Override
     public String uploadManifest(CerosManifestV1 manifest, ResourceResolver resolver) throws IOException {
         if (manifest == null || manifest.getExperience() == null) {
@@ -376,82 +355,6 @@ public class CerosAssetStorageServiceImpl implements CerosAssetStorageService {
             }
         } catch (Exception e) {
             log.warn("Could not set MIME type for {}: {}", path, e.getMessage());
-        }
-    }
-
-    private void uploadFile(String url, String damPath, String mimeType, AssetManager assetManager,
-                             Map<String, String> urlMap, ResourceResolver resolver) {
-        try {
-            try (InputStream stream = HttpUtils.downloadStream(url, httpTimeoutMillis)) {
-                createOrReplaceAsset(assetManager, damPath, stream, mimeType, resolver);
-            }
-            urlMap.put(url, damPath);
-            log.info("Uploaded to DAM: {} -> {}", url, damPath);
-        } catch (Exception e) {
-            log.warn("Failed to upload {}: {}", url, e.getMessage());
-        }
-    }
-
-    private static final Pattern FONT_URL_PATTERN = Pattern.compile("url\\(([^)]+)\\)");
-    private static final String WOFF2_USER_AGENT =
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36";
-
-    private void uploadWebfont(String cssUrl, String fontsBasePath, AssetManager assetManager,
-                                Map<String, String> urlMap, ResourceResolver resolver) {
-        try {
-            String css = HttpUtils.fetchString(cssUrl, httpTimeoutMillis,
-                    Map.of("User-Agent", WOFF2_USER_AGENT));
-
-            Matcher matcher = FONT_URL_PATTERN.matcher(css);
-            Set<String> fontUrls = new LinkedHashSet<>();
-            while (matcher.find()) {
-                fontUrls.add(matcher.group(1).trim());
-            }
-
-            for (String fontUrl : fontUrls) {
-                String damPath = fontsBasePath + "/" + FileUtils.extractFilename(fontUrl);
-                uploadFile(fontUrl, damPath, "application/octet-stream", assetManager, urlMap, resolver);
-                if (urlMap.containsKey(fontUrl)) {
-                    css = css.replace(fontUrl, urlMap.get(fontUrl));
-                }
-            }
-
-            String cssFilename = FileUtils.extractFilename(cssUrl);
-            if (!cssFilename.endsWith(".css")) {
-                cssFilename = "webfonts.css";
-            }
-            String cssDamPath = fontsBasePath + "/" + cssFilename;
-            createOrReplaceAsset(assetManager, cssDamPath,
-                    new ByteArrayInputStream(css.getBytes(StandardCharsets.UTF_8)), "text/css", resolver);
-            urlMap.put(cssUrl, cssDamPath);
-            log.info("Uploaded to DAM: {} -> {}", cssUrl, cssDamPath);
-        } catch (Exception e) {
-            log.warn("Failed to process webfont {}: {}", cssUrl, e.getMessage());
-        }
-    }
-
-    private void uploadHlsStream(String m3u8Url, String damPath, String mediaBasePath,
-                                   AssetManager assetManager, Map<String, String> urlMap,
-                                   ResourceResolver resolver) {
-        try {
-            byte[] bytes = HttpUtils.downloadBytes(m3u8Url, httpTimeoutMillis);
-            createOrReplaceAsset(assetManager, damPath,
-                    new ByteArrayInputStream(bytes), "application/vnd.apple.mpegurl", resolver);
-            urlMap.put(m3u8Url, damPath);
-            log.info("Uploaded to DAM: {} -> {}", m3u8Url, damPath);
-
-            String m3u8Dir = m3u8Url.substring(0, m3u8Url.lastIndexOf('/') + 1);
-            for (String line : new String(bytes, StandardCharsets.UTF_8).split("\\n")) {
-                line = line.trim();
-                if (line.isEmpty() || line.startsWith("#") || line.endsWith(".m3u8")) {
-                    continue;
-                }
-                String segmentUrl = line.startsWith("http") ? line : m3u8Dir + line;
-                String segmentPath = mediaBasePath + "/" + FileUtils.extractFilename(segmentUrl);
-                uploadFile(segmentUrl, segmentPath, "application/octet-stream", assetManager, urlMap, resolver);
-            }
-        } catch (Exception e) {
-            log.warn("Failed to upload HLS stream {}: {}", m3u8Url, e.getMessage());
         }
     }
 
