@@ -63,10 +63,8 @@ public class CerosFlexManifestUrlPostProcessor implements SlingPostProcessor {
             return;
         }
 
-        // A dialog save uses the default modify operation. Delete, move and copy
-        // also POST to this resource — skip them so e.g. deleting the component
-        // never fails on manifest-URL validation (which would otherwise run
-        // against the node being removed and abort the operation).
+        // Only validate on a dialog save (the default modify operation); skip
+        // delete/move/copy so they don't fail on manifest-URL validation.
         String operation = request.getParameter(SlingPostConstants.RP_OPERATION);
         if (operation != null && !SlingPostConstants.OPERATION_MODIFY.equals(operation)) {
             return;
