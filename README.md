@@ -185,7 +185,7 @@ environment variables or the OSGi console on an on-prem instance.
 ### Verify
 
 After deploying, you should see the Ceros component available in the
-authoring sidekick under `Ceros / Ceros Flex`. Drop it onto a page and confirm
+authoring sidekick under `Ceros Flex`. Drop it onto a page and confirm
 the dialog opens.
 
 ## Development
