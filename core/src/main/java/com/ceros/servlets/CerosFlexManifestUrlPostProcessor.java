@@ -10,6 +10,7 @@ import org.apache.sling.api.SlingHttpServletRequest;
 import org.apache.sling.api.resource.ModifiableValueMap;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.servlets.post.Modification;
+import org.apache.sling.servlets.post.SlingPostConstants;
 import org.apache.sling.servlets.post.SlingPostProcessor;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -61,6 +62,16 @@ public class CerosFlexManifestUrlPostProcessor implements SlingPostProcessor {
         if (resource == null || !resource.isResourceType(RESOURCE_TYPE)) {
             return;
         }
+
+        // A dialog save uses the default modify operation. Delete, move and copy
+        // also POST to this resource — skip them so e.g. deleting the component
+        // never fails on manifest-URL validation (which would otherwise run
+        // against the node being removed and abort the operation).
+        String operation = request.getParameter(SlingPostConstants.RP_OPERATION);
+        if (operation != null && !SlingPostConstants.OPERATION_MODIFY.equals(operation)) {
+            return;
+        }
+
         ModifiableValueMap props = resource.adaptTo(ModifiableValueMap.class);
         if (props == null) {
             return;

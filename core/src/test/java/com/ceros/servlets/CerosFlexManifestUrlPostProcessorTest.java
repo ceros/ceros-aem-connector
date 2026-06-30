@@ -138,6 +138,21 @@ class CerosFlexManifestUrlPostProcessorTest {
     }
 
     @Test
+    void deleteOperationIsSkipped() {
+        // Deleting the component POSTs :operation=delete to this resource. The
+        // post-processor must not run manifest validation against the node being
+        // removed, or the delete fails ("Paragraph delete operation failed").
+        when(request.getParameter(":operation")).thenReturn("delete");
+
+        processor.process(request, changes);
+
+        verifyNoInteractions(manifestService);
+        verify(props, never()).put(anyString(), any());
+        verify(props, never()).remove(anyString());
+        assertTrue(changes.isEmpty());
+    }
+
+    @Test
     void nonInlineModeClearsStaleScriptUrl() {
         when(props.get("cerosMode", String.class)).thenReturn("embed");
         when(props.get("cerosInlineScriptUrl", String.class)).thenReturn(CLIENT_URL);
