@@ -36,7 +36,8 @@ Confirm these are in place before starting:
 
 ## 2. Cut a `release/X.Y.Z` branch with the release version
 
-Branch from `main`, set the POM version (no `-SNAPSHOT`), commit, and push.
+Branch from `main`, set the POM version (no `-SNAPSHOT`), update the README
+example version, commit, and push.
 
 ```sh
 git checkout -b release/<X.Y.Z>
@@ -45,6 +46,11 @@ mvn versions:commit
 git commit -am "Release <X.Y.Z>"
 git push -u origin release/<X.Y.Z>
 ```
+
+**Always update the example versions in `README.md` to `<X.Y.Z>`** so the
+shipped README matches the release — `versions:set` only touches the POMs. Bump
+all three: the "snippets below use `X.Y.Z` as an example" line, the Maven
+`<dependency>` `<version>`, and the direct-download URL under *Manual install*.
 
 The push fires the **Release** workflow in dry-run mode. Watch it:
 
