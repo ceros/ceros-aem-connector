@@ -115,7 +115,7 @@ and example `.cfg.json` files.
 The plugin is published to Maven Central. Pull the latest version from
 [search.maven.org](https://search.maven.org/artifact/com.ceros/ceros-aem-connector-all)
 or look at the [releases](https://github.com/ceros/ceros-aem-connector/releases)
-page; the snippets below use `0.0.8` as an example.
+page; the snippets below use `1.0.0` as an example.
 
 ### Cloud Manager / filevault build (recommended)
 
@@ -129,7 +129,7 @@ In your project's `all/pom.xml`:
 <dependency>
     <groupId>com.ceros</groupId>
     <artifactId>ceros-aem-connector-all</artifactId>
-    <version>0.0.8</version>
+    <version>1.0.0</version>
     <type>zip</type>
 </dependency>
 ```
@@ -164,7 +164,7 @@ For a one-off install on a dev / sandbox instance, download the zip directly
 from Maven Central:
 
 ```
-https://repo1.maven.org/maven2/com/ceros/ceros-aem-connector-all/0.0.8/ceros-aem-connector-all-0.0.8.zip
+https://repo1.maven.org/maven2/com/ceros/ceros-aem-connector-all/1.0.0/ceros-aem-connector-all-1.0.0.zip
 ```
 
 Upload via **CRX Package Manager** at `/crx/packmgr/index.jsp` and install.
