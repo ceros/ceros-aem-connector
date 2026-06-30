@@ -139,9 +139,7 @@ class CerosFlexManifestUrlPostProcessorTest {
 
     @Test
     void deleteOperationIsSkipped() {
-        // Deleting the component POSTs :operation=delete to this resource. The
-        // post-processor must not run manifest validation against the node being
-        // removed, or the delete fails ("Paragraph delete operation failed").
+        // A delete POSTs :operation=delete; it must not trigger manifest validation.
         when(request.getParameter(":operation")).thenReturn("delete");
 
         processor.process(request, changes);
