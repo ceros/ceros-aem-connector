@@ -138,6 +138,19 @@ class CerosFlexManifestUrlPostProcessorTest {
     }
 
     @Test
+    void deleteOperationIsSkipped() {
+        // A delete POSTs :operation=delete; it must not trigger manifest validation.
+        when(request.getParameter(":operation")).thenReturn("delete");
+
+        processor.process(request, changes);
+
+        verifyNoInteractions(manifestService);
+        verify(props, never()).put(anyString(), any());
+        verify(props, never()).remove(anyString());
+        assertTrue(changes.isEmpty());
+    }
+
+    @Test
     void nonInlineModeClearsStaleScriptUrl() {
         when(props.get("cerosMode", String.class)).thenReturn("embed");
         when(props.get("cerosInlineScriptUrl", String.class)).thenReturn(CLIENT_URL);
