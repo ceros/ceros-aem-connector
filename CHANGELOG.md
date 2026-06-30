@@ -5,7 +5,10 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.0] - 2026-06-30
+
+### Fixed
+- Deleting a Ceros Flex component in the author no longer fails with "Paragraph delete operation failed". The manifest-URL post-processor now runs only on a dialog save (the default modify operation) and skips delete/move/copy, so it no longer validates the manifest URL against a node being removed.
 
 ## [0.0.8] - 2026-06-26
 
@@ -95,7 +98,8 @@ Initial release.
 - OSGi configuration support (timeouts, HTTP scheme allowlist, local-address allowlist) via `CerosManifestServiceImpl.cfg.json`.
 - Authenticated browsing of Ceros Flex experiences in the authoring dialog via `CerosAuthenticatedApiService`.
 
-[Unreleased]: https://github.com/ceros/ceros-aem-connector/compare/release-0.0.8...HEAD
+[Unreleased]: https://github.com/ceros/ceros-aem-connector/compare/release-1.0.0...HEAD
+[1.0.0]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-1.0.0
 [0.0.8]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-0.0.8
 [0.0.3]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-0.0.3
 [0.0.2]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-0.0.2
