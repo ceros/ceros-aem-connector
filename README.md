@@ -158,11 +158,6 @@ install time:
 connector's filter, so Cloud Manager's package validator accepts the merged
 install.
 
-No `<exclusions>` block is needed — from `0.0.2` onward the published POM marks
-the embedded sub-modules as `<optional>true</optional>`, so Maven does not
-attempt to resolve `ceros-aem-connector-core` / `ui.apps` / `ui.config`
-transitively.
-
 ### Manual install (single AEM instance)
 
 For a one-off install on a dev / sandbox instance, download the zip directly
