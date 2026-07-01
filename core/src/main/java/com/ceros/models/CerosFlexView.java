@@ -95,6 +95,11 @@ public class CerosFlexView {
         return result.getCssLinks();
     }
 
+    /** Inline CSS blocks (e.g. the brand-kit theme) emitted as {@code <style>} tags. */
+    public List<String> getInlineStyles() {
+        return result.getInlineStyles();
+    }
+
     public List<DeliveryResult.ScriptRef> getHeadScripts() {
         return result.getHeadScripts();
     }

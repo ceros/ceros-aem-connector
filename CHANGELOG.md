@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Server-side (fetch/store) rendering now applies brand-kit styles. `type="style"` manifest assets were dropped entirely, so the brand kit's `:root` design tokens (colours/backgrounds) and `.cml-text-*` rules (fonts) never rendered — experiences showed unresolved `var(--color-*)` backgrounds and fallback (Times/Inter) fonts. The renderer now emits these assets (inline content as a `<style>` block, external URL as a stylesheet link), placed after the html-body content so the theme's font rules override the per-element `--cml-font-family` defaults the body carries.
+
 ## [1.0.0] - 2026-06-30
 
 ### Fixed
