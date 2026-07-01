@@ -60,7 +60,24 @@ public final class ManifestRenderer {
             fonts.addAll(css);
             css = fonts;
         }
+
+        // type="style" assets carry the brand kit — the design tokens (colours)
+        // and text-style rules (fonts) the experience needs to render correctly.
+        List<String> inlineStyles = new ArrayList<>();
+        for (CerosManifestV1.AssetEntry entry : manifest.getAssets()) {
+            if (!"style".equals(entry.getType()) || entry.getSrc() == null) {
+                continue;
+            }
+            CerosManifestV1.AssetSource src = entry.getSrc();
+            if (src.getUrl() != null) {
+                css.add(new CssLink(src.getUrl(), src.getIntegrity()));
+            } else if (src.getContent() != null && !src.getContent().isEmpty()) {
+                inlineStyles.add(src.getContent());
+            }
+        }
+
         builder.cssLinks(css);
+        builder.inlineStyles(inlineStyles);
         builder.bodyScripts(bodyScripts);
 
         List<ScriptRef> headScripts = new ArrayList<>();

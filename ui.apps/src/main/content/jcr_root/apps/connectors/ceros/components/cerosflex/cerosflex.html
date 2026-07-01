@@ -144,6 +144,12 @@
              data-flex-manifest-url="${model.manifestUrl}"
              data-sly-text="${model.htmlContent @ context='unsafe'}"></div>
 
+        <!--/* Brand-kit styles — after the html-body so the theme's font rules
+               win over the body's per-element defaults. */-->
+        <sly data-sly-repeat.inlineStyle="${model.inlineStyles}">
+            <style>${inlineStyle @ context='unsafe'}</style>
+        </sly>
+
         <sly data-sly-repeat.script="${model.bodyScripts}">
             <script data-sly-test="${script.inline}"
                     id="${script.scriptId}">${script.content @ context='unsafe'}</script>
