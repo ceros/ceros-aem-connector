@@ -61,12 +61,8 @@ public final class ManifestRenderer {
             css = fonts;
         }
 
-        // Brand-kit / theme styles ship as type="style" assets — an external URL
-        // renders as a stylesheet link, inline content as a <style> block. These
-        // carry the :root design tokens (brand colours/backgrounds) and the
-        // cml-text-* rules (fonts); dropping them left text unstyled and
-        // var(--color-*) backgrounds unresolved. Emitted after the SSR styles so
-        // the theme takes effect.
+        // type="style" assets carry the brand kit — the design tokens (colours)
+        // and text-style rules (fonts) the experience needs to render correctly.
         List<String> inlineStyles = new ArrayList<>();
         for (CerosManifestV1.AssetEntry entry : manifest.getAssets()) {
             if (!"style".equals(entry.getType()) || entry.getSrc() == null) {

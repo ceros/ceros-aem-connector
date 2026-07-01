@@ -144,11 +144,8 @@
              data-flex-manifest-url="${model.manifestUrl}"
              data-sly-text="${model.htmlContent @ context='unsafe'}"></div>
 
-        <!--/* Theme/brand-kit styles (type="style" assets) — emitted AFTER the
-               html-body so the theme's cml-text-* rules override the per-element
-               --cml-font-family defaults the body carries (fonts), while its
-               :root design tokens (colours/backgrounds) resolve regardless of
-               order. */-->
+        <!--/* Brand-kit styles — after the html-body so the theme's font rules
+               win over the body's per-element defaults. */-->
         <sly data-sly-repeat.inlineStyle="${model.inlineStyles}">
             <style>${inlineStyle @ context='unsafe'}</style>
         </sly>
