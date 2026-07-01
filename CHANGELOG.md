@@ -5,7 +5,7 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.1] - 2026-07-01
 
 ### Fixed
 - Experiences added in the server-side **Always Fetch**, **Store**, and **HTML Import** modes now show the correct brand fonts and colours, both on the published page and in the author preview. The experience's brand kit wasn't being applied, so text fell back to a default font and brand background colours were missing; both now render as designed.
