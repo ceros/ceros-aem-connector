@@ -1,5 +1,6 @@
 package com.ceros.models;
 
+import com.ceros.services.CerosFlexFeatureConfig;
 import org.apache.sling.api.resource.Resource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -119,5 +120,78 @@ class CerosFlexModelTest {
         assertEquals("import", CerosFlexModel.MODE_IMPORT);
         assertEquals("embed", CerosFlexModel.MODE_EMBED);
         assertEquals("inline", CerosFlexModel.MODE_INLINE);
+    }
+
+    // --- inline height (data-flex-height) ---
+
+    private CerosFlexFeatureConfig enabledFlag(boolean enabled) throws Exception {
+        CerosFlexFeatureConfig flag = org.mockito.Mockito.mock(CerosFlexFeatureConfig.class);
+        org.mockito.Mockito.lenient().when(flag.isInlineHeightControlEnabled()).thenReturn(enabled);
+        setField("featureConfig", flag);
+        return flag;
+    }
+
+    @Test
+    void inlineHeightNullWhenFlagOffEvenWithScrollingAuthored() throws Exception {
+        enabledFlag(false);
+        setField("cerosInlineType", "scrolling");
+        setField("cerosInlineHeight", "600px");
+        assertNull(model.getInlineHeightAttribute());
+        assertNull(model.getInlinePreviewStyle());
+    }
+
+    @Test
+    void inlineHeightNullForFullHeightWithFlagOn() throws Exception {
+        enabledFlag(true);
+        setField("cerosInlineType", "fullheight");
+        assertNull(model.getInlineHeightAttribute());
+        assertNull(model.getInlinePreviewStyle());
+    }
+
+    @Test
+    void inlineHeightEmittedForScrollingWithFlagOn() throws Exception {
+        enabledFlag(true);
+        setField("cerosInlineType", "scrolling");
+        setField("cerosInlineHeight", "600px");
+        assertEquals("600px", model.getInlineHeightAttribute());
+        assertEquals("height:600px;overflow:auto;", model.getInlinePreviewStyle());
+    }
+
+    @Test
+    void inlineHeightDefaultsWhenScrollingWithBlankHeight() throws Exception {
+        enabledFlag(true);
+        setField("cerosInlineType", "scrolling");
+        setField("cerosInlineHeight", "  ");
+        assertEquals("800px", model.getInlineHeightAttribute());
+        assertEquals("height:800px;overflow:auto;", model.getInlinePreviewStyle());
+    }
+
+    @Test
+    void inlineHeightNullWhenFeatureConfigUnset() throws Exception {
+        // Direct-construction safety: no OSGi injection means both getters null.
+        setField("cerosInlineType", "scrolling");
+        assertNull(model.getInlineHeightAttribute());
+        assertNull(model.getInlinePreviewStyle());
+    }
+
+    @Test
+    void legacyInlineComponentEmitsNoAttributeWithFlagOn() throws Exception {
+        // Backward compat: only cerosMode=inline set, no cerosInlineType or
+        // cerosInlineHeight at all — rendered markup matches today's output
+        // byte-for-byte (attribute omitted).
+        enabledFlag(true);
+        setField("cerosMode", "inline");
+        assertNull(model.getInlineHeightAttribute());
+        assertNull(model.getInlinePreviewStyle());
+    }
+
+    @Test
+    void embedHeightAttributeAutoForFullHeightAndConfiguredForScrolling() throws Exception {
+        assertEquals("auto", model.getEmbedHeightAttribute());
+        setField("cerosEmbedType", "scrolling");
+        setField("cerosEmbedHeight", "  ");
+        assertEquals("800px", model.getEmbedHeightAttribute());
+        setField("cerosEmbedHeight", "650px");
+        assertEquals("650px", model.getEmbedHeightAttribute());
     }
 }
