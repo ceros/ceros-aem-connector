@@ -5,10 +5,12 @@ import org.apache.sling.api.SlingHttpServletRequest;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.models.annotations.DefaultInjectionStrategy;
 import org.apache.sling.models.annotations.Model;
+import org.apache.sling.models.annotations.injectorspecific.OSGiService;
 import org.apache.sling.models.annotations.injectorspecific.SlingObject;
 import org.apache.sling.models.annotations.injectorspecific.ValueMapValue;
 
 import com.ceros.delivery.modes.CerosDeliveryMode;
+import com.ceros.services.CerosFlexFeatureConfig;
 
 /**
  * Data POJO for the <em>Ceros Flex</em> AEM component — exposes the
@@ -31,6 +33,12 @@ public class CerosFlexModel {
 
     private static final String DEFAULT_EMBED_HEIGHT = "800px";
 
+    /** Inline types — relevant only when {@link #cerosMode} is {@code inline}. */
+    public static final String INLINE_TYPE_FULL_HEIGHT = "fullheight";
+    public static final String INLINE_TYPE_SCROLLING = "scrolling";
+
+    private static final String DEFAULT_INLINE_HEIGHT = "800px";
+
     @ValueMapValue
     private String manifestUrl;
 
@@ -48,6 +56,15 @@ public class CerosFlexModel {
 
     @ValueMapValue
     private String cerosEmbedHeight;
+
+    @ValueMapValue
+    private String cerosInlineType;
+
+    @ValueMapValue
+    private String cerosInlineHeight;
+
+    @OSGiService
+    private CerosFlexFeatureConfig featureConfig;
 
     /**
      * The {@code flex-client.js} URL for inline mode, grabbed from the manifest
@@ -119,6 +136,44 @@ public class CerosFlexModel {
             return StringUtils.defaultIfBlank(cerosEmbedHeight, DEFAULT_EMBED_HEIGHT);
         }
         return "auto";
+    }
+
+    /**
+     * Returns the value for the inline embed's {@code data-flex-height}
+     * attribute: the configured CSS length when Scrolling is authored and the
+     * feature flag is on, or null in every other case (flag off, Full Height,
+     * or no {@code cerosInlineType} authored at all). Null means HTL omits the
+     * attribute entirely and {@code flex-client.js} falls through to its
+     * default (content-sized) behavior, byte-identical to the pre-feature
+     * output. {@code "auto"} is never emitted — the runtime treats absent and
+     * {@code "auto"} identically, and omitting keeps legacy components
+     * byte-identical regardless of the flag's value.
+     */
+    public String getInlineHeightAttribute() {
+        if (featureConfig == null || !featureConfig.isInlineHeightControlEnabled()) {
+            return null;
+        }
+        if (INLINE_TYPE_SCROLLING.equals(cerosInlineType)) {
+            return StringUtils.defaultIfBlank(cerosInlineHeight, DEFAULT_INLINE_HEIGHT);
+        }
+        return null;
+    }
+
+    /**
+     * CSS style for the author-mode inline preview box only (a connector-local
+     * placeholder iframe, unrelated to {@code flex-client.js}) — null for Full
+     * Height/flag-off/legacy so the preview keeps today's fixed box; the
+     * fixed-height/overflow style otherwise, so Scrolling previews faithfully.
+     */
+    public String getInlinePreviewStyle() {
+        if (featureConfig == null || !featureConfig.isInlineHeightControlEnabled()) {
+            return null;
+        }
+        if (!INLINE_TYPE_SCROLLING.equals(cerosInlineType)) {
+            return null;
+        }
+        String height = StringUtils.defaultIfBlank(cerosInlineHeight, DEFAULT_INLINE_HEIGHT);
+        return "height:" + height + ";overflow:auto;";
     }
 
     /**

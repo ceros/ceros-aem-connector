@@ -126,6 +126,16 @@ public class CerosFlexView {
         return model != null ? model.getEmbedHeightAttribute() : "auto";
     }
 
+    /** Authored {@code data-flex-height} value for the inline snippet — null omits the attribute. */
+    public String getInlineHeightAttribute() {
+        return model != null ? model.getInlineHeightAttribute() : null;
+    }
+
+    /** Fixed-height style for the author-mode inline preview — null keeps today's box. */
+    public String getInlinePreviewStyle() {
+        return model != null ? model.getInlinePreviewStyle() : null;
+    }
+
     /**
      * URL used as the iframe src for the author-mode store preview. Resolves to
      * {@code cerosflex.preview.html} on the same component — a minimal page

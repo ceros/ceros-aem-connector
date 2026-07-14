@@ -2,6 +2,7 @@ package com.ceros.models;
 
 import com.ceros.models.cerosflex.CerosManifestV1;
 import com.ceros.services.CerosFlexDeliveryService;
+import com.ceros.services.CerosFlexFeatureConfig;
 import com.ceros.services.CerosManifestService;
 import com.ceros.services.impl.CerosFlexDeliveryServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -120,5 +121,23 @@ class CerosFlexViewTest {
         setModelField("cerosPrefetchedAt", "2026-06-05T12:00:00Z");
         setViewField("model", model);
         assertEquals("2026-06-05T12:00:00Z", view.getPrefetchedAt());
+    }
+
+    @Test
+    void inlineHeightAttributeDelegatesToModel() throws Exception {
+        CerosFlexFeatureConfig flag = org.mockito.Mockito.mock(CerosFlexFeatureConfig.class);
+        org.mockito.Mockito.when(flag.isInlineHeightControlEnabled()).thenReturn(true);
+        setModelField("featureConfig", flag);
+        setModelField("cerosInlineType", "scrolling");
+        setModelField("cerosInlineHeight", "600px");
+        setViewField("model", model);
+        assertEquals("600px", view.getInlineHeightAttribute());
+        assertEquals("height:600px;overflow:auto;", view.getInlinePreviewStyle());
+    }
+
+    @Test
+    void inlineHeightGettersNullSafeWithoutModel() {
+        assertNull(view.getInlineHeightAttribute());
+        assertNull(view.getInlinePreviewStyle());
     }
 }
