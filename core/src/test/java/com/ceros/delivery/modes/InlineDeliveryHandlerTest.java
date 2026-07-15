@@ -8,9 +8,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class InlineDeliveryHandlerTest {
 
-    private static final String EXP_URL = "https://ceros-qa.latest.cerosdev.site/floating-iron-throughout";
+    private static final String EXP_URL = "https://ceros-qa.latest.ceros.site/floating-iron-throughout";
     private static final String MANIFEST_URL = EXP_URL + "/manifest.v1.json";
-    private static final String CLIENT_URL = "https://assets.latest.cerosdev.site/js/flex-client.js";
+    private static final String CLIENT_URL = "https://assets.latest.ceros.site/js/flex-client.js";
 
     private InlineDeliveryHandler handler;
 

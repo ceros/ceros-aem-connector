@@ -38,6 +38,7 @@ public final class DeliveryResult {
     private final String experienceUrl;
     private final String htmlContent;
     private final List<CssLink> cssLinks;
+    private final List<String> inlineStyles;
     private final List<ScriptRef> headScripts;
     private final List<ScriptRef> bodyScripts;
     private final String embedTitle;
@@ -50,6 +51,7 @@ public final class DeliveryResult {
         this.experienceUrl = b.experienceUrl;
         this.htmlContent = b.htmlContent;
         this.cssLinks = Collections.unmodifiableList(new ArrayList<>(b.cssLinks));
+        this.inlineStyles = Collections.unmodifiableList(new ArrayList<>(b.inlineStyles));
         this.headScripts = Collections.unmodifiableList(new ArrayList<>(b.headScripts));
         this.bodyScripts = Collections.unmodifiableList(new ArrayList<>(b.bodyScripts));
         this.embedTitle = b.embedTitle;
@@ -62,6 +64,7 @@ public final class DeliveryResult {
     public String getExperienceUrl() { return experienceUrl; }
     public String getHtmlContent() { return htmlContent; }
     public List<CssLink> getCssLinks() { return cssLinks; }
+    public List<String> getInlineStyles() { return inlineStyles; }
     public List<ScriptRef> getHeadScripts() { return headScripts; }
     public List<ScriptRef> getBodyScripts() { return bodyScripts; }
     public String getEmbedTitle() { return embedTitle; }
@@ -110,6 +113,7 @@ public final class DeliveryResult {
         private String experienceUrl;
         private String htmlContent;
         private List<CssLink> cssLinks = new ArrayList<>();
+        private List<String> inlineStyles = new ArrayList<>();
         private List<ScriptRef> headScripts = new ArrayList<>();
         private List<ScriptRef> bodyScripts = new ArrayList<>();
         private String embedTitle;
@@ -121,6 +125,7 @@ public final class DeliveryResult {
         public Builder experienceUrl(String v) { this.experienceUrl = v; return this; }
         public Builder htmlContent(String v) { this.htmlContent = v; return this; }
         public Builder cssLinks(List<CssLink> v) { this.cssLinks = v; return this; }
+        public Builder inlineStyles(List<String> v) { this.inlineStyles = v; return this; }
         public Builder headScripts(List<ScriptRef> v) { this.headScripts = v; return this; }
         public Builder bodyScripts(List<ScriptRef> v) { this.bodyScripts = v; return this; }
         public Builder embedTitle(String v) { this.embedTitle = v; return this; }

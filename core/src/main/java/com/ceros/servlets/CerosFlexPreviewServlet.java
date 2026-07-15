@@ -83,6 +83,12 @@ public class CerosFlexPreviewServlet extends SlingSafeMethodsServlet {
             out.println("</div>");
         }
 
+        // Brand-kit styles — after the html-body so the theme's font rules win
+        // over the body's per-element defaults (mirrors the main HTL).
+        for (String inlineStyle : view.getInlineStyles()) {
+            out.printf("<style>%s</style>%n", inlineStyle);
+        }
+
         for (DeliveryResult.ScriptRef s : view.getBodyScripts()) {
             writeScript(out, s);
         }

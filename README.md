@@ -13,7 +13,83 @@ The artifact is published to Maven Central under:
 com.ceros:ceros-aem-connector-all:<version>
 ```
 
-See [Adding this plugin to your AEM project](#adding-this-plugin-to-your-aem-project) below.
+## Adding this plugin to your AEM project
+
+The plugin is published to Maven Central. Pull the latest version from
+[search.maven.org](https://search.maven.org/artifact/com.ceros/ceros-aem-connector-all)
+or look at the [releases](https://github.com/ceros/ceros-aem-connector/releases)
+page; the snippets below use `1.0.1` as an example.
+
+### Cloud Manager / filevault build (recommended)
+
+If your AEM project uses the standard archetype with an `all` content-package
+module, embed the Ceros connector as a sub-package so it ships in the same
+deployable as your customisations.
+
+In your project's `all/pom.xml`:
+
+```xml
+<dependency>
+    <groupId>com.ceros</groupId>
+    <artifactId>ceros-aem-connector-all</artifactId>
+    <version>1.0.1</version>
+    <type>zip</type>
+</dependency>
+```
+
+…and in the `filevault-package-maven-plugin` configuration in the same file,
+add it under `<subPackages>` so it lands at `/apps/ceros-packages/...` at
+install time:
+
+```xml
+<plugin>
+    <groupId>org.apache.jackrabbit</groupId>
+    <artifactId>filevault-package-maven-plugin</artifactId>
+    <configuration>
+        <subPackages>
+            <subPackage>
+                <groupId>com.ceros</groupId>
+                <artifactId>ceros-aem-connector-all</artifactId>
+                <filter>true</filter>
+            </subPackage>
+        </subPackages>
+    </configuration>
+</plugin>
+```
+
+`<filter>true</filter>` extends your container package's filter with the
+connector's filter, so Cloud Manager's package validator accepts the merged
+install.
+
+### Manual install (single AEM instance)
+
+For a one-off install on a dev / sandbox instance, download the zip directly
+from Maven Central:
+
+```
+https://repo1.maven.org/maven2/com/ceros/ceros-aem-connector-all/1.0.1/ceros-aem-connector-all-1.0.1.zip
+```
+
+Upload via **CRX Package Manager** at `/crx/packmgr/index.jsp` and install.
+
+### Configure the plugin
+
+Once installed, supply your Flex API key via OSGi config — see
+[CONFIGURATION.md](CONFIGURATION.md) for the full list of properties. The
+shipped config uses AEM secrets:
+
+```
+$[secret:flexApiKey]
+```
+
+so the key never lives in the repo. Set the value via Cloud Manager's
+environment variables or the OSGi console on an on-prem instance.
+
+### Verify
+
+After deploying, you should see the Ceros component available in the
+authoring sidekick under `Ceros Flex`. Drop it onto a page and confirm
+the dialog opens.
 
 ## Prerequisites
 
@@ -81,7 +157,7 @@ the same stored bundle on the component. Because the end state is identical to
 runtime, which fetches the manifest in the browser and renders the experience
 into a Shadow Root in the host page DOM — no SSR markup and no iframe. The
 runtime URL is grabbed from the manifest at authoring time and persisted on the
-component (see `CerosFlexInlinePostProcessor`), so render makes no network call.
+component (see `CerosFlexManifestUrlPostProcessor`), so render makes no network call.
 
 ### Embed — client-side (`embed`)
 
@@ -109,89 +185,6 @@ all/         Single content package that embeds core, ui.apps, and ui.config
 
 See [CONFIGURATION.md](CONFIGURATION.md) for all OSGi properties, defaults,
 and example `.cfg.json` files.
-
-## Adding this plugin to your AEM project
-
-The plugin is published to Maven Central. Pull the latest version from
-[search.maven.org](https://search.maven.org/artifact/com.ceros/ceros-aem-connector-all)
-or look at the [releases](https://github.com/ceros/ceros-aem-connector/releases)
-page; the snippets below use `0.0.2` as an example.
-
-### Cloud Manager / filevault build (recommended)
-
-If your AEM project uses the standard archetype with an `all` content-package
-module, embed the Ceros connector as a sub-package so it ships in the same
-deployable as your customisations.
-
-In your project's `all/pom.xml`:
-
-```xml
-<dependency>
-    <groupId>com.ceros</groupId>
-    <artifactId>ceros-aem-connector-all</artifactId>
-    <version>0.0.2</version>
-    <type>zip</type>
-</dependency>
-```
-
-…and in the `filevault-package-maven-plugin` configuration in the same file,
-add it under `<subPackages>` so it lands at `/apps/ceros-packages/...` at
-install time:
-
-```xml
-<plugin>
-    <groupId>org.apache.jackrabbit</groupId>
-    <artifactId>filevault-package-maven-plugin</artifactId>
-    <configuration>
-        <subPackages>
-            <subPackage>
-                <groupId>com.ceros</groupId>
-                <artifactId>ceros-aem-connector-all</artifactId>
-                <filter>true</filter>
-            </subPackage>
-        </subPackages>
-    </configuration>
-</plugin>
-```
-
-`<filter>true</filter>` extends your container package's filter with the
-connector's filter, so Cloud Manager's package validator accepts the merged
-install.
-
-No `<exclusions>` block is needed — from `0.0.2` onward the published POM marks
-the embedded sub-modules as `<optional>true</optional>`, so Maven does not
-attempt to resolve `ceros-aem-connector-core` / `ui.apps` / `ui.config`
-transitively.
-
-### Manual install (single AEM instance)
-
-For a one-off install on a dev / sandbox instance, download the zip directly
-from Maven Central:
-
-```
-https://repo1.maven.org/maven2/com/ceros/ceros-aem-connector-all/0.0.2/ceros-aem-connector-all-0.0.2.zip
-```
-
-Upload via **CRX Package Manager** at `/crx/packmgr/index.jsp` and install.
-
-### Configure the plugin
-
-Once installed, supply your Flex API key via OSGi config — see
-[CONFIGURATION.md](CONFIGURATION.md) for the full list of properties. The
-shipped config uses AEM secrets:
-
-```
-$[secret:flexApiKey]
-```
-
-so the key never lives in the repo. Set the value via Cloud Manager's
-environment variables or the OSGi console on an on-prem instance.
-
-### Verify
-
-After deploying, you should see the Ceros component available in the
-authoring sidekick under `Ceros / Ceros Flex`. Drop it onto a page and confirm
-the dialog opens.
 
 ## Development
 

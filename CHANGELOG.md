@@ -13,7 +13,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The sentinel rewrite origin is stripped from the response, so stored manifests keep today's origin-agnostic **root-relative** DAM paths (`/content/dam/ceros/…`).
   - Removed the client-side delivery-mode/webfont-CSS/HLS-playlist/media downloaders and the inline URL-map rewrite that Store mode used. **Import** mode (HTML `.tar.gz`) is unchanged — it has no server to ask, so it still resolves and rewrites assets from the archive.
   - Server-supplied asset paths are validated (`FileUtils.safeRelativePath`: no `..`/absolute, `[A-Za-z0-9._-]` segments only) before being joined onto the DAM root.
-  - New OSGi property `assetRewriteHost` on the Asset Storage Service (default `https://ceros-dam.invalid`); removed the now-unused `mediaCdnBaseUrl`.
+  - New OSGi property `assetRewriteHost` on the Asset Storage Service (default `https://ceros-dam.invalid`).
+
+## [1.0.1] - 2026-07-01
+
+### Fixed
+- Experiences added in the server-side **Always Fetch**, **Store**, and **HTML Import** modes now show the correct brand fonts and colours, both on the published page and in the author preview. The experience's brand kit wasn't being applied, so text fell back to a default font and brand background colours were missing; both now render as designed.
+
+## [1.0.0] - 2026-06-30
+
+### Fixed
+- Deleting a Ceros Flex component in the author no longer fails with "Paragraph delete operation failed". The manifest-URL post-processor now runs only on a dialog save (the default modify operation) and skips delete/move/copy, so it no longer validates the manifest URL against a node being removed.
+
+## [0.0.8] - 2026-06-26
+
+### Security
+- Pasted experience URLs are no longer trusted by default. A manifest is only fetched — and the scripts it references only injected — when it is served from a **Ceros-owned** domain (`ceros.site` by default; configurable). Authors may still paste any URL: a customer **vanity domain** is resolved by reading the new [`x-flex-manifest`](https://github.com/ceros/ceros-spark/pull/9861) header off the published page to discover its canonical, Ceros-hosted manifest URL, and the advertised URL must itself pass the Ceros-owned whitelist (so a spoofed header pointing off-Ceros is rejected). Mirrors the WordPress connector's keyless paste hardening ([ceros-plugin-wordpress#3](https://github.com/ceros/ceros-plugin-wordpress/pull/3)).
+  - New `CerosManifestService.resolveTrustedManifestUrl` performs the whitelist + `x-flex-manifest` resolution. Pasted URLs are validated **on save for every URL-based delivery mode** (inline, fetch, embed and store): the dialog post-processor resolves the URL and **aborts the save** if it isn't a trusted Ceros experience, so an untrusted or unreachable URL can never be persisted. It also canonicalises the stored `manifestUrl` for the live inline/fetch modes so render trusts the stored URL and makes no extra network call. `fetchPublicManifestFromUrl` enforces the whitelist at render as a defence-in-depth choke point.
+  - Authoring dialog validates the pasted URL **on submit** for all modes via the new `/bin/ceros/validate-manifest-url` servlet, surfacing the reason in an error notification before the save — matching the feedback Store mode's **Fetch** button already gave. Client-side validation is UX only; the post-processor gate above is the authoritative, non-bypassable check.
+  - New OSGi config on `CerosManifestServiceImpl`: `cerosOwnedDomains` (trusted apex domains; **production domains only by default** so customer installs never reference internal environments — non-production Ceros domains are added per environment via OSGi config for local/dev) and `allowUntrustedManifestHost` (dev/test relaxation so localhost manifests still work; **off** in production). The connector ships **production-safe defaults only** — dev relaxations must be configured by the consuming project.
+
+### Removed
+- Dropped the unused `mediaCdnBaseUrl` OSGi property from `CerosAssetStorageService`. It was declared but never read — manifest/archive asset URLs are resolved directly — so removing it has no functional effect.
 
 ## [0.0.7] - 2026-06-18
 
@@ -92,7 +113,9 @@ Initial release.
 - OSGi configuration support (timeouts, HTTP scheme allowlist, local-address allowlist) via `CerosManifestServiceImpl.cfg.json`.
 - Authenticated browsing of Ceros Flex experiences in the authoring dialog via `CerosAuthenticatedApiService`.
 
-[Unreleased]: https://github.com/ceros/ceros-aem-connector/compare/release-0.0.3...HEAD
+[Unreleased]: https://github.com/ceros/ceros-aem-connector/compare/release-1.0.0...HEAD
+[1.0.0]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-1.0.0
+[0.0.8]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-0.0.8
 [0.0.3]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-0.0.3
 [0.0.2]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-0.0.2
 [0.0.1]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-0.0.1

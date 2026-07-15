@@ -14,6 +14,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Field;
@@ -45,6 +46,10 @@ class CerosManifestStoreServletTest {
         lenient().when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
         lenient().when(request.getResourceResolver()).thenReturn(resolver);
         lenient().when(jobManager.addJob(anyString(), anyMap())).thenReturn(job);
+        // Default: resolution succeeds and returns the URL unchanged. Individual
+        // tests override this to assert normalisation or exercise rejections.
+        lenient().when(manifestService.resolveTrustedManifestUrl(anyString()))
+                .thenAnswer(inv -> inv.getArgument(0));
     }
 
     private void setField(String name, Object value) throws Exception {
@@ -71,37 +76,57 @@ class CerosManifestStoreServletTest {
     }
 
     @Test
-    void doPostRejectsUrlWhenServiceValidationFails() throws Exception {
-        when(request.getParameter("manifestUrl")).thenReturn("http://example.com/exp");
-        doThrow(new IllegalArgumentException("scheme must be https"))
-                .when(manifestService).validateManifestUrl(anyString());
+    void doPostRejectsUrlWhenResolutionFails() throws Exception {
+        when(request.getParameter("manifestUrl")).thenReturn("https://customer.com/exp");
+        when(manifestService.resolveTrustedManifestUrl("https://customer.com/exp"))
+                .thenThrow(new IllegalArgumentException("isn't on a recognized Ceros domain"));
 
         servlet.doPost(request, response);
 
         verify(response).setStatus(SlingHttpServletResponse.SC_BAD_REQUEST);
         verify(jobManager, never()).addJob(anyString(), anyMap());
-        assertTrue(responseWriter.toString().contains("scheme must be https"));
+        assertTrue(responseWriter.toString().contains("recognized Ceros domain"));
     }
 
     @Test
-    void doPostEnqueuesJobWithNormalisedManifestUrl() throws Exception {
-        when(request.getParameter("manifestUrl")).thenReturn("https://example.com/exp");
+    void doPostReturnsBadGatewayWhenExperienceUnreachable() throws Exception {
+        when(request.getParameter("manifestUrl")).thenReturn("https://look.customer.com/exp");
+        when(manifestService.resolveTrustedManifestUrl("https://look.customer.com/exp"))
+                .thenThrow(new IOException("connection refused"));
+
+        servlet.doPost(request, response);
+
+        verify(response).setStatus(SlingHttpServletResponse.SC_BAD_GATEWAY);
+        verify(jobManager, never()).addJob(anyString(), anyMap());
+        assertTrue(responseWriter.toString().contains("Could not reach the experience"));
+    }
+
+    @Test
+    void doPostEnqueuesResolvedManifestUrl() throws Exception {
+        // The service resolves the pasted experience URL to a canonical,
+        // Ceros-owned manifest URL; that resolved value is what gets enqueued.
+        when(request.getParameter("manifestUrl")).thenReturn("https://acme.ceros.site/exp");
+        when(manifestService.resolveTrustedManifestUrl("https://acme.ceros.site/exp"))
+                .thenReturn("https://acme.ceros.site/exp/manifest.v1.json");
 
         servlet.doPost(request, response);
 
         ArgumentCaptor<Map<String, Object>> payload = captureJobPayload();
-        assertEquals("https://example.com/exp/manifest.v1.json",
+        assertEquals("https://acme.ceros.site/exp/manifest.v1.json",
                 payload.getValue().get(CerosFetchManifestJobConsumer.PROP_MANIFEST_URL));
     }
 
     @Test
-    void doPostLeavesExistingManifestJsonUrl() throws Exception {
-        when(request.getParameter("manifestUrl")).thenReturn("https://example.com/exp/manifest.json");
+    void doPostEnqueuesVanityResolvedManifestUrl() throws Exception {
+        // A vanity domain resolves (via x-flex-manifest) to a Ceros-owned host.
+        when(request.getParameter("manifestUrl")).thenReturn("https://look.customer.com/exp");
+        when(manifestService.resolveTrustedManifestUrl("https://look.customer.com/exp"))
+                .thenReturn("https://acme.ceros.site/exp/manifest.v1.json");
 
         servlet.doPost(request, response);
 
         ArgumentCaptor<Map<String, Object>> payload = captureJobPayload();
-        assertEquals("https://example.com/exp/manifest.json",
+        assertEquals("https://acme.ceros.site/exp/manifest.v1.json",
                 payload.getValue().get(CerosFetchManifestJobConsumer.PROP_MANIFEST_URL));
     }
 
