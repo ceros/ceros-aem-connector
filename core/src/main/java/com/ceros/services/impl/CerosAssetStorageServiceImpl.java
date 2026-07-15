@@ -33,8 +33,8 @@ import java.util.Set;
 /**
  * OSGi implementation of {@link CerosAssetStorageService}.
  *
- * <p>For live "Store" mode, flex-shield owns the URL-rewriting: the manifest is
- * requested with {@code ?baseUrl=} and this service simply
+ * <p>For live "Store" mode, the Ceros experience host owns the URL-rewriting:
+ * the manifest is requested with {@code ?baseUrl=} and this service simply
  * {@linkplain #mirrorRewrittenAssets mirrors} the returned {@code assetRewrites}
  * map into the DAM (download each {@code from}, write it at its {@code path}).
  * For HTML-import mode there is no server, so the archive counterpart
@@ -60,7 +60,7 @@ public class CerosAssetStorageServiceImpl implements CerosAssetStorageService {
 
         @AttributeDefinition(name = "Asset rewrite host",
                 description = "Absolute origin (scheme + host) used to build the baseUrl "
-                        + "sent to flex-shield's server-side ?baseUrl= rewrite. It must be a "
+                        + "sent to the Ceros server-side ?baseUrl= rewrite. It must be a "
                         + "valid http(s) origin to pass server validation, but is stripped "
                         + "from the response so stored manifests keep root-relative DAM paths. "
                         + "The default uses the reserved .invalid TLD so it can never resolve.")

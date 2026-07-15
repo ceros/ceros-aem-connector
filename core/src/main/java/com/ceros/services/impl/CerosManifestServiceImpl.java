@@ -245,7 +245,7 @@ public class CerosManifestServiceImpl implements CerosManifestService {
     }
 
     /**
-     * Fetches {@code manifestUrl} through flex-shield's server-side
+     * Fetches {@code manifestUrl} through the Ceros server-side
      * {@code ?baseUrl=} rewrite, then collapses the sentinel rewrite origin to a
      * root-relative DAM path so stored manifests reference assets the same
      * origin-agnostic way the connector always has. The returned manifest still

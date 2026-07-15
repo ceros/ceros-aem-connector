@@ -43,8 +43,8 @@ public class CerosManifestV1 {
     private List<PageRef> pages;
 
     /**
-     * Server-side rewrite map returned by flex-shield when the manifest is
-     * requested with {@code ?baseUrl=}. Additive and transient: it tells the
+     * Server-side rewrite map returned by the Ceros experience host when the
+     * manifest is requested with {@code ?baseUrl=}. Additive and transient: it tells the
      * Store pipeline which original Ceros URLs to mirror and at which paths,
      * then is cleared ({@link #clearAssetRewrites()}) before the manifest is
      * persisted. Omitted from JSON when null so stored manifests stay clean.

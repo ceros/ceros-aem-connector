@@ -11,8 +11,8 @@ import java.util.Set;
 /**
  * Downloads assets referenced by a Ceros manifest and uploads them to AEM DAM.
  *
- * <p>For live "Store" mode the URL-rewriting is owned by flex-shield: the
- * manifest is requested with {@code ?baseUrl=} (see
+ * <p>For live "Store" mode the URL-rewriting is owned by the Ceros experience
+ * host: the manifest is requested with {@code ?baseUrl=} (see
  * {@link #assetRewriteBaseUrl(String)}) and comes back with its asset URLs
  * already pointing under the DAM base path plus an {@code assetRewrites} map
  * this service {@linkplain #mirrorRewrittenAssets mirrors} into the DAM. For
@@ -22,8 +22,8 @@ import java.util.Set;
 public interface CerosAssetStorageService {
 
     /**
-     * The absolute {@code baseUrl} to request the flex-shield server-side
-     * rewrite against for {@code experienceSlug}. Its path component is the DAM
+     * The absolute {@code baseUrl} to request the server-side rewrite against
+     * for {@code experienceSlug}. Its path component is the DAM
      * root every asset will be served under; its origin is a sentinel
      * ({@link #assetRewriteOrigin()}) stripped from the response so stored
      * manifests reference assets by root-relative DAM path.

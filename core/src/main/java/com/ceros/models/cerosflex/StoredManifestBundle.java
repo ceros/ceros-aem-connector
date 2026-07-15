@@ -15,8 +15,7 @@ import java.util.Map;
  *
  * <p>Stored in JCR as JSON on the {@code cerosflex} component so the SSR
  * router can serve any page (driven by the {@code cer_<experience.slug>}
- * query param introduced in ceros-spark #9179) without an outbound network
- * call at render time.</p>
+ * query param) without an outbound network call at render time.</p>
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class StoredManifestBundle {
