@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Store** mode now delegates URL-rewriting to the Ceros server-side `?baseUrl=` rewrite instead of scanning and rewriting manifests itself. The pipeline does a metadata fetch (no `baseUrl`) to learn the experience and page list, then re-fetches each page as `manifest.v1.json?baseUrl=<DAM root>` and **mirrors** the returned `assetRewrites` map — downloading each `assets[].from` and writing it at the server-supplied `assets[].path` (deduped across pages). The server's rewrite also covers inline `html-body`/`srcset`/CSS `url()` references that the old client-side scan missed.
+  - Store mode now **fails loudly** if the experience host doesn't return `assetRewrites` (i.e. doesn't support the rewrite) rather than silently storing CDN-dependent assets.
+  - The sentinel rewrite origin is stripped from the response, so stored manifests keep today's origin-agnostic **root-relative** DAM paths (`/content/dam/ceros/…`).
+  - Removed the client-side delivery-mode/webfont-CSS/HLS-playlist/media downloaders and the inline URL-map rewrite that Store mode used. **Import** mode (HTML `.tar.gz`) is unchanged — it has no server to ask, so it still resolves and rewrites assets from the archive.
+  - Server-supplied asset paths are validated (`FileUtils.safeRelativePath`: no `..`/absolute, `[A-Za-z0-9._-]` segments only) before being joined onto the DAM root.
+  - New OSGi property `assetRewriteHost` on the Asset Storage Service (default `https://ceros-dam.invalid`).
+
 ## [1.0.1] - 2026-07-01
 
 ### Fixed
@@ -20,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.0.8] - 2026-06-26
 
 ### Security
-- Pasted experience URLs are no longer trusted by default. A manifest is only fetched — and the scripts it references only injected — when it is served from a **Ceros-owned** domain (`ceros.site` by default; configurable). Authors may still paste any URL: a customer **vanity domain** is resolved by reading the new [`x-flex-manifest`](https://github.com/ceros/ceros-spark/pull/9861) header off the published page to discover its canonical, Ceros-hosted manifest URL, and the advertised URL must itself pass the Ceros-owned whitelist (so a spoofed header pointing off-Ceros is rejected). Mirrors the WordPress connector's keyless paste hardening ([ceros-plugin-wordpress#3](https://github.com/ceros/ceros-plugin-wordpress/pull/3)).
+- Pasted experience URLs are no longer trusted by default. A manifest is only fetched — and the scripts it references only injected — when it is served from a **Ceros-owned** domain (`ceros.site` by default; configurable). Authors may still paste any URL: a customer **vanity domain** is resolved by reading the new `x-flex-manifest` header off the published page to discover its canonical, Ceros-hosted manifest URL, and the advertised URL must itself pass the Ceros-owned whitelist (so a spoofed header pointing off-Ceros is rejected). Mirrors the WordPress connector's keyless paste hardening ([ceros-plugin-wordpress#3](https://github.com/ceros/ceros-plugin-wordpress/pull/3)).
   - New `CerosManifestService.resolveTrustedManifestUrl` performs the whitelist + `x-flex-manifest` resolution. Pasted URLs are validated **on save for every URL-based delivery mode** (inline, fetch, embed and store): the dialog post-processor resolves the URL and **aborts the save** if it isn't a trusted Ceros experience, so an untrusted or unreachable URL can never be persisted. It also canonicalises the stored `manifestUrl` for the live inline/fetch modes so render trusts the stored URL and makes no extra network call. `fetchPublicManifestFromUrl` enforces the whitelist at render as a defence-in-depth choke point.
   - Authoring dialog validates the pasted URL **on submit** for all modes via the new `/bin/ceros/validate-manifest-url` servlet, surfacing the reason in an error notification before the save — matching the feedback Store mode's **Fetch** button already gave. Client-side validation is UX only; the post-processor gate above is the authoritative, non-bypassable check.
   - New OSGi config on `CerosManifestServiceImpl`: `cerosOwnedDomains` (trusted apex domains; **production domains only by default** so customer installs never reference internal environments — non-production Ceros domains are added per environment via OSGi config for local/dev) and `allowUntrustedManifestHost` (dev/test relaxation so localhost manifests still work; **off** in production). The connector ships **production-safe defaults only** — dev relaxations must be configured by the consuming project.

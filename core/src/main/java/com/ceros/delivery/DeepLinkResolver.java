@@ -6,7 +6,7 @@ import org.apache.sling.api.SlingHttpServletRequest;
 
 /**
  * Reads the page-slug requested by the inline SPA router's deep-link URL
- * channel (see ceros-spark #9179).
+ * channel.
  *
  * <p>The router writes one of two query params, in priority order:</p>
  * <ol>
