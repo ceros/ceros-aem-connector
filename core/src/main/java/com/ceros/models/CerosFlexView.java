@@ -126,6 +126,11 @@ public class CerosFlexView {
         return model != null ? model.getEmbedHeightAttribute() : "auto";
     }
 
+    /** Authored {@code data-embed-height} value for the inline embed snippet. */
+    public String getInlineHeightAttribute() {
+        return model != null ? model.getInlineHeightAttribute() : "auto";
+    }
+
     /**
      * URL used as the iframe src for the author-mode store preview. Resolves to
      * {@code cerosflex.preview.html} on the same component — a minimal page
