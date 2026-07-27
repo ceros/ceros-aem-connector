@@ -1,7 +1,7 @@
 package com.ceros.models;
 
-import com.ceros.delivery.DeliveryResult;
-import com.ceros.services.CerosFlexDeliveryService;
+import javax.annotation.PostConstruct;
+
 import org.apache.sling.api.SlingHttpServletRequest;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.models.annotations.DefaultInjectionStrategy;
@@ -10,8 +10,10 @@ import org.apache.sling.models.annotations.injectorspecific.OSGiService;
 import org.apache.sling.models.annotations.injectorspecific.Self;
 import org.apache.sling.models.annotations.injectorspecific.SlingObject;
 
-import javax.annotation.PostConstruct;
-import java.util.List;
+import com.ceros.delivery.DeliveryResult;
+import com.ceros.services.CerosFlexDeliveryService;
+
+import lombok.experimental.Delegate;
 
 /**
  * Sling Model HTL binds to. Wraps the {@link CerosFlexModel} data POJO with
@@ -21,7 +23,12 @@ import java.util.List;
         defaultInjectionStrategy = DefaultInjectionStrategy.OPTIONAL)
 public class CerosFlexView {
 
+    private interface ExcludedMethods {
+        String getInlineScriptUrl(); 
+    }
+
     @Self
+    @Delegate
     private CerosFlexModel model;
 
     @Self
@@ -33,6 +40,7 @@ public class CerosFlexView {
     @OSGiService
     private CerosFlexDeliveryService deliveryService;
 
+    @Delegate(excludes=ExcludedMethods.class)
     private DeliveryResult result = DeliveryResult.EMPTY;
 
     @PostConstruct
@@ -42,83 +50,11 @@ public class CerosFlexView {
         }
     }
 
-    // ---- Delegated data getters ----
-
-    public boolean isConfigured() {
-        return model != null && model.isConfigured();
-    }
-
-    public boolean isStoreMode() {
-        return model != null && model.isStoreMode();
-    }
-
-    public boolean isImportMode() {
-        return model != null && model.isImportMode();
-    }
-
-    public boolean isEmbedMode() {
-        return model != null && model.isEmbedMode();
-    }
-
-    public boolean isInlineMode() {
-        return model != null && model.isInlineMode();
-    }
-
-    public String getPrefetchedAt() {
-        return model != null ? model.getPrefetchedAt() : null;
-    }
-
-    public String getPagePreviewUrl() {
-        return model != null ? model.getPagePreviewUrl() : null;
-    }
-
     // ---- Delivery-result getters ----
 
     public String getManifestUrl() {
         return result.getManifestUrl() != null ? result.getManifestUrl()
                 : (model != null ? model.getManifestUrl() : null);
-    }
-
-    public String getExperienceUrl() {
-        return result.getExperienceUrl();
-    }
-
-    public boolean isHasContent() {
-        return result.isHasContent();
-    }
-
-    public String getHtmlContent() {
-        return result.getHtmlContent();
-    }
-
-    public List<DeliveryResult.CssLink> getCssLinks() {
-        return result.getCssLinks();
-    }
-
-    /** Inline CSS blocks (e.g. the brand-kit theme) emitted as {@code <style>} tags. */
-    public List<String> getInlineStyles() {
-        return result.getInlineStyles();
-    }
-
-    public List<DeliveryResult.ScriptRef> getHeadScripts() {
-        return result.getHeadScripts();
-    }
-
-    public List<DeliveryResult.ScriptRef> getBodyScripts() {
-        return result.getBodyScripts();
-    }
-
-    public String getEmbedTitle() {
-        return result.getEmbedTitle();
-    }
-
-    public String getEmbedScriptUrl() {
-        return result.getEmbedScriptUrl();
-    }
-
-    /** {@code flex-client.js} URL for the client-side inline embed snippet. */
-    public String getInlineScriptUrl() {
-        return result.getInlineScriptUrl();
     }
 
     /** Authored {@code data-embed-height} value for the iframe-embed snippet. */
