@@ -126,7 +126,7 @@ public class CerosFlexView {
         return model != null ? model.getEmbedHeightAttribute() : "auto";
     }
 
-    /** Authored {@code data-embed-height} value for the inline embed snippet. */
+    /** Authored height for the inline container's attribute, empty when Full Height. */
     public String getInlineHeightAttribute() {
         return model != null ? model.getInlineHeightAttribute() : "";
     }
