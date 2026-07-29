@@ -129,9 +129,9 @@ public class CerosFlexModel {
 
     public String getInlineHeightAttribute() {
         if (EMBED_TYPE_SCROLLING.equals(cerosInlineType)) {
-            return StringUtils.defaultIfBlank(cerosInlineHeight, DEFAULT_EMBED_HEIGHT);
+            return "height:" + StringUtils.defaultIfBlank(cerosInlineHeight, DEFAULT_EMBED_HEIGHT) + ";";
         }
-        return "";
+        return null;
     }
 
     /**

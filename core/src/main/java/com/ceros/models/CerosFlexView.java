@@ -128,7 +128,7 @@ public class CerosFlexView {
 
     /** Authored height for the inline container's attribute, empty when Full Height. */
     public String getInlineHeightAttribute() {
-        return model != null ? model.getInlineHeightAttribute() : "";
+        return model != null ? model.getInlineHeightAttribute() : null;
     }
 
     /**

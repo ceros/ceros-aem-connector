@@ -124,33 +124,33 @@ class CerosFlexModelTest {
     // ---- getInlineHeightAttribute ----
 
     @Test
-    void inlineHeightAttributeIsEmptyWhenInlineTypeUnset() {
-        assertEquals("", model.getInlineHeightAttribute());
+    void inlineHeightAttributeIsNullWhenInlineTypeUnset() {
+        assertNull(model.getInlineHeightAttribute());
     }
 
     @Test
-    void inlineHeightAttributeIsEmptyForFullHeightInlineType() throws Exception {
+    void inlineHeightAttributeIsNullForFullHeightInlineType() throws Exception {
         setField("cerosInlineType", CerosFlexModel.EMBED_TYPE_FULL_HEIGHT);
-        assertEquals("", model.getInlineHeightAttribute());
+        assertNull(model.getInlineHeightAttribute());
     }
 
     @Test
     void inlineHeightAttributeUsesDefaultWhenScrollingWithNoHeight() throws Exception {
         setField("cerosInlineType", CerosFlexModel.EMBED_TYPE_SCROLLING);
-        assertEquals("800px", model.getInlineHeightAttribute());
+        assertEquals("height:800px;", model.getInlineHeightAttribute());
     }
 
     @Test
     void inlineHeightAttributeUsesDefaultWhenScrollingWithBlankHeight() throws Exception {
         setField("cerosInlineType", CerosFlexModel.EMBED_TYPE_SCROLLING);
         setField("cerosInlineHeight", "   ");
-        assertEquals("800px", model.getInlineHeightAttribute());
+        assertEquals("height:800px;", model.getInlineHeightAttribute());
     }
 
     @Test
     void inlineHeightAttributeUsesConfiguredHeightWhenScrolling() throws Exception {
         setField("cerosInlineType", CerosFlexModel.EMBED_TYPE_SCROLLING);
         setField("cerosInlineHeight", "600px");
-        assertEquals("600px", model.getInlineHeightAttribute());
+        assertEquals("height:600px;", model.getInlineHeightAttribute());
     }
 }

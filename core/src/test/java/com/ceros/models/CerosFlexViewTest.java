@@ -125,22 +125,22 @@ class CerosFlexViewTest {
     // ---- getInlineHeightAttribute ----
 
     @Test
-    void inlineHeightAttributeIsEmptyWhenModelNull() {
-        assertEquals("", view.getInlineHeightAttribute());
+    void inlineHeightAttributeIsNullWhenModelNull() {
+        assertNull(view.getInlineHeightAttribute());
     }
 
     @Test
-    void inlineHeightAttributeIsEmptyForFullHeightInlineType() throws Exception {
+    void inlineHeightAttributeIsNullForFullHeightInlineType() throws Exception {
         setModelField("cerosInlineType", CerosFlexModel.EMBED_TYPE_FULL_HEIGHT);
         setViewField("model", model);
-        assertEquals("", view.getInlineHeightAttribute());
+        assertNull(view.getInlineHeightAttribute());
     }
 
     @Test
     void inlineHeightAttributeUsesDefaultWhenScrollingWithNoHeight() throws Exception {
         setModelField("cerosInlineType", CerosFlexModel.EMBED_TYPE_SCROLLING);
         setViewField("model", model);
-        assertEquals("800px", view.getInlineHeightAttribute());
+        assertEquals("height:800px;", view.getInlineHeightAttribute());
     }
 
     @Test
@@ -148,6 +148,6 @@ class CerosFlexViewTest {
         setModelField("cerosInlineType", CerosFlexModel.EMBED_TYPE_SCROLLING);
         setModelField("cerosInlineHeight", "500px");
         setViewField("model", model);
-        assertEquals("500px", view.getInlineHeightAttribute());
+        assertEquals("height:500px;", view.getInlineHeightAttribute());
     }
 }
