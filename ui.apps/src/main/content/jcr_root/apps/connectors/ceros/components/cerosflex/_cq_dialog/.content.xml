@@ -118,7 +118,6 @@
                                         fieldLabel="Inline Height"
                                         fieldDescription="How tall the experience should be on the page, for example 800px."
                                         name="./cerosInlineHeight"
-                                        pattern="^\d+(\.\d+)?(px|cm|mm|in|pt|pc|Q|em|rem|ex|ch|vw|vh|vmin|vmax|%)$"
                                         value="800px"/>
                                 </items>
                             </inlineHeightSection>
@@ -169,7 +168,6 @@
                                         sling:resourceType="granite/ui/components/coral/foundation/form/textfield"
                                         fieldLabel="Iframe Height"
                                         fieldDescription="How tall the experience should be on the page, for example 800px."
-                                        pattern="^\d+(\.\d+)?(px|cm|mm|in|pt|pc|Q|em|rem|ex|ch|vw|vh|vmin|vmax|%)$"   
                                         name="./cerosEmbedHeight"
                                         value="800px"/>
                                 </items>
