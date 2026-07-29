@@ -12,9 +12,17 @@
     'use strict';
 
     var VALIDATE_URL = '/bin/ceros/validate-manifest-url';
+    var CSS_LENGTH = /^\d+(\.\d+)?(px|cm|mm|in|pt|pc|Q|em|rem|ex|ch|vw|vh|vmin|vmax|%)$/;
     // Set just before we re-dispatch a click we've already validated, so the
     // capture handler lets that one through to the editor's submit handler.
     var passThrough = false;
+
+    function isValidCssLength(value) {
+        if (!value || !value.trim()) {
+            return true; // empty → server defaults to 800px
+        }
+        return CSS_LENGTH.test(value.trim());
+    }
 
     function isCerosflexDialog($dialog) {
         return $dialog.length > 0 && $dialog.find('[name="./cerosMode"]').length > 0;
@@ -49,14 +57,14 @@
     function validateHeightFields($dialog, mode) {
         if (mode === 'inline' && fieldValue($dialog, './cerosInlineType') === 'scrolling') {
             var inlineHeight = fieldValue($dialog, './cerosInlineHeight');
-            if (!CerosHeightValidator.isValidCssLength(inlineHeight)) {
+            if (!isValidCssLength(inlineHeight)) {
                 notifyError('Inline Height must be a valid CSS length (for example 800px, 50vh, 10em).');
                 return false;
             }
         }
         if (mode === 'embed' && fieldValue($dialog, './cerosEmbedType') === 'scrolling') {
             var embedHeight = fieldValue($dialog, './cerosEmbedHeight');
-            if (!CerosHeightValidator.isValidCssLength(embedHeight)) {
+            if (!isValidCssLength(embedHeight)) {
                 notifyError('Iframe Height must be a valid CSS length (for example 800px, 50vh, 10em).');
                 return false;
             }
