@@ -18,7 +18,7 @@ com.ceros:ceros-aem-connector-all:<version>
 The plugin is published to Maven Central. Pull the latest version from
 [search.maven.org](https://search.maven.org/artifact/com.ceros/ceros-aem-connector-all)
 or look at the [releases](https://github.com/ceros/ceros-aem-connector/releases)
-page; the snippets below use `1.0.1` as an example.
+page; the snippets below use `1.0.2` as an example.
 
 ### Cloud Manager / filevault build (recommended)
 
@@ -44,7 +44,7 @@ Add the artifact to `<dependencyManagement>` so the version lives in one place:
         <dependency>
             <groupId>com.ceros</groupId>
             <artifactId>ceros-aem-connector-all</artifactId>
-            <version>1.0.1</version>
+            <version>1.0.2</version>
             <type>zip</type>
         </dependency>
     </dependencies>
@@ -130,7 +130,7 @@ unzip -l all/target/*.all-*.zip | grep ceros-aem-connector
 You should see one line, roughly:
 
 ```
-jcr_root/apps/myproject-vendor-packages/container/install/ceros-aem-connector-all-1.0.1.zip
+jcr_root/apps/myproject-vendor-packages/container/install/ceros-aem-connector-all-1.0.2.zip
 ```
 
 No line means one of the three steps above is missing. This check is worth
@@ -143,7 +143,7 @@ For a one-off install on a dev / sandbox instance, download the zip directly
 from Maven Central:
 
 ```
-https://repo1.maven.org/maven2/com/ceros/ceros-aem-connector-all/1.0.1/ceros-aem-connector-all-1.0.1.zip
+https://repo1.maven.org/maven2/com/ceros/ceros-aem-connector-all/1.0.2/ceros-aem-connector-all-1.0.2.zip
 ```
 
 Upload via **CRX Package Manager** at `/crx/packmgr/index.jsp` and install.
