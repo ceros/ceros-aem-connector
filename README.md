@@ -23,43 +23,120 @@ page; the snippets below use `1.0.1` as an example.
 ### Cloud Manager / filevault build (recommended)
 
 If your AEM project uses the standard archetype with an `all` content-package
-module, embed the Ceros connector as a sub-package so it ships in the same
-deployable as your customisations.
+module, embed `ceros-aem-connector-all` into that container package so the
+connector ships in the same deployable as your own customisations.
 
-In your project's `all/pom.xml`:
+Three files need editing. Declaring the Maven dependency on its own is **not**
+enough — it resolves the artifact but does not place it inside your package, so
+the connector would silently be absent from the build with no error.
+
+The examples below assume an archetype-generated project whose `appId` is
+`myproject`; substitute your own throughout.
+
+#### 1. Root `pom.xml` — pin the version
+
+Add the artifact to `<dependencyManagement>` so the version lives in one place:
 
 ```xml
-<dependency>
-    <groupId>com.ceros</groupId>
-    <artifactId>ceros-aem-connector-all</artifactId>
-    <version>1.0.1</version>
-    <type>zip</type>
-</dependency>
+<dependencyManagement>
+    <dependencies>
+        <!-- Ceros AEM Plugin -->
+        <dependency>
+            <groupId>com.ceros</groupId>
+            <artifactId>ceros-aem-connector-all</artifactId>
+            <version>1.0.1</version>
+            <type>zip</type>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
 ```
 
-…and in the `filevault-package-maven-plugin` configuration in the same file,
-add it under `<subPackages>` so it lands at `/apps/ceros-packages/...` at
-install time:
+The artifact is on Maven Central, so no extra `<repositories>` entry is needed.
+Upgrading the connector later is a one-line change here.
+
+#### 2. `all/pom.xml` — declare *and* embed
+
+Two separate edits in this file. First, the dependency (version omitted — it
+comes from the managed entry above):
+
+```xml
+<dependencies>
+    <!-- Ceros AEM Plugin -->
+    <dependency>
+        <groupId>com.ceros</groupId>
+        <artifactId>ceros-aem-connector-all</artifactId>
+        <type>zip</type>
+    </dependency>
+</dependencies>
+```
+
+Second add an `<embedded>` to
+the `filevault-package-maven-plugin` configuration, alongside the embeds for
+your own `ui.apps` / `core` / `ui.content` modules:
 
 ```xml
 <plugin>
     <groupId>org.apache.jackrabbit</groupId>
     <artifactId>filevault-package-maven-plugin</artifactId>
+    <extensions>true</extensions>
     <configuration>
-        <subPackages>
-            <subPackage>
+        <packageType>container</packageType>
+        <embeddeds>
+            <!-- …your own module embeds… -->
+
+            <!-- Ceros AEM Plugin -->
+            <embedded>
                 <groupId>com.ceros</groupId>
                 <artifactId>ceros-aem-connector-all</artifactId>
-                <filter>true</filter>
-            </subPackage>
-        </subPackages>
+                <type>zip</type>
+                <target>/apps/myproject-vendor-packages/container/install</target>
+            </embedded>
+        </embeddeds>
     </configuration>
 </plugin>
 ```
 
-`<filter>true</filter>` extends your container package's filter with the
-connector's filter, so Cloud Manager's package validator accepts the merged
-install.
+The `<target>` matters. `ceros-aem-connector-all` is itself a **container**
+package, so it belongs under `vendor-packages/container/install` — the
+archetype convention that separates third-party containers from first-party
+application content. Putting it under `packages/application/install` (where
+your own bundles and `ui.apps` go) fails AEM's package-type validation.
+
+#### 3. `all/src/main/content/META-INF/vault/filter.xml` — cover the path
+
+Not a pom, but required. The embedded zip is written to a path that must fall
+inside your container package's workspace filter. If it doesn't, filevault
+treats it as content outside the filter roots — depending on plugin version
+that either fails validation or quietly drops it from the artifact:
+
+```xml
+<workspaceFilter version="1.0">
+    <filter root="/apps/myproject-packages"/>
+    <filter root="/apps/myproject-vendor-packages"/>
+</workspaceFilter>
+```
+
+Archetype-generated projects usually ship both roots already — confirm the
+`vendor-packages` one is present rather than assuming it.
+
+#### Confirm the wiring
+
+After `mvn clean install`, list the container package and check the connector
+is actually inside it:
+
+```bash
+unzip -l all/target/*.all-*.zip | grep ceros-aem-connector
+```
+
+You should see one line, roughly:
+
+```
+jcr_root/apps/myproject-vendor-packages/container/install/ceros-aem-connector-all-1.0.1.zip
+```
+
+No line means one of the three steps above is missing. This check is worth
+wiring into CI — a dropped `<embedded>` produces a green build that deploys
+nothing.
 
 ### Manual install (single AEM instance)
 
