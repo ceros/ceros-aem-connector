@@ -120,4 +120,37 @@ class CerosFlexModelTest {
         assertEquals("embed", CerosFlexModel.MODE_EMBED);
         assertEquals("inline", CerosFlexModel.MODE_INLINE);
     }
+
+    // ---- getInlineHeightAttribute ----
+
+    @Test
+    void inlineHeightAttributeIsNullWhenInlineTypeUnset() {
+        assertNull(model.getInlineHeightAttribute());
+    }
+
+    @Test
+    void inlineHeightAttributeIsNullForFullHeightInlineType() throws Exception {
+        setField("cerosInlineType", CerosFlexModel.EMBED_TYPE_FULL_HEIGHT);
+        assertNull(model.getInlineHeightAttribute());
+    }
+
+    @Test
+    void inlineHeightAttributeUsesDefaultWhenScrollingWithNoHeight() throws Exception {
+        setField("cerosInlineType", CerosFlexModel.EMBED_TYPE_SCROLLING);
+        assertEquals("height:800px;", model.getInlineHeightAttribute());
+    }
+
+    @Test
+    void inlineHeightAttributeUsesDefaultWhenScrollingWithBlankHeight() throws Exception {
+        setField("cerosInlineType", CerosFlexModel.EMBED_TYPE_SCROLLING);
+        setField("cerosInlineHeight", "   ");
+        assertEquals("height:800px;", model.getInlineHeightAttribute());
+    }
+
+    @Test
+    void inlineHeightAttributeUsesConfiguredHeightWhenScrolling() throws Exception {
+        setField("cerosInlineType", CerosFlexModel.EMBED_TYPE_SCROLLING);
+        setField("cerosInlineHeight", "600px");
+        assertEquals("height:600px;", model.getInlineHeightAttribute());
+    }
 }

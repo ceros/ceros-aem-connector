@@ -49,6 +49,12 @@ public class CerosFlexModel {
     @ValueMapValue
     private String cerosEmbedHeight;
 
+    @ValueMapValue
+    private String cerosInlineType;
+
+    @ValueMapValue
+    private String cerosInlineHeight;
+
     /**
      * The {@code flex-client.js} URL for inline mode, grabbed from the manifest
      * and persisted by {@code CerosFlexManifestUrlPostProcessor} when the dialog is
@@ -119,6 +125,13 @@ public class CerosFlexModel {
             return StringUtils.defaultIfBlank(cerosEmbedHeight, DEFAULT_EMBED_HEIGHT);
         }
         return "auto";
+    }
+
+    public String getInlineHeightAttribute() {
+        if (EMBED_TYPE_SCROLLING.equals(cerosInlineType)) {
+            return "height:" + StringUtils.defaultIfBlank(cerosInlineHeight, DEFAULT_EMBED_HEIGHT) + ";";
+        }
+        return null;
     }
 
     /**

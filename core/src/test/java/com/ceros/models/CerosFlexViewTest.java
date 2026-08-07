@@ -121,4 +121,33 @@ class CerosFlexViewTest {
         setViewField("model", model);
         assertEquals("2026-06-05T12:00:00Z", view.getPrefetchedAt());
     }
+
+    // ---- getInlineHeightAttribute ----
+
+    @Test
+    void inlineHeightAttributeIsNullWhenModelNull() {
+        assertNull(view.getInlineHeightAttribute());
+    }
+
+    @Test
+    void inlineHeightAttributeIsNullForFullHeightInlineType() throws Exception {
+        setModelField("cerosInlineType", CerosFlexModel.EMBED_TYPE_FULL_HEIGHT);
+        setViewField("model", model);
+        assertNull(view.getInlineHeightAttribute());
+    }
+
+    @Test
+    void inlineHeightAttributeUsesDefaultWhenScrollingWithNoHeight() throws Exception {
+        setModelField("cerosInlineType", CerosFlexModel.EMBED_TYPE_SCROLLING);
+        setViewField("model", model);
+        assertEquals("height:800px;", view.getInlineHeightAttribute());
+    }
+
+    @Test
+    void inlineHeightAttributeDelegatesToModelConfiguredHeight() throws Exception {
+        setModelField("cerosInlineType", CerosFlexModel.EMBED_TYPE_SCROLLING);
+        setModelField("cerosInlineHeight", "500px");
+        setViewField("model", model);
+        assertEquals("height:500px;", view.getInlineHeightAttribute());
+    }
 }

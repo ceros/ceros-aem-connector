@@ -237,7 +237,7 @@
                 border: none;
             }
         </style>
-        <div class="cmp-cerosflex__inline-preview">
+        <div class="cmp-cerosflex__inline-preview" style="${model.inlineHeightAttribute @ context='styleString'}">
             <div style="position:absolute; top:8px; right:8px; z-index:10; background:rgba(0,0,0,0.6);
                         color:#fff; padding:4px 10px; border-radius:4px; font-size:11px; font-family:sans-serif;
                         pointer-events:none;">
@@ -250,7 +250,8 @@
            inline marker + flex-client.js runtime, which fetches the manifest
            in the browser and renders into a Shadow Root. */-->
     <sly data-sly-test="${model.configured && model.inlineMode && model.hasContent && wcmmode.disabled}">
-        <div data-flex-inline
+        <div data-flex-inline 
+             style="${model.inlineHeightAttribute @ context='styleString'}"
              data-flex-manifest-url="${model.manifestUrl}"></div>
         <script data-sly-test="${model.inlineScriptUrl}" src="${model.inlineScriptUrl}"></script>
     </sly>

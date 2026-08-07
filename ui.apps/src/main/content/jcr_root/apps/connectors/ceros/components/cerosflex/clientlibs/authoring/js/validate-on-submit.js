@@ -5,14 +5,24 @@
  * it blocks the save and shows the server's reason in an error toast; on a
  * valid URL it lets the save proceed. The CerosFlexManifestUrlPostProcessor performs
  * the same check server-side as the authoritative gate; this is the UX layer.
+ *
+ * Also validates the inline/embed height fields synchronously
  */
 (function ($) {
     'use strict';
 
     var VALIDATE_URL = '/bin/ceros/validate-manifest-url';
+    var CSS_LENGTH = /^\d+(\.\d+)?(px|cm|mm|in|pt|pc|Q|em|rem|ex|ch|vw|vh|vmin|vmax|%)$/;
     // Set just before we re-dispatch a click we've already validated, so the
     // capture handler lets that one through to the editor's submit handler.
     var passThrough = false;
+
+    function isValidCssLength(value) {
+        if (!value || !value.trim()) {
+            return true; // empty → server defaults to 800px
+        }
+        return CSS_LENGTH.test(value.trim());
+    }
 
     function isCerosflexDialog($dialog) {
         return $dialog.length > 0 && $dialog.find('[name="./cerosMode"]').length > 0;
@@ -38,6 +48,30 @@
         return fallback;
     }
 
+    /**
+     * Checks the height fields for inline/embed scrolling modes.
+     * An empty value is allowed (the server defaults to 800px); a non-empty
+     * value must be a recognised CSS length unit.
+     * Returns true when all visible height fields are valid.
+     */
+    function validateHeightFields($dialog, mode) {
+        if (mode === 'inline' && fieldValue($dialog, './cerosInlineType') === 'scrolling') {
+            var inlineHeight = fieldValue($dialog, './cerosInlineHeight');
+            if (!isValidCssLength(inlineHeight)) {
+                notifyError('Inline Height must be a valid CSS length (for example 800px, 50vh, 10em).');
+                return false;
+            }
+        }
+        if (mode === 'embed' && fieldValue($dialog, './cerosEmbedType') === 'scrolling') {
+            var embedHeight = fieldValue($dialog, './cerosEmbedHeight');
+            if (!isValidCssLength(embedHeight)) {
+                notifyError('Iframe Height must be a valid CSS length (for example 800px, 50vh, 10em).');
+                return false;
+            }
+        }
+        return true;
+    }
+
     // Capture phase so we run before the editor's own submit handler and can
     // stop it until the URL has been validated server-side.
     document.addEventListener('click', function (event) {
@@ -55,7 +89,14 @@
         if (!isCerosflexDialog($dialog)) return;
 
         var mode = fieldValue($dialog, './cerosMode');
-        if (mode === 'import') return;            // archive-sourced, no URL
+        if (mode === 'import') return;            // archive-sourced, no URL or height to validate
+
+        // Height validation is synchronous — block immediately if invalid.
+        if (!validateHeightFields($dialog, mode)) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            return;
+        }
 
         var url = fieldValue($dialog, './manifestUrl');
         if (!url) return;                          // empty handled by required/pattern
