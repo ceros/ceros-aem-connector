@@ -56,7 +56,9 @@ Upgrading the connector later is a one-line change here.
 
 #### 2. `all/pom.xml` — declare *and* embed
 
-Two separate edits in this file. First, the dependency (version omitted — it
+Two separate edits in this file. 
+
+First, add the dependency with version omitted — it
 comes from the managed entry above):
 
 ```xml
@@ -70,7 +72,7 @@ comes from the managed entry above):
 </dependencies>
 ```
 
-Second add an `<embedded>` to
+Second add an `<embedded>` block to
 the `filevault-package-maven-plugin` configuration, alongside the embeds for
 your own `ui.apps` / `core` / `ui.content` modules:
 
@@ -97,17 +99,18 @@ your own `ui.apps` / `core` / `ui.content` modules:
 ```
 
 The `<target>` matters. `ceros-aem-connector-all` is itself a **container**
-package, so it belongs under `vendor-packages/container/install` — the
-archetype convention that separates third-party containers from first-party
-application content. Putting it under `packages/application/install` (where
+package, so it belongs under `vendor-packages/container/install`.
+Putting it under `packages/application/install` (where
 your own bundles and `ui.apps` go) fails AEM's package-type validation.
 
 #### 3. `all/src/main/content/META-INF/vault/filter.xml` — cover the path
 
-Not a pom, but required. The embedded zip is written to a path that must fall
+The embedded zip is written to a path that must fall
 inside your container package's workspace filter. If it doesn't, filevault
-treats it as content outside the filter roots — depending on plugin version
-that either fails validation or quietly drops it from the artifact:
+treats it as content outside the filter roots depending on plugin version
+that either fails validation or drops it from the artifact.
+Archetype-generated projects usually ship with the correct roots already, but confirm the
+`vendor-packages` one is present in your project.
 
 ```xml
 <workspaceFilter version="1.0">
@@ -115,10 +118,6 @@ that either fails validation or quietly drops it from the artifact:
     <filter root="/apps/myproject-vendor-packages"/>
 </workspaceFilter>
 ```
-
-Archetype-generated projects usually ship both roots already — confirm the
-`vendor-packages` one is present rather than assuming it.
-
 #### Confirm the wiring
 
 After `mvn clean install`, list the container package and check the connector
