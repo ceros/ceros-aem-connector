@@ -35,8 +35,14 @@ import java.util.List;
  * stored URL and makes no extra network call), and inline mode grabs the
  * {@code flex-client.js} URL from the manifest's inline delivery mode and
  * persists it as {@code cerosInlineScriptUrl} for the render path. Embed mode
- * is validated only — its (possibly vanity) URL is left as pasted, since the
- * experience is loaded in a client-side iframe rather than fetched server-side.
+ * keeps its (possibly vanity) URL as pasted, since the experience is loaded in
+ * a client-side iframe rather than fetched server-side.
+ *
+ * <p>Every URL-based mode also reads the experience's resource ID out of the
+ * manifest and persists it as {@code cerosFlexExperienceResourceId}. That is
+ * metadata for repository queries, not something delivery reads, so failing to
+ * obtain it never fails the save — the property is simply cleared. Inline mode
+ * is the exception, and only because it independently requires the manifest.
  *
  * <p>This is the live-mode analogue of Store mode's fetch step, but lightweight
  * — at most one HEAD + one manifest fetch, no asset download — so it runs inline
@@ -51,6 +57,7 @@ public class CerosFlexManifestUrlPostProcessor implements SlingPostProcessor {
     private static final String PROP_MODE = "cerosMode";
     private static final String PROP_MANIFEST_URL = "manifestUrl";
     private static final String PROP_INLINE_SCRIPT_URL = "cerosInlineScriptUrl";
+    private static final String PROP_EXPERIENCE_RESOURCE_ID = "cerosFlexExperienceResourceId";
     private static final String INLINE_DELIVERY_MODE = "inline";
 
     @Reference
@@ -88,6 +95,7 @@ public class CerosFlexManifestUrlPostProcessor implements SlingPostProcessor {
         // throws, which aborts the Sling POST so the dialog won't save an
         // untrusted or unreachable experience. (Import mode has no URL.)
         String scriptUrl = null;
+        String experienceResourceId = null;
         if (urlMode && manifestUrl != null) {
             String canonical = resolveOrReject(manifestUrl);
 
@@ -99,14 +107,18 @@ public class CerosFlexManifestUrlPostProcessor implements SlingPostProcessor {
                 changes.add(Modification.onModified(resource.getPath() + "/" + PROP_MANIFEST_URL));
             }
 
+            CerosManifestV1 manifest = fetchManifest(canonical, inlineMode);
+
             // Inline mode also grabs the flex-client.js runtime URL to persist
             // for the render path.
             if (inlineMode) {
-                scriptUrl = grabInlineScriptUrl(canonical);
+                scriptUrl = inlineScriptUrl(manifest, canonical);
             }
+            experienceResourceId = experienceResourceId(manifest);
         }
 
-        writeScriptUrl(props, changes, resource, scriptUrl);
+        writeProperty(props, changes, resource, PROP_INLINE_SCRIPT_URL, scriptUrl);
+        writeProperty(props, changes, resource, PROP_EXPERIENCE_RESOURCE_ID, experienceResourceId);
     }
 
     /**
@@ -129,22 +141,44 @@ public class CerosFlexManifestUrlPostProcessor implements SlingPostProcessor {
     }
 
     /**
-     * Fetches the (already trusted) manifest and returns its inline
-     * {@code flex-client.js} URL, resolved against the manifest URL — a no-op for
-     * the absolute URLs the live endpoint serves; absolutises a relative URL from
-     * an exported manifest. Returns {@code null} when the manifest exposes no
-     * inline script (nothing is persisted then). Throws
-     * {@link IllegalArgumentException} (aborting the save) only when the
-     * experience can't be reached.
+     * Fetches the (already trusted) manifest.
+     *
+     * <p>Inline mode needs the manifest to render at all — without the
+     * {@code flex-client.js} URL the component is broken — so a fetch failure
+     * there throws {@link IllegalArgumentException} and aborts the save, as it
+     * always has. The other URL modes only want the experience ID out of it,
+     * which is not worth failing a save over, so they get {@code null} and
+     * carry on.</p>
      */
-    private String grabInlineScriptUrl(String canonical) {
-        CerosManifestV1 manifest;
+    private CerosManifestV1 fetchManifest(String canonical, boolean required) {
         try {
-            manifest = cerosManifestService.fetchPublicManifestFromUrl(canonical);
+            return cerosManifestService.fetchPublicManifestFromUrl(canonical);
         } catch (IOException e) {
-            log.warn("Could not fetch manifest to grab inline runtime URL from {}: {}", canonical, e.getMessage());
-            throw new IllegalArgumentException(CerosConstants.MSG_UNREACHABLE_EXPERIENCE);
+            log.warn("Could not fetch manifest from {}: {}", canonical, e.getMessage());
+            if (required) {
+                throw new IllegalArgumentException(CerosConstants.MSG_UNREACHABLE_EXPERIENCE);
+            }
+            return null;
         }
+    }
+
+    /**
+     * Reads the experience's resource ID from the manifest. Returns {@code null}
+     * when the manifest couldn't be fetched, or was published before it carried
+     * the field — the property is then cleared rather than left stale.
+     */
+    private String experienceResourceId(CerosManifestV1 manifest) {
+        CerosManifestV1.Experience experience = manifest != null ? manifest.getExperience() : null;
+        return experience != null ? StringUtils.trimToNull(experience.getExperienceResourceId()) : null;
+    }
+
+    /**
+     * Returns the manifest's inline {@code flex-client.js} URL, resolved against
+     * the manifest URL — a no-op for the absolute URLs the live endpoint serves;
+     * absolutises a relative URL from an exported manifest. Returns {@code null}
+     * when the manifest exposes no inline script (nothing is persisted then).
+     */
+    private String inlineScriptUrl(CerosManifestV1 manifest, String canonical) {
         CerosManifestV1.DeliveryMode inline = manifest != null
                 ? manifest.getDeliveryMode(INLINE_DELIVERY_MODE) : null;
         String scriptUrl = inline != null && !inline.getScripts().isEmpty()
@@ -157,21 +191,22 @@ public class CerosFlexManifestUrlPostProcessor implements SlingPostProcessor {
     }
 
     /**
-     * Keeps the persisted inline runtime URL in sync with the latest save: sets
-     * it when present, clears a stale value otherwise (e.g. after switching away
-     * from inline mode), recording a modification only when it actually changes.
+     * Keeps a derived property in sync with the latest save: sets it when
+     * present, clears a stale value otherwise (e.g. after switching away from
+     * inline mode, or when the manifest no longer yields a value), recording a
+     * modification only when it actually changes.
      */
-    private void writeScriptUrl(ModifiableValueMap props, List<Modification> changes,
-                                Resource resource, String scriptUrl) {
-        String existing = props.get(PROP_INLINE_SCRIPT_URL, String.class);
-        if (scriptUrl != null) {
-            if (!scriptUrl.equals(existing)) {
-                props.put(PROP_INLINE_SCRIPT_URL, scriptUrl);
-                changes.add(Modification.onModified(resource.getPath() + "/" + PROP_INLINE_SCRIPT_URL));
+    private void writeProperty(ModifiableValueMap props, List<Modification> changes,
+                               Resource resource, String name, String value) {
+        String existing = props.get(name, String.class);
+        if (value != null) {
+            if (!value.equals(existing)) {
+                props.put(name, value);
+                changes.add(Modification.onModified(resource.getPath() + "/" + name));
             }
         } else if (existing != null) {
-            props.remove(PROP_INLINE_SCRIPT_URL);
-            changes.add(Modification.onModified(resource.getPath() + "/" + PROP_INLINE_SCRIPT_URL));
+            props.remove(name);
+            changes.add(Modification.onModified(resource.getPath() + "/" + name));
         }
     }
 }

@@ -248,6 +248,47 @@ mode powered by `CerosAuthenticatedApiService`. Authors can navigate the
 account's folder tree and pick a published experience instead of pasting a
 manifest URL manually.
 
+## Experience Metadata
+
+When a component is saved in any URL-based delivery mode, the post-processor
+reads `experience.experienceResourceId` from the manifest and stores it on the
+component node as `cerosFlexExperienceResourceId`. It is metadata only — nothing
+renders it and delivery never reads it. It exists so authored experiences can be
+found by ID rather than by string-matching manifest URLs, which break whenever a
+slug or alias changes.
+
+The property is blank in HTML Import mode (no experience URL), and for
+experiences last published before the manifest carried the field — republishing
+in Ceros fills it in on the next component save.
+
+### Querying it
+
+A lookup like
+
+```sql
+SELECT * FROM [nt:unstructured] WHERE [cerosFlexExperienceResourceId] = 'exp-123'
+```
+
+needs an Oak index to be served efficiently. Without one it traverses the
+repository — fine for occasional admin use in Query Builder, but not at scale,
+where Oak logs traversal warnings and AEM as a Cloud Service may refuse the
+query outright.
+
+Check whether an index covering this property already exists on your instance
+before relying on the query. To add one to your own project:
+
+```xml
+<cerosFlexExperienceResourceId-1-custom
+    jcr:primaryType="oak:QueryIndexDefinition"
+    type="property"
+    propertyNames="{Name}[cerosFlexExperienceResourceId]"
+    reindex="{Boolean}true"/>
+```
+
+Deploy it under `/oak:index`, covered by your package's workspace filter, and
+follow the AEM as a Cloud Service custom-index naming convention
+(`<name>-<productVersion>-custom`).
+
 ## Project Structure
 
 ```
