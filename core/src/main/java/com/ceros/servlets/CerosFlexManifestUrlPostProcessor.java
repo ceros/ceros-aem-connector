@@ -118,7 +118,13 @@ public class CerosFlexManifestUrlPostProcessor implements SlingPostProcessor {
         }
 
         writeProperty(props, changes, resource, PROP_INLINE_SCRIPT_URL, scriptUrl);
-        writeProperty(props, changes, resource, PROP_EXPERIENCE_RESOURCE_ID, experienceResourceId);
+
+        // Import mode derives its ID from the archived manifest when the archive is
+        // stored, and has no URL to re-derive it from here. Leave that value alone —
+        // clearing it would wipe it on the author's next dialog save.
+        if (!CerosDeliveryMode.IMPORT.value().equals(mode)) {
+            writeProperty(props, changes, resource, PROP_EXPERIENCE_RESOURCE_ID, experienceResourceId);
+        }
     }
 
     /**

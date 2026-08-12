@@ -250,16 +250,26 @@ manifest URL manually.
 
 ## Experience Metadata
 
-When a component is saved in any URL-based delivery mode, the post-processor
-reads `experience.experienceResourceId` from the manifest and stores it on the
+Every component stores the ID of the Ceros experience it points at, on the
 component node as `cerosExperienceResourceId`. It is metadata only — nothing
 renders it and delivery never reads it. It exists so authored experiences can be
 found by ID rather than by string-matching manifest URLs, which break whenever a
 slug or alias changes.
 
-The property is blank in HTML Import mode (no experience URL), and for
-experiences last published before the manifest carried the field — republishing
-in Ceros fills it in on the next component save.
+It is read from `experience.experienceResourceId` in the manifest, from whichever
+copy of the manifest that mode already has:
+
+- **URL-based modes** (Fetch, Store, Inline, Iframe embed) derive it on dialog
+  save, from the manifest for the stored Ceros Experience URL.
+- **HTML Import** derives it when the archive is unpacked, from the exported
+  manifest — no network call.
+
+Because it is re-derived from the current manifest each time, it cannot drift out
+of step with the experience the component points at.
+
+The property is blank for experiences last published or exported before the
+manifest carried the field; republishing in Ceros fills it in the next time the
+component is saved or re-imported.
 
 ### Querying it
 

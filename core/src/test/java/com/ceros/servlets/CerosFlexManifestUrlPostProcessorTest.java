@@ -298,14 +298,16 @@ class CerosFlexManifestUrlPostProcessorTest {
     }
 
     @Test
-    void switchingToImportModeClearsResourceId() {
-        // Import has no experience URL, so nothing can be derived.
+    void importModeLeavesResourceIdAlone() {
+        // Import derives its ID from the archived manifest at import time. There is
+        // no URL to re-derive it from here, so a dialog save must not wipe it.
         when(props.get("cerosMode", String.class)).thenReturn("import");
-        when(props.get("cerosExperienceResourceId", String.class)).thenReturn("exp-stale");
+        when(props.get("cerosExperienceResourceId", String.class)).thenReturn("exp-from-archive");
 
         processor.process(request, changes);
 
-        verify(props).remove("cerosExperienceResourceId");
+        verify(props, never()).remove("cerosExperienceResourceId");
+        verify(props, never()).put(eq("cerosExperienceResourceId"), anyString());
         verifyNoInteractions(manifestService);
     }
 
