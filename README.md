@@ -252,7 +252,7 @@ manifest URL manually.
 
 When a component is saved in any URL-based delivery mode, the post-processor
 reads `experience.experienceResourceId` from the manifest and stores it on the
-component node as `cerosFlexExperienceResourceId`. It is metadata only — nothing
+component node as `cerosExperienceResourceId`. It is metadata only — nothing
 renders it and delivery never reads it. It exists so authored experiences can be
 found by ID rather than by string-matching manifest URLs, which break whenever a
 slug or alias changes.
@@ -266,7 +266,7 @@ in Ceros fills it in on the next component save.
 A lookup like
 
 ```sql
-SELECT * FROM [nt:unstructured] WHERE [cerosFlexExperienceResourceId] = 'exp-123'
+SELECT * FROM [nt:unstructured] WHERE [cerosExperienceResourceId] = 'exp-123'
 ```
 
 needs an Oak index to be served efficiently. Without one it traverses the
@@ -278,10 +278,10 @@ Check whether an index covering this property already exists on your instance
 before relying on the query. To add one to your own project:
 
 ```xml
-<cerosFlexExperienceResourceId-1-custom
+<cerosExperienceResourceId-1-custom
     jcr:primaryType="oak:QueryIndexDefinition"
     type="property"
-    propertyNames="{Name}[cerosFlexExperienceResourceId]"
+    propertyNames="{Name}[cerosExperienceResourceId]"
     reindex="{Boolean}true"/>
 ```
 

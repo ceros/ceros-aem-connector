@@ -55,19 +55,19 @@ class CerosFlexModelTest {
 
     @Test
     void experienceResourceIdGetterTrims() throws Exception {
-        setField("cerosFlexExperienceResourceId", "  exp-abc-123  ");
-        assertEquals("exp-abc-123", model.getFlexExperienceResourceId());
+        setField("cerosExperienceResourceId", "  exp-abc-123  ");
+        assertEquals("exp-abc-123", model.getExperienceResourceId());
     }
 
     @Test
     void blankExperienceResourceIdIsNull() throws Exception {
-        setField("cerosFlexExperienceResourceId", "   ");
-        assertNull(model.getFlexExperienceResourceId());
+        setField("cerosExperienceResourceId", "   ");
+        assertNull(model.getExperienceResourceId());
     }
 
     @Test
     void missingExperienceResourceIdIsNull() {
-        assertNull(model.getFlexExperienceResourceId());
+        assertNull(model.getExperienceResourceId());
     }
 
     @Test

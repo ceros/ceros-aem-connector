@@ -73,7 +73,7 @@ public class CerosFlexModel {
      * published before the manifest carried the field.</p>
      */
     @ValueMapValue
-    private String cerosFlexExperienceResourceId;
+    private String cerosExperienceResourceId;
 
     @SlingObject
     private Resource resource;
@@ -95,8 +95,8 @@ public class CerosFlexModel {
     }
 
     /** Resource ID of the referenced Ceros experience; {@code null} when unknown. */
-    public String getFlexExperienceResourceId() {
-        return StringUtils.trimToNull(cerosFlexExperienceResourceId);
+    public String getExperienceResourceId() {
+        return StringUtils.trimToNull(cerosExperienceResourceId);
     }
 
     /** Persisted {@code flex-client.js} URL for inline mode (grabbed on save). */

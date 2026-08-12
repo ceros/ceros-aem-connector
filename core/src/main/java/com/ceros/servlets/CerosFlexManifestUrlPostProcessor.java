@@ -39,7 +39,7 @@ import java.util.List;
  * a client-side iframe rather than fetched server-side.
  *
  * <p>Every URL-based mode also reads the experience's resource ID out of the
- * manifest and persists it as {@code cerosFlexExperienceResourceId}. That is
+ * manifest and persists it as {@code cerosExperienceResourceId}. That is
  * metadata for repository queries, not something delivery reads, so failing to
  * obtain it never fails the save — the property is simply cleared. Inline mode
  * is the exception, and only because it independently requires the manifest.
@@ -57,7 +57,7 @@ public class CerosFlexManifestUrlPostProcessor implements SlingPostProcessor {
     private static final String PROP_MODE = "cerosMode";
     private static final String PROP_MANIFEST_URL = "manifestUrl";
     private static final String PROP_INLINE_SCRIPT_URL = "cerosInlineScriptUrl";
-    private static final String PROP_EXPERIENCE_RESOURCE_ID = "cerosFlexExperienceResourceId";
+    private static final String PROP_EXPERIENCE_RESOURCE_ID = "cerosExperienceResourceId";
     private static final String INLINE_DELIVERY_MODE = "inline";
 
     @Reference

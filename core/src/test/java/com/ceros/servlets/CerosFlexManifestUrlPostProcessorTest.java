@@ -243,7 +243,7 @@ class CerosFlexManifestUrlPostProcessorTest {
 
         processor.process(request, changes);
 
-        verify(props).put("cerosFlexExperienceResourceId", "exp-abc-123");
+        verify(props).put("cerosExperienceResourceId", "exp-abc-123");
         assertEquals(1, changes.size());
     }
 
@@ -260,7 +260,7 @@ class CerosFlexManifestUrlPostProcessorTest {
         processor.process(request, changes);
 
         verify(props).put("cerosInlineScriptUrl", CLIENT_URL);
-        verify(props).put("cerosFlexExperienceResourceId", "exp-abc-123");
+        verify(props).put("cerosExperienceResourceId", "exp-abc-123");
         assertEquals(2, changes.size());
     }
 
@@ -270,14 +270,14 @@ class CerosFlexManifestUrlPostProcessorTest {
         // Better no ID than one describing a different experience.
         when(props.get("cerosMode", String.class)).thenReturn("fetch");
         when(props.get("manifestUrl", String.class)).thenReturn(MANIFEST_URL);
-        when(props.get("cerosFlexExperienceResourceId", String.class)).thenReturn("exp-stale");
+        when(props.get("cerosExperienceResourceId", String.class)).thenReturn("exp-stale");
         when(manifestService.resolveTrustedManifestUrl(MANIFEST_URL)).thenReturn(MANIFEST_URL);
         when(manifestService.fetchPublicManifestFromUrl(MANIFEST_URL))
                 .thenReturn(MAPPER.readValue("{\"experience\":{\"slug\":\"e\"}}", CerosManifestV1.class));
 
         processor.process(request, changes);
 
-        verify(props).remove("cerosFlexExperienceResourceId");
+        verify(props).remove("cerosExperienceResourceId");
         assertEquals(1, changes.size());
     }
 
@@ -286,14 +286,14 @@ class CerosFlexManifestUrlPostProcessorTest {
         // The ID is metadata; losing it must not cost the author their save.
         when(props.get("cerosMode", String.class)).thenReturn("embed");
         when(props.get("manifestUrl", String.class)).thenReturn(MANIFEST_URL);
-        when(props.get("cerosFlexExperienceResourceId", String.class)).thenReturn("exp-stale");
+        when(props.get("cerosExperienceResourceId", String.class)).thenReturn("exp-stale");
         when(manifestService.resolveTrustedManifestUrl(MANIFEST_URL)).thenReturn(MANIFEST_URL);
         when(manifestService.fetchPublicManifestFromUrl(MANIFEST_URL))
                 .thenThrow(new IOException("connection refused"));
 
         processor.process(request, changes);
 
-        verify(props).remove("cerosFlexExperienceResourceId");
+        verify(props).remove("cerosExperienceResourceId");
         assertEquals(1, changes.size());
     }
 
@@ -301,11 +301,11 @@ class CerosFlexManifestUrlPostProcessorTest {
     void switchingToImportModeClearsResourceId() {
         // Import has no experience URL, so nothing can be derived.
         when(props.get("cerosMode", String.class)).thenReturn("import");
-        when(props.get("cerosFlexExperienceResourceId", String.class)).thenReturn("exp-stale");
+        when(props.get("cerosExperienceResourceId", String.class)).thenReturn("exp-stale");
 
         processor.process(request, changes);
 
-        verify(props).remove("cerosFlexExperienceResourceId");
+        verify(props).remove("cerosExperienceResourceId");
         verifyNoInteractions(manifestService);
     }
 
@@ -313,15 +313,15 @@ class CerosFlexManifestUrlPostProcessorTest {
     void unchangedResourceIdWritesNothing() throws Exception {
         when(props.get("cerosMode", String.class)).thenReturn("fetch");
         when(props.get("manifestUrl", String.class)).thenReturn(MANIFEST_URL);
-        when(props.get("cerosFlexExperienceResourceId", String.class)).thenReturn("exp-abc-123");
+        when(props.get("cerosExperienceResourceId", String.class)).thenReturn("exp-abc-123");
         when(manifestService.resolveTrustedManifestUrl(MANIFEST_URL)).thenReturn(MANIFEST_URL);
         when(manifestService.fetchPublicManifestFromUrl(MANIFEST_URL))
                 .thenReturn(manifestWithResourceId("exp-abc-123"));
 
         processor.process(request, changes);
 
-        verify(props, never()).put(eq("cerosFlexExperienceResourceId"), anyString());
-        verify(props, never()).remove("cerosFlexExperienceResourceId");
+        verify(props, never()).put(eq("cerosExperienceResourceId"), anyString());
+        verify(props, never()).remove("cerosExperienceResourceId");
         assertTrue(changes.isEmpty());
     }
 
