@@ -234,23 +234,26 @@
     function filterTree($tree, query) {
         if (!query) {
             // Show everything, collapse folders
-            $tree.find('.cerosflex-browse-exp').show();
+            $tree.find('.cerosflex-browse-exp').removeClass('is-match').show();
             $tree.find('.cerosflex-browse-folder').show();
             return;
         }
 
-        // Hide non-matching experiences
+        // Flag matching experiences. Use a class rather than :visible — a
+        // matching row inside a collapsed folder is still display:none here.
         $tree.find('.cerosflex-browse-exp').each(function () {
             var name = $(this).attr('data-name') || '';
-            $(this).toggle(name.indexOf(query) !== -1);
+            var match = name.indexOf(query) !== -1;
+            $(this).toggleClass('is-match', match).toggle(match);
         });
 
-        // Show folders that have visible experiences (recursively)
+        // Show folders that hold a match at any depth, and expand them so the
+        // match is actually rendered.
         $tree.find('.cerosflex-browse-folder').each(function () {
             var $f = $(this);
-            var hasVisible = $f.find('.cerosflex-browse-exp:visible').length > 0;
-            $f.toggle(hasVisible);
-            if (hasVisible) {
+            var hasMatch = $f.find('.cerosflex-browse-exp.is-match').length > 0;
+            $f.toggle(hasMatch);
+            if (hasMatch) {
                 $f.find('> .cerosflex-browse-folder-content').show();
                 $f.find('> .cerosflex-browse-folder-label .cerosflex-browse-toggle').text('\u25bc');
             }
