@@ -238,7 +238,7 @@
         if (!query) {
             // Show everything, collapse folders
             $tree.find('.cerosflex-browse-exp').removeClass('is-match').show();
-            $tree.find('.cerosflex-browse-folder').show();
+            $tree.find('.cerosflex-browse-folder').removeClass('is-match').show();
             return;
         }
 
@@ -254,7 +254,9 @@
         // holds, so its contents stay listed even when no experience matches.
         $tree.find('.cerosflex-browse-folder').each(function () {
             var folderName = $(this).attr('data-name') || '';
-            if (folderName.indexOf(query) !== -1) {
+            var match = folderName.indexOf(query) !== -1;
+            $(this).toggleClass('is-match', match);
+            if (match) {
                 $(this).find('.cerosflex-browse-exp').addClass('is-match').show();
             }
         });
@@ -263,9 +265,8 @@
         // match is actually rendered.
         $tree.find('.cerosflex-browse-folder').each(function () {
             var $f = $(this);
-            var ownName = $f.attr('data-name') || '';
-            var hasMatch = ownName.indexOf(query) !== -1 ||
-                $f.find('.cerosflex-browse-exp.is-match').length > 0;
+            var hasMatch = $f.hasClass('is-match') ||
+                $f.find('.cerosflex-browse-exp.is-match, .cerosflex-browse-folder.is-match').length > 0;
             $f.toggle(hasMatch);
             if (hasMatch) {
                 $f.find('> .cerosflex-browse-folder-content').show();
