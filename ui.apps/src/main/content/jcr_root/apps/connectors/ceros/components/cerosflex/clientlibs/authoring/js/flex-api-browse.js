@@ -128,7 +128,10 @@
     }
 
     function buildFolderNode($parent, folder, $field, $overlay) {
-        var $folder = $('<div>', { 'class': 'cerosflex-browse-folder' });
+        var $folder = $('<div>', {
+            'class': 'cerosflex-browse-folder',
+            'data-name': (folder.name || '').toLowerCase()
+        });
 
         var hasChildren = folder.children && folder.children.length > 0;
         var hasExps     = folder.experiences && folder.experiences.length > 0;
@@ -247,11 +250,22 @@
             $(this).toggleClass('is-match', match).toggle(match);
         });
 
+        // A folder whose own name matches counts as a match for everything it
+        // holds, so its contents stay listed even when no experience matches.
+        $tree.find('.cerosflex-browse-folder').each(function () {
+            var folderName = $(this).attr('data-name') || '';
+            if (folderName.indexOf(query) !== -1) {
+                $(this).find('.cerosflex-browse-exp').addClass('is-match').show();
+            }
+        });
+
         // Show folders that hold a match at any depth, and expand them so the
         // match is actually rendered.
         $tree.find('.cerosflex-browse-folder').each(function () {
             var $f = $(this);
-            var hasMatch = $f.find('.cerosflex-browse-exp.is-match').length > 0;
+            var ownName = $f.attr('data-name') || '';
+            var hasMatch = ownName.indexOf(query) !== -1 ||
+                $f.find('.cerosflex-browse-exp.is-match').length > 0;
             $f.toggle(hasMatch);
             if (hasMatch) {
                 $f.find('> .cerosflex-browse-folder-content').show();
