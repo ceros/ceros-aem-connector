@@ -9,8 +9,7 @@ public final class CerosConstants {
      * pasted URL is on a (possibly attacker-influenced) vanity domain so the
      * connector can discover the real manifest URL without trusting that host.
      *
-     * <p>Set by Flex Shield on standalone HTML page responses; see
-     * {@code ceros-spark} PR #9861.</p>
+     * <p>Set by Ceros on standalone HTML page responses.</p>
      */
     public static final String FLEX_MANIFEST_HEADER = "x-flex-manifest";
 

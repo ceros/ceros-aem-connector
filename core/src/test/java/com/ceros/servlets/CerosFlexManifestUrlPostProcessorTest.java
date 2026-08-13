@@ -55,6 +55,12 @@ class CerosFlexManifestUrlPostProcessorTest {
         when(resource.getPath()).thenReturn(PATH);
     }
 
+    private CerosManifestV1 manifestWithResourceId(String resourceId) throws IOException {
+        return MAPPER.readValue(
+                "{\"experience\":{\"experienceResourceId\":\"" + resourceId + "\",\"slug\":\"exp\"}}",
+                CerosManifestV1.class);
+    }
+
     private CerosManifestV1 manifestWithInline() throws IOException {
         return MAPPER.readValue(
                 "{\"deliveryModes\":{\"inline\":{\"scripts\":[{\"url\":\"" + CLIENT_URL + "\"}]}}}",
@@ -112,7 +118,8 @@ class CerosFlexManifestUrlPostProcessorTest {
     @Test
     void fetchModeCanonicalisesManifestUrlWithoutGrabbingScript() throws Exception {
         // Fetch (live) mode: the pasted URL is validated/canonicalised at save
-        // so render trusts it, but no inline script is grabbed.
+        // so render trusts it. The manifest is fetched for the experience ID,
+        // but no inline script is grabbed.
         String vanityUrl = "https://look.customer.com/exp";
         when(props.get("cerosMode", String.class)).thenReturn("fetch");
         when(props.get("manifestUrl", String.class)).thenReturn(vanityUrl);
@@ -122,7 +129,6 @@ class CerosFlexManifestUrlPostProcessorTest {
         processor.process(request, changes);
 
         verify(props).put("manifestUrl", MANIFEST_URL);
-        verify(manifestService, never()).fetchPublicManifestFromUrl(anyString());
         verify(props, never()).put(eq("cerosInlineScriptUrl"), anyString());
         assertEquals(1, changes.size());
     }
@@ -214,7 +220,6 @@ class CerosFlexManifestUrlPostProcessorTest {
 
         verify(manifestService).resolveTrustedManifestUrl(vanityUrl);
         verify(props, never()).put(eq("manifestUrl"), anyString());
-        verify(manifestService, never()).fetchPublicManifestFromUrl(anyString());
         assertTrue(changes.isEmpty());
     }
 
@@ -226,6 +231,100 @@ class CerosFlexManifestUrlPostProcessorTest {
                 .thenThrow(new IllegalArgumentException("not a recognized Ceros domain"));
 
         assertThrows(IllegalArgumentException.class, () -> processor.process(request, changes));
+    }
+
+    @Test
+    void fetchModeStoresExperienceResourceId() throws Exception {
+        when(props.get("cerosMode", String.class)).thenReturn("fetch");
+        when(props.get("manifestUrl", String.class)).thenReturn(MANIFEST_URL);
+        when(manifestService.resolveTrustedManifestUrl(MANIFEST_URL)).thenReturn(MANIFEST_URL);
+        when(manifestService.fetchPublicManifestFromUrl(MANIFEST_URL))
+                .thenReturn(manifestWithResourceId("exp-abc-123"));
+
+        processor.process(request, changes);
+
+        verify(props).put("cerosExperienceResourceId", "exp-abc-123");
+        assertEquals(1, changes.size());
+    }
+
+    @Test
+    void inlineModeStoresBothScriptUrlAndResourceId() throws Exception {
+        when(props.get("cerosMode", String.class)).thenReturn("inline");
+        when(props.get("manifestUrl", String.class)).thenReturn(MANIFEST_URL);
+        when(manifestService.resolveTrustedManifestUrl(MANIFEST_URL)).thenReturn(MANIFEST_URL);
+        when(manifestService.fetchPublicManifestFromUrl(MANIFEST_URL)).thenReturn(MAPPER.readValue(
+                "{\"experience\":{\"experienceResourceId\":\"exp-abc-123\"},"
+                        + "\"deliveryModes\":{\"inline\":{\"scripts\":[{\"url\":\"" + CLIENT_URL + "\"}]}}}",
+                CerosManifestV1.class));
+
+        processor.process(request, changes);
+
+        verify(props).put("cerosInlineScriptUrl", CLIENT_URL);
+        verify(props).put("cerosExperienceResourceId", "exp-abc-123");
+        assertEquals(2, changes.size());
+    }
+
+    @Test
+    void manifestWithoutResourceIdClearsStaleId() throws Exception {
+        // An experience last published before the manifest carried the field.
+        // Better no ID than one describing a different experience.
+        when(props.get("cerosMode", String.class)).thenReturn("fetch");
+        when(props.get("manifestUrl", String.class)).thenReturn(MANIFEST_URL);
+        when(props.get("cerosExperienceResourceId", String.class)).thenReturn("exp-stale");
+        when(manifestService.resolveTrustedManifestUrl(MANIFEST_URL)).thenReturn(MANIFEST_URL);
+        when(manifestService.fetchPublicManifestFromUrl(MANIFEST_URL))
+                .thenReturn(MAPPER.readValue("{\"experience\":{\"slug\":\"e\"}}", CerosManifestV1.class));
+
+        processor.process(request, changes);
+
+        verify(props).remove("cerosExperienceResourceId");
+        assertEquals(1, changes.size());
+    }
+
+    @Test
+    void unreachableManifestClearsIdWithoutFailingNonInlineSave() throws Exception {
+        // The ID is metadata; losing it must not cost the author their save.
+        when(props.get("cerosMode", String.class)).thenReturn("embed");
+        when(props.get("manifestUrl", String.class)).thenReturn(MANIFEST_URL);
+        when(props.get("cerosExperienceResourceId", String.class)).thenReturn("exp-stale");
+        when(manifestService.resolveTrustedManifestUrl(MANIFEST_URL)).thenReturn(MANIFEST_URL);
+        when(manifestService.fetchPublicManifestFromUrl(MANIFEST_URL))
+                .thenThrow(new IOException("connection refused"));
+
+        processor.process(request, changes);
+
+        verify(props).remove("cerosExperienceResourceId");
+        assertEquals(1, changes.size());
+    }
+
+    @Test
+    void importModeLeavesResourceIdAlone() {
+        // Import derives its ID from the archived manifest at import time. There is
+        // no URL to re-derive it from here, so a dialog save must not wipe it.
+        when(props.get("cerosMode", String.class)).thenReturn("import");
+        when(props.get("cerosExperienceResourceId", String.class)).thenReturn("exp-from-archive");
+
+        processor.process(request, changes);
+
+        verify(props, never()).remove("cerosExperienceResourceId");
+        verify(props, never()).put(eq("cerosExperienceResourceId"), anyString());
+        verifyNoInteractions(manifestService);
+    }
+
+    @Test
+    void unchangedResourceIdWritesNothing() throws Exception {
+        when(props.get("cerosMode", String.class)).thenReturn("fetch");
+        when(props.get("manifestUrl", String.class)).thenReturn(MANIFEST_URL);
+        when(props.get("cerosExperienceResourceId", String.class)).thenReturn("exp-abc-123");
+        when(manifestService.resolveTrustedManifestUrl(MANIFEST_URL)).thenReturn(MANIFEST_URL);
+        when(manifestService.fetchPublicManifestFromUrl(MANIFEST_URL))
+                .thenReturn(manifestWithResourceId("exp-abc-123"));
+
+        processor.process(request, changes);
+
+        verify(props, never()).put(eq("cerosExperienceResourceId"), anyString());
+        verify(props, never()).remove("cerosExperienceResourceId");
+        assertTrue(changes.isEmpty());
     }
 
     @Test

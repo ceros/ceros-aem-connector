@@ -33,8 +33,7 @@ manifest, and injects the scripts it references, from a **Ceros-owned** host:
 
 - A URL already on a Ceros-owned domain resolves to its manifest directly.
 - A vanity domain is asked to advertise its canonical, Ceros-hosted manifest URL
-  via the [`x-flex-manifest`](https://github.com/ceros/ceros-spark/pull/9861)
-  response header on the published page. The advertised URL must itself pass the
+  via the `x-flex-manifest` response header on the published page. The advertised URL must itself pass the
   Ceros-owned whitelist before it is fetched, so a spoofed header pointing
   off-Ceros is rejected.
 - Anything that does not resolve to a Ceros-owned manifest is refused.
