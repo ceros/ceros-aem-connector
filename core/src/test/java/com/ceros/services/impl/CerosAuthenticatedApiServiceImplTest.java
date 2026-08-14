@@ -7,8 +7,19 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.sun.net.httpserver.Headers;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
+
+import java.io.IOException;
+import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -43,6 +54,123 @@ class CerosAuthenticatedApiServiceImplTest {
     @Test
     void getFolderTreeJsonThrowsWhenNotEnabled() {
         assertThrows(java.io.IOException.class, () -> service.getFolderTreeJson());
+    }
+
+    @Test
+    void activateAppliesDefaultApiVersion() throws Exception {
+        service.activate(configWithApiVersion("2026-08-06-09-00"));
+
+        Field f = CerosAuthenticatedApiServiceImpl.class.getDeclaredField("apiVersion");
+        f.setAccessible(true);
+        assertEquals("2026-08-06-09-00", f.get(service));
+    }
+
+    @Test
+    void activateLeavesApiVersionNullWhenBlank() throws Exception {
+        service.activate(configWithApiVersion("   "));
+
+        Field f = CerosAuthenticatedApiServiceImpl.class.getDeclaredField("apiVersion");
+        f.setAccessible(true);
+        assertNull(f.get(service), "blank version should be trimmed to null so the header is omitted");
+    }
+
+    @Test
+    void sendsApiVersionHeaderOnEveryRequest() throws Exception {
+        List<Headers> received = new ArrayList<>();
+        HttpServer server = startStubApi(received);
+        try {
+            pointServiceAt(server, "2026-08-06-09-00");
+
+            service.getFolderTreeJson();
+
+            assertEquals(2, received.size(),
+                    "expected current-account then folder-tree requests");
+            for (Headers headers : received) {
+                assertEquals("2026-08-06-09-00", headers.getFirst("x-ceros-api-version"));
+                assertEquals("Bearer test-key", headers.getFirst("Authorization"));
+                assertEquals("application/json", headers.getFirst("Accept"));
+            }
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void omitsApiVersionHeaderWhenNotConfigured() throws Exception {
+        List<Headers> received = new ArrayList<>();
+        HttpServer server = startStubApi(received);
+        try {
+            pointServiceAt(server, null);
+
+            service.getFolderTreeJson();
+
+            assertEquals(2, received.size());
+            for (Headers headers : received) {
+                assertNull(headers.getFirst("x-ceros-api-version"));
+                assertEquals("Bearer test-key", headers.getFirst("Authorization"));
+            }
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    private void pointServiceAt(HttpServer server, String apiVersion) throws Exception {
+        setField("apiKey", "test-key");
+        setField("apiVersion", apiVersion);
+        setField("apiBaseUrl", "http://127.0.0.1:" + server.getAddress().getPort());
+        setField("viewBaseUrl", "https://ceros.site");
+        setField("httpTimeoutMillis", 5000);
+    }
+
+    /**
+     * Stands up a real loopback endpoint for the two calls
+     * {@code getFolderTreeJson} makes, recording the headers each one actually
+     * sent so the production request path is verified rather than re-implemented.
+     */
+    private HttpServer startStubApi(List<Headers> received) throws IOException {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/accounts/current-account", exchange -> respond(received, exchange,
+                "{\"accountResourceId\":\"acct-1\",\"accountName\":\"Test Account\"}"));
+        server.createContext("/accounts/acct-1/folder-tree", exchange -> respond(received, exchange,
+                "{\"resources\":[]}"));
+        server.start();
+        return server;
+    }
+
+    private void respond(List<Headers> received, HttpExchange exchange, String body)
+            throws IOException {
+        Headers snapshot = new Headers();
+        snapshot.putAll(exchange.getRequestHeaders());
+        received.add(snapshot);
+
+        byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+        exchange.getResponseHeaders().add("Content-Type", "application/json");
+        exchange.sendResponseHeaders(200, bytes.length);
+        try (OutputStream out = exchange.getResponseBody()) {
+            out.write(bytes);
+        }
+    }
+
+    private CerosAuthenticatedApiServiceImpl.Config configWithApiVersion(String version) {
+        return (CerosAuthenticatedApiServiceImpl.Config) Proxy.newProxyInstance(
+                CerosAuthenticatedApiServiceImpl.Config.class.getClassLoader(),
+                new Class<?>[] { CerosAuthenticatedApiServiceImpl.Config.class },
+                (proxy, method, args) -> {
+                    switch (method.getName()) {
+                        case "flexApiVersion":
+                            return version;
+                        case "flexApiKey":
+                            return "test-key";
+                        case "flexApiBaseUrl":
+                            return "https://rest.ceros.com";
+                        case "flexViewBaseUrl":
+                            return "https://ceros.site";
+                        case "httpTimeoutSeconds":
+                            return 30;
+                        default:
+                            return method.getDefaultValue();
+                    }
+                });
     }
 
     @Test

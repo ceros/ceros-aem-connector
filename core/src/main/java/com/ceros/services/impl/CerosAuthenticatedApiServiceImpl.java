@@ -16,6 +16,7 @@ import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 
 import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -46,6 +47,10 @@ public class CerosAuthenticatedApiServiceImpl implements CerosAuthenticatedApiSe
                 description = "Base domain for manifest URLs. Account slug is prepended as subdomain (e.g. https://view.ceros.com)")
         String flexViewBaseUrl() default "https://ceros.site";
 
+        @AttributeDefinition(name = "Flex API Version",
+                description = "Value sent in the x-ceros-api-version header on every Flex API request.")
+        String flexApiVersion() default "2026-08-06-09-00";
+
         @AttributeDefinition(name = "HTTP Timeout (seconds)")
         int httpTimeoutSeconds() default 30;
     }
@@ -53,6 +58,7 @@ public class CerosAuthenticatedApiServiceImpl implements CerosAuthenticatedApiSe
     private String apiKey;
     private String apiBaseUrl;
     private String viewBaseUrl;
+    private String apiVersion;
     private int httpTimeoutMillis;
     private volatile String cachedAccountResourceId;
     private volatile String cachedAccountName;
@@ -63,6 +69,7 @@ public class CerosAuthenticatedApiServiceImpl implements CerosAuthenticatedApiSe
         this.apiKey = StringUtils.trimToNull(config.flexApiKey());
         this.apiBaseUrl = StringUtils.stripEnd(config.flexApiBaseUrl(), "/");
         this.viewBaseUrl = StringUtils.stripEnd(config.flexViewBaseUrl(), "/");
+        this.apiVersion = StringUtils.trimToNull(config.flexApiVersion());
         this.httpTimeoutMillis = config.httpTimeoutSeconds() * 1000;
         this.cachedAccountResourceId = null;
         this.cachedAccountName = null;
@@ -175,8 +182,12 @@ public class CerosAuthenticatedApiServiceImpl implements CerosAuthenticatedApiSe
     }
 
     private String fetchUrlToString(String urlStr) throws IOException {
-        return HttpUtils.fetchString(urlStr, httpTimeoutMillis,
-                Map.of("Accept", "application/json",
-                       "Authorization", "Bearer " + apiKey));
+        Map<String, String> headers = new LinkedHashMap<>();
+        headers.put("Accept", "application/json");
+        headers.put("Authorization", "Bearer " + apiKey);
+        if (apiVersion != null) {
+            headers.put("x-ceros-api-version", apiVersion);
+        }
+        return HttpUtils.fetchString(urlStr, httpTimeoutMillis, headers);
     }
 }
