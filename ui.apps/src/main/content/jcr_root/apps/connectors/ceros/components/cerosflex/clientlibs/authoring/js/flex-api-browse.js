@@ -236,7 +236,11 @@
 
     function filterTree($tree, query) {
         if (!query) {
-            // Show everything, collapse folders
+            // Show everything, collapse folders. The content divs and the
+            // glyphs have to be reset together, or a folder the filter expanded
+            // comes back collapsed while still showing an open arrow.
+            $tree.find('.cerosflex-browse-folder-content').hide();
+            $tree.find('.cerosflex-browse-toggle').text('\u25b6');
             $tree.find('.cerosflex-browse-exp').removeClass('is-match').show();
             $tree.find('.cerosflex-browse-folder').removeClass('is-match').show();
             return;
