@@ -1,5 +1,6 @@
 package com.ceros.services.impl;
 
+import com.ceros.CerosConstants;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -66,12 +67,25 @@ class CerosAuthenticatedApiServiceImplTest {
     }
 
     @Test
-    void activateLeavesApiVersionNullWhenBlank() throws Exception {
-        service.activate(configWithApiVersion("   "));
+    void activateFallsBackToDefaultApiVersionWhenBlank() throws Exception {
+        for (String blank : new String[] { "", "   ", "\t" }) {
+            service.activate(configWithApiVersion(blank));
+
+            Field f = CerosAuthenticatedApiServiceImpl.class.getDeclaredField("apiVersion");
+            f.setAccessible(true);
+            assertEquals(CerosConstants.DEFAULT_FLEX_API_VERSION, f.get(service),
+                    "a blank configured version should fall back to the default");
+        }
+    }
+
+    @Test
+    void activateTrimsAndKeepsConfiguredApiVersion() throws Exception {
+        service.activate(configWithApiVersion("  2099-01-01-00-00  "));
 
         Field f = CerosAuthenticatedApiServiceImpl.class.getDeclaredField("apiVersion");
         f.setAccessible(true);
-        assertNull(f.get(service), "blank version should be trimmed to null so the header is omitted");
+        assertEquals("2099-01-01-00-00", f.get(service),
+                "a non-blank override should win over the default");
     }
 
     @Test
@@ -96,18 +110,20 @@ class CerosAuthenticatedApiServiceImplTest {
     }
 
     @Test
-    void omitsApiVersionHeaderWhenNotConfigured() throws Exception {
+    void sendsDefaultApiVersionHeaderWhenConfigBlank() throws Exception {
         List<Headers> received = new ArrayList<>();
         HttpServer server = startStubApi(received);
         try {
-            pointServiceAt(server, null);
+            // Real activate + real request path: an empty OSGi value must still
+            // put the default version on the wire, never a blank/absent header.
+            service.activate(config("", baseUrlOf(server)));
 
             service.getFolderTreeJson();
 
             assertEquals(2, received.size());
             for (Headers headers : received) {
-                assertNull(headers.getFirst("x-ceros-api-version"));
-                assertEquals("Bearer test-key", headers.getFirst("Authorization"));
+                assertEquals(CerosConstants.DEFAULT_FLEX_API_VERSION,
+                        headers.getFirst("x-ceros-api-version"));
             }
         } finally {
             server.stop(0);
@@ -117,9 +133,13 @@ class CerosAuthenticatedApiServiceImplTest {
     private void pointServiceAt(HttpServer server, String apiVersion) throws Exception {
         setField("apiKey", "test-key");
         setField("apiVersion", apiVersion);
-        setField("apiBaseUrl", "http://127.0.0.1:" + server.getAddress().getPort());
+        setField("apiBaseUrl", baseUrlOf(server));
         setField("viewBaseUrl", "https://ceros.site");
         setField("httpTimeoutMillis", 5000);
+    }
+
+    private String baseUrlOf(HttpServer server) {
+        return "http://127.0.0.1:" + server.getAddress().getPort();
     }
 
     /**
@@ -152,6 +172,10 @@ class CerosAuthenticatedApiServiceImplTest {
     }
 
     private CerosAuthenticatedApiServiceImpl.Config configWithApiVersion(String version) {
+        return config(version, "https://rest.ceros.com");
+    }
+
+    private CerosAuthenticatedApiServiceImpl.Config config(String version, String baseUrl) {
         return (CerosAuthenticatedApiServiceImpl.Config) Proxy.newProxyInstance(
                 CerosAuthenticatedApiServiceImpl.Config.class.getClassLoader(),
                 new Class<?>[] { CerosAuthenticatedApiServiceImpl.Config.class },
@@ -162,7 +186,7 @@ class CerosAuthenticatedApiServiceImplTest {
                         case "flexApiKey":
                             return "test-key";
                         case "flexApiBaseUrl":
-                            return "https://rest.ceros.com";
+                            return baseUrl;
                         case "flexViewBaseUrl":
                             return "https://ceros.site";
                         case "httpTimeoutSeconds":

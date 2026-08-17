@@ -68,7 +68,7 @@ entry only.
 | `flexApiKey` | _(empty — disables browse)_ | API token for the Ceros Flex API |
 | `flexApiBaseUrl` | `https://rest.ceros.com` | Base URL for the Flex REST API |
 | `flexViewBaseUrl` | `https://ceros.site` | Base domain for manifest URLs |
-| `flexApiVersion` | `2026-08-06-09-00` | Sent as the `x-ceros-api-version` header on every Flex API request. Leave empty to omit the header. |
+| `flexApiVersion` | `2026-08-06-09-00` | Sent as the `x-ceros-api-version` header on every Flex API request. An empty value falls back to the default — the header is always sent. |
 | `httpTimeoutSeconds` | `30` | HTTP timeout |
 
 Example `.cfg.json`:

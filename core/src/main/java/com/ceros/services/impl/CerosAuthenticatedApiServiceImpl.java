@@ -16,7 +16,6 @@ import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 
 import java.io.IOException;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -48,8 +47,9 @@ public class CerosAuthenticatedApiServiceImpl implements CerosAuthenticatedApiSe
         String flexViewBaseUrl() default "https://ceros.site";
 
         @AttributeDefinition(name = "Flex API Version",
-                description = "Value sent in the x-ceros-api-version header on every Flex API request.")
-        String flexApiVersion() default "2026-08-06-09-00";
+                description = "Value sent in the x-ceros-api-version header on every Flex API request. "
+                        + "Falls back to the default when left empty.")
+        String flexApiVersion() default CerosConstants.DEFAULT_FLEX_API_VERSION;
 
         @AttributeDefinition(name = "HTTP Timeout (seconds)")
         int httpTimeoutSeconds() default 30;
@@ -69,7 +69,10 @@ public class CerosAuthenticatedApiServiceImpl implements CerosAuthenticatedApiSe
         this.apiKey = StringUtils.trimToNull(config.flexApiKey());
         this.apiBaseUrl = StringUtils.stripEnd(config.flexApiBaseUrl(), "/");
         this.viewBaseUrl = StringUtils.stripEnd(config.flexViewBaseUrl(), "/");
-        this.apiVersion = StringUtils.trimToNull(config.flexApiVersion());
+        // An empty override falls back to the default rather than sending a blank
+        // version header, which the Flex API rejects.
+        this.apiVersion = StringUtils.defaultIfBlank(StringUtils.trim(config.flexApiVersion()),
+                CerosConstants.DEFAULT_FLEX_API_VERSION);
         this.httpTimeoutMillis = config.httpTimeoutSeconds() * 1000;
         this.cachedAccountResourceId = null;
         this.cachedAccountName = null;
@@ -182,12 +185,9 @@ public class CerosAuthenticatedApiServiceImpl implements CerosAuthenticatedApiSe
     }
 
     private String fetchUrlToString(String urlStr) throws IOException {
-        Map<String, String> headers = new LinkedHashMap<>();
-        headers.put("Accept", "application/json");
-        headers.put("Authorization", "Bearer " + apiKey);
-        if (apiVersion != null) {
-            headers.put("x-ceros-api-version", apiVersion);
-        }
-        return HttpUtils.fetchString(urlStr, httpTimeoutMillis, headers);
+        return HttpUtils.fetchString(urlStr, httpTimeoutMillis,
+                Map.of("Accept", "application/json",
+                       "Authorization", "Bearer " + apiKey,
+                       CerosConstants.FLEX_API_VERSION_HEADER, apiVersion));
     }
 }
