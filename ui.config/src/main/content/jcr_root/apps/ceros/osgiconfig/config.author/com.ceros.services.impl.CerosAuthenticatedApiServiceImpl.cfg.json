@@ -1,5 +1,3 @@
 {
-    "flexApiKey": "sk-cat-GlJvLVl6KeJI_cNMEs1BntbJPkAlKcx9LLAYVNUnE-0-JjKaX-S6dJwZC",
-    "flexApiBaseUrl": "https://rest.ceroslocal.com",
-    "flexViewBaseUrl": "https://ceroslocal.site",
+    "flexApiKey": "$[secret:flexApiKey]"
 }
