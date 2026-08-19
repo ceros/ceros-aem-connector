@@ -94,7 +94,7 @@ public class CerosAuthenticatedApiServiceImpl implements CerosAuthenticatedApiSe
         String accountName = cachedAccountName != null ? cachedAccountName : "";
 
         String treeJson = fetchUrlToString(apiBaseUrl + "/accounts/" + accountId
-                + "/folder-tree?expand=experiences");
+                + "/folder-tree?expand=experiences&depth=0");
 
         JsonNode tree = MAPPER.readTree(treeJson);
 
