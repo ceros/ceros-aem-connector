@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The **Browse Ceros Experiences** filter now finds matches inside collapsed folders. Filtering tested whether a row was visible, so experiences nested in a folder that hadn't been expanded were treated as non-matching and their folders were hidden; matches are now flagged independently of visibility, and every folder holding a match at any depth is shown and expanded.
 - Typing a folder's name in the filter now lists that folder's experiences, instead of hiding the folder when none of its own experiences match the text.
 - Clearing the filter fully collapses the tree again. Folders the filter had expanded were left open — or worse, collapsed but still showing an open arrow — because the content and the toggle glyph were reset separately; both are now reset together.
+- Pin Ceros API to version 2026-08-06-09-00
 
 ## [1.0.2] - 2026-08-07
 
