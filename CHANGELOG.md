@@ -5,7 +5,7 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.3] - 2026-08-20
 
 ### Fixed
 - The **Browse Ceros Experiences** filter now finds matches inside collapsed folders. Filtering tested whether a row was visible, so experiences nested in a folder that hadn't been expanded were treated as non-matching and their folders were hidden; matches are now flagged independently of visibility, and every folder holding a match at any depth is shown and expanded.
