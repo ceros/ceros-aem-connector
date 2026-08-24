@@ -14,6 +14,15 @@ import java.util.List;
  */
 public final class ManifestRenderer {
 
+    /**
+     * Basename of the Flex Experience SDK module on the Ceros CDN. It sits
+     * alongside the SSR runtime script, and flex-cdn does not version-stamp
+     * these filenames — the CDN path segment is immutable per deploy, so the
+     * base URL already cache-busts. That is what makes the SDK URL derivable
+     * from the SSR script's URL rather than needing to be in the manifest.
+     */
+    private static final String FLEX_SDK_MODULE_FILE = "flex-experience-sdk.js";
+
     private ManifestRenderer() {
         // static utility
     }
@@ -95,6 +104,8 @@ public final class ManifestRenderer {
         }
         builder.headScripts(headScripts);
 
+        builder.sdkModuleUrl(deriveSdkModuleUrl(ssr));
+
         CerosManifestV1.DeliveryMode iframe = manifest.getDeliveryMode("iframe");
         if (iframe != null && !iframe.getScripts().isEmpty()) {
             builder.embedScriptUrl(iframe.getScripts().get(0).getUrl());
@@ -105,5 +116,44 @@ public final class ManifestRenderer {
                 || !headScripts.isEmpty()
                 || !bodyScripts.isEmpty()
                 || builder.build().getEmbedScriptUrl() != null);
+    }
+
+    /**
+     * The Flex Experience SDK module's URL, derived by swapping the basename of
+     * an SSR runtime script's URL for {@link #FLEX_SDK_MODULE_FILE}. Null when
+     * the manifest has no SSR script to derive from.
+     *
+     * <p>The manifest carries no import map and no SDK URL of its own — Ceros
+     * renders an import map only on the standalone page, never for SSR — so
+     * deriving is the only way the connector can resolve the SDK's bare
+     * specifier for injected custom body HTML. It assumes the SDK stays a
+     * sibling of the SSR script; if that changes, the specifier stops
+     * resolving and the browser reports it.</p>
+     */
+    private static String deriveSdkModuleUrl(CerosManifestV1.DeliveryMode ssr) {
+        if (ssr == null) {
+            return null;
+        }
+        for (CerosManifestV1.Script script : ssr.getScripts()) {
+            String url = script.getUrl();
+            if (url == null) {
+                continue;
+            }
+            // Query and fragment sit after the basename, so drop them first.
+            int cut = url.length();
+            for (char c : new char[] {'?', '#'}) {
+                int i = url.indexOf(c);
+                if (i >= 0 && i < cut) {
+                    cut = i;
+                }
+            }
+            String path = url.substring(0, cut);
+            int slash = path.lastIndexOf('/');
+            if (slash < 0) {
+                continue;
+            }
+            return path.substring(0, slash + 1) + FLEX_SDK_MODULE_FILE;
+        }
+        return null;
     }
 }

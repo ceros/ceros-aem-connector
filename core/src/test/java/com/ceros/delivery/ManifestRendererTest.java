@@ -103,4 +103,70 @@ class ManifestRendererTest {
         assertEquals("<script>x</script>", result.getCustomBodyHtml());
         assertFalse(result.isHasContent());
     }
+
+    private static final String SDK_SCRIPT =
+            "<script type=\\\"module\\\">import { connect } from '@ceros/flex-experience-sdk'</script>";
+
+    @Test
+    void sdkImportMapIsDerivedFromTheSsrScriptUrl() throws Exception {
+        String json = "{"
+                + "\"displayMetadata\":{\"customBodyHtml\":\"" + SDK_SCRIPT + "\"},"
+                + "\"deliveryModes\":{\"ssr\":{\"scripts\":"
+                + "  [{\"url\":\"https://assets.ceros.site/js/flex-ssr.js\",\"module\":true}]}}"
+                + "}";
+        DeliveryResult result = render(json);
+
+        assertEquals("{\"imports\":{\"@ceros/flex-experience-sdk\":"
+                        + "\"https://assets.ceros.site/js/flex-experience-sdk.js\"}}",
+                result.getSdkImportMapJson());
+    }
+
+    @Test
+    void sdkImportMapIgnoresQueryAndFragmentOnTheSsrScriptUrl() throws Exception {
+        String json = "{"
+                + "\"displayMetadata\":{\"customBodyHtml\":\"" + SDK_SCRIPT + "\"},"
+                + "\"deliveryModes\":{\"ssr\":{\"scripts\":"
+                + "  [{\"url\":\"https://assets.ceros.site/js/flex-ssr.js?v=2#x\"}]}}"
+                + "}";
+        assertEquals("{\"imports\":{\"@ceros/flex-experience-sdk\":"
+                        + "\"https://assets.ceros.site/js/flex-experience-sdk.js\"}}",
+                render(json).getSdkImportMapJson());
+    }
+
+    @Test
+    void noImportMapWhenTheCustomHtmlDoesNotImportTheSdk() throws Exception {
+        // A document may hold only one import map, so one is emitted solely
+        // when the injected HTML actually names the specifier.
+        String json = "{"
+                + "\"displayMetadata\":{\"customBodyHtml\":\"<script>track()</script>\"},"
+                + "\"deliveryModes\":{\"ssr\":{\"scripts\":"
+                + "  [{\"url\":\"https://assets.ceros.site/js/flex-ssr.js\"}]}}"
+                + "}";
+        assertNull(render(json).getSdkImportMapJson());
+    }
+
+    @Test
+    void noImportMapWhenThereIsNoSsrScriptToDeriveFrom() throws Exception {
+        String json = "{\"displayMetadata\":{\"customBodyHtml\":\"" + SDK_SCRIPT + "\"}}";
+        assertNull(render(json).getSdkImportMapJson());
+    }
+
+    @Test
+    void noImportMapWhenTheDerivedUrlIsNotASafeHttpUrl() throws Exception {
+        // Fails closed rather than escaping: an unsafe URL could close the
+        // inline script element it is interpolated into.
+        String json = "{"
+                + "\"displayMetadata\":{\"customBodyHtml\":\"" + SDK_SCRIPT + "\"},"
+                + "\"deliveryModes\":{\"ssr\":{\"scripts\":"
+                + "  [{\"url\":\"javascript:alert(1)/x.js\"}]}}"
+                + "}";
+        assertNull(render(json).getSdkImportMapJson());
+    }
+
+    @Test
+    void noImportMapWhenTheExperienceHasNoCustomBodyHtml() throws Exception {
+        String json = "{\"deliveryModes\":{\"ssr\":{\"scripts\":"
+                + "[{\"url\":\"https://assets.ceros.site/js/flex-ssr.js\"}]}}}";
+        assertNull(render(json).getSdkImportMapJson());
+    }
 }

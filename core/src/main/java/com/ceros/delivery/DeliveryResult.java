@@ -34,6 +34,25 @@ public final class DeliveryResult {
                     "<a\\b(?=[\\s>])(?=[^>]*\\bdata-flex-page-slug\\b)(?![^>]*\\bx-cq-linkchecker\\b)",
                     Pattern.CASE_INSENSITIVE);
 
+    /**
+     * The Flex Experience SDK's public bare specifier. Customer
+     * {@code type="module"} scripts in an experience's custom body HTML import
+     * the SDK by this name. Mirrors {@code FLEX_SDK_IMPORT_SPECIFIER} in
+     * ceros-spark's flex-player, which documents it as public API that never
+     * changes.
+     */
+    public static final String FLEX_SDK_IMPORT_SPECIFIER = "@ceros/flex-experience-sdk";
+
+    /**
+     * A URL safe to interpolate straight into the JSON of an inline
+     * {@code <script type="importmap">}: http(s) with no quote, backslash,
+     * angle bracket, or whitespace. Anything else fails closed — no import map
+     * at all — rather than being escaped, since a real CDN URL never contains
+     * those characters and an unescaped one could close the script element.
+     */
+    private static final Pattern SAFE_IMPORT_MAP_URL =
+            Pattern.compile("^https?://[^\\s\"'<>\\\\]+$");
+
     private final String manifestUrl;
     private final String experienceUrl;
     private final String htmlContent;
@@ -45,6 +64,7 @@ public final class DeliveryResult {
     private final String embedScriptUrl;
     private final String inlineScriptUrl;
     private final String customBodyHtml;
+    private final String sdkImportMapJson;
     private final boolean hasContent;
 
     private DeliveryResult(Builder b) {
@@ -59,6 +79,7 @@ public final class DeliveryResult {
         this.embedScriptUrl = b.embedScriptUrl;
         this.inlineScriptUrl = b.inlineScriptUrl;
         this.customBodyHtml = b.customBodyHtml;
+        this.sdkImportMapJson = buildSdkImportMapJson(b.customBodyHtml, b.sdkModuleUrl);
         this.hasContent = b.hasContent;
     }
 
@@ -81,7 +102,42 @@ public final class DeliveryResult {
      */
     public String getCustomBodyHtml() { return customBodyHtml; }
 
+    /**
+     * Inline JSON for a {@code <script type="importmap">} resolving the SDK's
+     * bare specifier, or null when no map is needed. See
+     * {@link #buildSdkImportMapJson}.
+     */
+    public String getSdkImportMapJson() { return sdkImportMapJson; }
+
     public boolean isHasContent() { return hasContent; }
+
+    /**
+     * Builds the import map that lets a {@code type="module"} script in the
+     * injected custom body HTML resolve {@code @ceros/flex-experience-sdk}.
+     *
+     * <p>Ceros renders an import map only on the standalone published page —
+     * flex-player's {@code getImportMap} documents that SSR and inline-embed
+     * deliveries deliberately get none — so without this the specifier fails
+     * to resolve and the author's script never runs.</p>
+     *
+     * <p>Emitted only when the custom body HTML actually names the specifier.
+     * A document may carry just one import map, so a page whose injected HTML
+     * has no SDK import stays out of the way of any map the host AEM page
+     * defines for itself.</p>
+     *
+     * <p>No {@code integrity} section: the SDK's SRI hash lives in flex-cdn's
+     * build manifest, which the experience manifest does not expose. The
+     * module therefore loads without SRI.</p>
+     */
+    private static String buildSdkImportMapJson(String customBodyHtml, String sdkModuleUrl) {
+        if (customBodyHtml == null
+                || sdkModuleUrl == null
+                || !customBodyHtml.contains(FLEX_SDK_IMPORT_SPECIFIER)
+                || !SAFE_IMPORT_MAP_URL.matcher(sdkModuleUrl).matches()) {
+            return null;
+        }
+        return "{\"imports\":{\"" + FLEX_SDK_IMPORT_SPECIFIER + "\":\"" + sdkModuleUrl + "\"}}";
+    }
 
     /**
      * Strips trailing {@code manifest.v1.json} (and its trailing slash) so the
@@ -131,6 +187,7 @@ public final class DeliveryResult {
         private String embedScriptUrl;
         private String inlineScriptUrl;
         private String customBodyHtml;
+        private String sdkModuleUrl;
         private boolean hasContent;
 
         public Builder manifestUrl(String v) { this.manifestUrl = v; return this; }
@@ -144,6 +201,7 @@ public final class DeliveryResult {
         public Builder embedScriptUrl(String v) { this.embedScriptUrl = v; return this; }
         public Builder inlineScriptUrl(String v) { this.inlineScriptUrl = v; return this; }
         public Builder customBodyHtml(String v) { this.customBodyHtml = v; return this; }
+        public Builder sdkModuleUrl(String v) { this.sdkModuleUrl = v; return this; }
         public Builder hasContent(boolean v) { this.hasContent = v; return this; }
 
         public DeliveryResult build() {

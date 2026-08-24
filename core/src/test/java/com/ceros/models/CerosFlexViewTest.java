@@ -195,4 +195,43 @@ class CerosFlexViewTest {
         assertTrue(view.isInlineMode());
         assertNull(view.getCustomBodyHtml());
     }
+
+    @Test
+    void sdkImportMapIsExposedAlongsideTheCustomHtml() throws Exception {
+        setModelField("manifestUrl", "https://example.ceros.site/exp/manifest.v1.json");
+        CerosManifestV1 manifest = MAPPER.readValue(
+                "{\"assets\":[{\"type\":\"html-body\",\"src\":{\"type\":\"inline\",\"content\":\"<p>x</p>\"}}],"
+                        + "\"displayMetadata\":{\"customBodyHtml\":"
+                        + "  \"<script type=\\\"module\\\">import '@ceros/flex-experience-sdk'</script>\"},"
+                        + "\"deliveryModes\":{\"ssr\":{\"scripts\":"
+                        + "  [{\"url\":\"https://assets.ceros.site/js/flex-ssr.js\"}]}}}",
+                CerosManifestV1.class);
+        when(manifestService.fetchPublicManifestFromUrl(anyString())).thenReturn(manifest);
+
+        initView();
+
+        assertEquals("{\"imports\":{\"@ceros/flex-experience-sdk\":"
+                        + "\"https://assets.ceros.site/js/flex-experience-sdk.js\"}}",
+                view.getSdkImportMapJson());
+    }
+
+    @Test
+    void uncheckedCustomHtmlSuppressesTheSdkImportMapToo() throws Exception {
+        // No injected HTML means nothing for the map to resolve for, so the
+        // page keeps its single allowed import map free.
+        setModelField("manifestUrl", "https://example.ceros.site/exp/manifest.v1.json");
+        setModelField("cerosIncludeCustomHtml", "false");
+        CerosManifestV1 manifest = MAPPER.readValue(
+                "{\"assets\":[{\"type\":\"html-body\",\"src\":{\"type\":\"inline\",\"content\":\"<p>x</p>\"}}],"
+                        + "\"displayMetadata\":{\"customBodyHtml\":"
+                        + "  \"<script type=\\\"module\\\">import '@ceros/flex-experience-sdk'</script>\"},"
+                        + "\"deliveryModes\":{\"ssr\":{\"scripts\":"
+                        + "  [{\"url\":\"https://assets.ceros.site/js/flex-ssr.js\"}]}}}",
+                CerosManifestV1.class);
+        when(manifestService.fetchPublicManifestFromUrl(anyString())).thenReturn(manifest);
+
+        initView();
+
+        assertNull(view.getSdkImportMapJson());
+    }
 }
