@@ -5,7 +5,7 @@
  *   - Trigger select  : class="cq-dialog-dropdown-showhide"
  *                       data-cq-dialog-dropdown-showhide-target="<css selector>"
  *   - Target elements : class="<target class> hidden"
- *                       data-showhidetargetvalue="<option value>"
+ *                       data-showhidetargetvalue="<option value>[,<option value>…]"
  *
  * AEM's built-in handler fires inconsistently on initial load and on
  * coral-select:change in some SDK builds (the iframe Type / Height fields
@@ -27,7 +27,13 @@
         var value = $trigger.val();
         $(selector).each(function () {
             var $target = $(this);
-            var match = String($target.data("showhidetargetvalue")) === String(value);
+            // A target may list several trigger values, comma-separated, for a
+            // field shared by more than one mode (e.g. the server-side modes).
+            // A single value contains no comma and still matches exactly.
+            var expected = String($target.data("showhidetargetvalue")).split(",");
+            var match = expected.some(function (candidate) {
+                return candidate.trim() === String(value);
+            });
             $target.toggleClass("hidden", !match);
         });
     }

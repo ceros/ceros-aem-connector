@@ -165,6 +165,15 @@
                     defer></script>
         </sly>
 
+        <!--/* Author custom Body HTML from the experience's Ceros settings
+               (SPA-7334). Server-rendered into the response, so any <script>
+               inside it is parsed and executed by the browser normally.
+               Emitted last so the experience markup and the SSR runtime
+               precede it, matching the standalone published page where the
+               custom body HTML sits after <ceros-experience-viewer>. Content
+               is whatever the author wrote — no filtering, by decision. */-->
+        <sly data-sly-test="${model.customBodyHtml}">${model.customBodyHtml @ context='unsafe'}</sly>
+
     </sly>
 
     <!--/* Client-side embed: author/edit mode — iframe preview */-->

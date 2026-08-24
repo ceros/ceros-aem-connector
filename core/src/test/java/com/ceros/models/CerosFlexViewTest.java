@@ -150,4 +150,49 @@ class CerosFlexViewTest {
         setViewField("model", model);
         assertEquals("height:500px;", view.getInlineHeightAttribute());
     }
+
+    @Test
+    void fetchModeExposesCustomBodyHtmlByDefault() throws Exception {
+        setModelField("manifestUrl", "https://example.ceros.site/exp/manifest.v1.json");
+        CerosManifestV1 manifest = MAPPER.readValue(
+                "{\"assets\":[{\"type\":\"html-body\",\"src\":{\"type\":\"inline\",\"content\":\"<p>x</p>\"}}],"
+                        + "\"displayMetadata\":{\"customBodyHtml\":\"<script>boot()</script>\"}}",
+                CerosManifestV1.class);
+        when(manifestService.fetchPublicManifestFromUrl(anyString())).thenReturn(manifest);
+
+        initView();
+
+        assertEquals("<script>boot()</script>", view.getCustomBodyHtml());
+    }
+
+    @Test
+    void uncheckedCustomHtmlSuppressesIt() throws Exception {
+        setModelField("manifestUrl", "https://example.ceros.site/exp/manifest.v1.json");
+        setModelField("cerosIncludeCustomHtml", "false");
+        CerosManifestV1 manifest = MAPPER.readValue(
+                "{\"assets\":[{\"type\":\"html-body\",\"src\":{\"type\":\"inline\",\"content\":\"<p>x</p>\"}}],"
+                        + "\"displayMetadata\":{\"customBodyHtml\":\"<script>boot()</script>\"}}",
+                CerosManifestV1.class);
+        when(manifestService.fetchPublicManifestFromUrl(anyString())).thenReturn(manifest);
+
+        initView();
+
+        assertNull(view.getCustomBodyHtml());
+        // The experience itself still renders.
+        assertEquals("<p>x</p>", view.getHtmlContent());
+    }
+
+    @Test
+    void inlineModeNeverExposesCustomBodyHtmlThroughTheDeliveryResult() throws Exception {
+        // Inline never runs ManifestRenderer, so there is nothing to leak even
+        // before the HTL's structural gating.
+        setModelField("manifestUrl", "https://example.ceros.site/exp/manifest.v1.json");
+        setModelField("cerosMode", "inline");
+        setModelField("cerosInlineScriptUrl", "https://assets.ceros.site/js/flex-client.js");
+
+        initView();
+
+        assertTrue(view.isInlineMode());
+        assertNull(view.getCustomBodyHtml());
+    }
 }

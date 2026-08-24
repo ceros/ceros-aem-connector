@@ -175,6 +175,26 @@
                         </items>
                     </embedSection>
 
+                    <serverSideSection
+                        granite:class="cerosflex-mode-toggle hidden"
+                        jcr:primaryType="nt:unstructured"
+                        sling:resourceType="granite/ui/components/coral/foundation/container">
+                        <granite:data
+                            jcr:primaryType="nt:unstructured"
+                            showhidetargetvalue="fetch,store,import"/>
+                        <items jcr:primaryType="nt:unstructured">
+                            <cerosIncludeCustomHtml
+                                jcr:primaryType="nt:unstructured"
+                                sling:resourceType="granite/ui/components/coral/foundation/form/checkbox"
+                                fieldDescription="Some experiences include custom code (for example answer tracking, scoring, or page navigation) that must load with the experience for it to work. Leave this on unless you know the experience does not need it."
+                                text="Include custom body HTML/scripts"
+                                name="./cerosIncludeCustomHtml"
+                                value="true"
+                                uncheckedValue="false"
+                                checked="{Boolean}true"/>
+                        </items>
+                    </serverSideSection>
+
                 </items>
             </column>
         </items>

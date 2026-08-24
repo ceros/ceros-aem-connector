@@ -31,6 +31,13 @@ public final class ManifestRenderer {
         String html = DeliveryResult.preserveAnchorsFromLinkChecker(manifest.getHtmlBodyContent());
         builder.htmlContent(html);
 
+        // The author's custom Body HTML rides in displayMetadata, not assets[].
+        // Always carried on the result; CerosFlexView decides whether to emit it.
+        CerosManifestV1.DisplayMetadata display = manifest.getDisplayMetadata();
+        if (display != null) {
+            builder.customBodyHtml(display.getCustomBodyHtml());
+        }
+
         List<CssLink> css = new ArrayList<>();
         List<ScriptRef> bodyScripts = new ArrayList<>();
         CerosManifestV1.DeliveryMode ssr = manifest.getDeliveryMode("ssr");
