@@ -22,7 +22,8 @@
                         name="./cerosMode">
                         <granite:data
                             jcr:primaryType="nt:unstructured"
-                            cq-dialog-dropdown-showhide-target=".cerosflex-mode-toggle"/>
+                            cq-dialog-dropdown-showhide-target=".cerosflex-mode-toggle"
+                            cerosflex-showhide-target=".cerosflex-serverside-toggle"/>
                         <items jcr:primaryType="nt:unstructured">
                             <fetch
                                 jcr:primaryType="nt:unstructured"
@@ -175,8 +176,13 @@
                         </items>
                     </embedSection>
 
+                    <!-- Deliberately NOT .cerosflex-mode-toggle: AEM's built-in
+                         showhide handler owns that class and compares
+                         showhidetargetvalue for exact equality, so it would hide
+                         this multi-mode section on every pass. This class is
+                         handled only by dialog-showhide.js. -->
                     <serverSideSection
-                        granite:class="cerosflex-mode-toggle hidden"
+                        granite:class="cerosflex-serverside-toggle hidden"
                         jcr:primaryType="nt:unstructured"
                         sling:resourceType="granite/ui/components/coral/foundation/container">
                         <granite:data
