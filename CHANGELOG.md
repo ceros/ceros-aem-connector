@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Include custom body HTML**: server-side delivery modes (Always Fetch, Store, HTML Import) now inject the experience's custom Body HTML alongside the embed, so experiences that drive interactivity through the Ceros Flex Experience SDK — answer tracking, scoring, page navigation — work without switching to the iframe embed. A new **Include custom body HTML/scripts** checkbox in the component dialog controls it and is on by default. Content is included exactly as authored. Client-side inline embed is unaffected.
 - Server-side renders now emit the experience's import map, so `type="module"` scripts in the injected custom Body HTML can import the Ceros Flex Experience SDK — and any other Ceros runtime module — by name. Ceros renders an import map only on the standalone published page, so one is supplied here, taken verbatim from the manifest's `importMap` (including its integrity hashes). It is added only when the injected HTML actually imports one of the map's specifiers, leaving the page's single allowed import map free otherwise. Experiences published before the manifest carried the field need republishing for their SDK scripts to run.
+### Fixed
+- Renders with correct fonts when content is imported into AEM using the "Server-side (Store)" delivery mode.
 
 ## [1.0.3] - 2026-08-20
 
