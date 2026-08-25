@@ -18,7 +18,7 @@ com.ceros:ceros-aem-connector-all:<version>
 The plugin is published to Maven Central. Pull the latest version from
 [search.maven.org](https://search.maven.org/artifact/com.ceros/ceros-aem-connector-all)
 or look at the [releases](https://github.com/ceros/ceros-aem-connector/releases)
-page; the snippets below use `1.0.2` as an example.
+page; the snippets below use `1.0.3` as an example.
 
 ### Cloud Manager / filevault build (recommended)
 
@@ -44,7 +44,7 @@ Add the artifact to `<dependencyManagement>` so the version lives in one place:
         <dependency>
             <groupId>com.ceros</groupId>
             <artifactId>ceros-aem-connector-all</artifactId>
-            <version>1.0.2</version>
+            <version>1.0.3</version>
             <type>zip</type>
         </dependency>
     </dependencies>
@@ -130,7 +130,7 @@ unzip -l all/target/*.all-*.zip | grep ceros-aem-connector
 You should see one line, roughly:
 
 ```
-jcr_root/apps/myproject-vendor-packages/container/install/ceros-aem-connector-all-1.0.2.zip
+jcr_root/apps/myproject-vendor-packages/container/install/ceros-aem-connector-all-1.0.3.zip
 ```
 
 No line means one of the three steps above is missing. This check is worth
@@ -143,7 +143,7 @@ For a one-off install on a dev / sandbox instance, download the zip directly
 from Maven Central:
 
 ```
-https://repo1.maven.org/maven2/com/ceros/ceros-aem-connector-all/1.0.2/ceros-aem-connector-all-1.0.2.zip
+https://repo1.maven.org/maven2/com/ceros/ceros-aem-connector-all/1.0.3/ceros-aem-connector-all-1.0.3.zip
 ```
 
 Upload via **CRX Package Manager** at `/crx/packmgr/index.jsp` and install.
@@ -247,6 +247,57 @@ When a Flex API key is configured, the authoring dialog provides a **Browse**
 mode powered by `CerosAuthenticatedApiService`. Authors can navigate the
 account's folder tree and pick a published experience instead of pasting a
 manifest URL manually.
+
+## Experience Metadata
+
+Every component stores the ID of the Ceros experience it points at, on the
+component node as `cerosExperienceResourceId`. It is metadata only — nothing
+renders it and delivery never reads it. It exists so authored experiences can be
+found by ID rather than by string-matching manifest URLs, which break whenever a
+slug or alias changes.
+
+It is read from `experience.experienceResourceId` in the manifest, from whichever
+copy of the manifest that mode already has:
+
+- **URL-based modes** (Fetch, Store, Inline, Iframe embed) derive it on dialog
+  save, from the manifest for the stored Ceros Experience URL.
+- **HTML Import** derives it when the archive is unpacked, from the exported
+  manifest — no network call.
+
+Because it is re-derived from the current manifest each time, it cannot drift out
+of step with the experience the component points at.
+
+The property is blank for experiences last published or exported before the
+manifest carried the field; republishing in Ceros fills it in the next time the
+component is saved or re-imported.
+
+### Querying it
+
+A lookup like
+
+```sql
+SELECT * FROM [nt:unstructured] WHERE [cerosExperienceResourceId] = 'exp-123'
+```
+
+needs an Oak index to be served efficiently. Without one it traverses the
+repository — fine for occasional admin use in Query Builder, but not at scale,
+where Oak logs traversal warnings and AEM as a Cloud Service may refuse the
+query outright.
+
+Check whether an index covering this property already exists on your instance
+before relying on the query. To add one to your own project:
+
+```xml
+<cerosExperienceResourceId-1-custom
+    jcr:primaryType="oak:QueryIndexDefinition"
+    type="property"
+    propertyNames="{Name}[cerosExperienceResourceId]"
+    reindex="{Boolean}true"/>
+```
+
+Deploy it under `/oak:index`, covered by your package's workspace filter, and
+follow the AEM as a Cloud Service custom-index naming convention
+(`<name>-<productVersion>-custom`).
 
 ## Project Structure
 

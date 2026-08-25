@@ -128,7 +128,10 @@
     }
 
     function buildFolderNode($parent, folder, $field, $overlay) {
-        var $folder = $('<div>', { 'class': 'cerosflex-browse-folder' });
+        var $folder = $('<div>', {
+            'class': 'cerosflex-browse-folder',
+            'data-name': (folder.name || '').toLowerCase()
+        });
 
         var hasChildren = folder.children && folder.children.length > 0;
         var hasExps     = folder.experiences && folder.experiences.length > 0;
@@ -233,24 +236,43 @@
 
     function filterTree($tree, query) {
         if (!query) {
-            // Show everything, collapse folders
-            $tree.find('.cerosflex-browse-exp').show();
-            $tree.find('.cerosflex-browse-folder').show();
+            // Show everything, collapse folders. The content divs and the
+            // glyphs have to be reset together, or a folder the filter expanded
+            // comes back collapsed while still showing an open arrow.
+            $tree.find('.cerosflex-browse-folder-content').hide();
+            $tree.find('.cerosflex-browse-toggle').text('\u25b6');
+            $tree.find('.cerosflex-browse-exp').removeClass('is-match').show();
+            $tree.find('.cerosflex-browse-folder').removeClass('is-match').show();
             return;
         }
 
-        // Hide non-matching experiences
+        // Flag matching experiences. Use a class rather than :visible — a
+        // matching row inside a collapsed folder is still display:none here.
         $tree.find('.cerosflex-browse-exp').each(function () {
             var name = $(this).attr('data-name') || '';
-            $(this).toggle(name.indexOf(query) !== -1);
+            var match = name.indexOf(query) !== -1;
+            $(this).toggleClass('is-match', match).toggle(match);
         });
 
-        // Show folders that have visible experiences (recursively)
+        // A folder whose own name matches counts as a match for everything it
+        // holds, so its contents stay listed even when no experience matches.
+        $tree.find('.cerosflex-browse-folder').each(function () {
+            var folderName = $(this).attr('data-name') || '';
+            var match = folderName.indexOf(query) !== -1;
+            $(this).toggleClass('is-match', match);
+            if (match) {
+                $(this).find('.cerosflex-browse-exp').addClass('is-match').show();
+            }
+        });
+
+        // Show folders that hold a match at any depth, and expand them so the
+        // match is actually rendered.
         $tree.find('.cerosflex-browse-folder').each(function () {
             var $f = $(this);
-            var hasVisible = $f.find('.cerosflex-browse-exp:visible').length > 0;
-            $f.toggle(hasVisible);
-            if (hasVisible) {
+            var hasMatch = $f.hasClass('is-match') ||
+                $f.find('.cerosflex-browse-exp.is-match, .cerosflex-browse-folder.is-match').length > 0;
+            $f.toggle(hasMatch);
+            if (hasMatch) {
                 $f.find('> .cerosflex-browse-folder-content').show();
                 $f.find('> .cerosflex-browse-folder-label .cerosflex-browse-toggle').text('\u25bc');
             }

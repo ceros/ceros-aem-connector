@@ -46,6 +46,11 @@ public class CerosAuthenticatedApiServiceImpl implements CerosAuthenticatedApiSe
                 description = "Base domain for manifest URLs. Account slug is prepended as subdomain (e.g. https://view.ceros.com)")
         String flexViewBaseUrl() default "https://ceros.site";
 
+        @AttributeDefinition(name = "Flex API Version",
+                description = "Value sent in the x-ceros-api-version header on every Flex API request. "
+                        + "Falls back to the default when left empty.")
+        String flexApiVersion() default CerosConstants.DEFAULT_FLEX_API_VERSION;
+
         @AttributeDefinition(name = "HTTP Timeout (seconds)")
         int httpTimeoutSeconds() default 30;
     }
@@ -53,6 +58,7 @@ public class CerosAuthenticatedApiServiceImpl implements CerosAuthenticatedApiSe
     private String apiKey;
     private String apiBaseUrl;
     private String viewBaseUrl;
+    private String apiVersion;
     private int httpTimeoutMillis;
     private volatile String cachedAccountResourceId;
     private volatile String cachedAccountName;
@@ -63,6 +69,10 @@ public class CerosAuthenticatedApiServiceImpl implements CerosAuthenticatedApiSe
         this.apiKey = StringUtils.trimToNull(config.flexApiKey());
         this.apiBaseUrl = StringUtils.stripEnd(config.flexApiBaseUrl(), "/");
         this.viewBaseUrl = StringUtils.stripEnd(config.flexViewBaseUrl(), "/");
+        // An empty override falls back to the default rather than sending a blank
+        // version header, which the Flex API rejects.
+        this.apiVersion = StringUtils.defaultIfBlank(StringUtils.trim(config.flexApiVersion()),
+                CerosConstants.DEFAULT_FLEX_API_VERSION);
         this.httpTimeoutMillis = config.httpTimeoutSeconds() * 1000;
         this.cachedAccountResourceId = null;
         this.cachedAccountName = null;
@@ -84,7 +94,7 @@ public class CerosAuthenticatedApiServiceImpl implements CerosAuthenticatedApiSe
         String accountName = cachedAccountName != null ? cachedAccountName : "";
 
         String treeJson = fetchUrlToString(apiBaseUrl + "/accounts/" + accountId
-                + "/folder-tree?expand=experiences");
+                + "/folder-tree?expand=experiences&depth=0");
 
         JsonNode tree = MAPPER.readTree(treeJson);
 
@@ -177,6 +187,7 @@ public class CerosAuthenticatedApiServiceImpl implements CerosAuthenticatedApiSe
     private String fetchUrlToString(String urlStr) throws IOException {
         return HttpUtils.fetchString(urlStr, httpTimeoutMillis,
                 Map.of("Accept", "application/json",
-                       "Authorization", "Bearer " + apiKey));
+                       "Authorization", "Bearer " + apiKey,
+                       CerosConstants.FLEX_API_VERSION_HEADER, apiVersion));
     }
 }

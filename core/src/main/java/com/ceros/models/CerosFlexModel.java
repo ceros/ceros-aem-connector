@@ -63,6 +63,18 @@ public class CerosFlexModel {
     @ValueMapValue
     private String cerosInlineScriptUrl;
 
+    /**
+     * Resource ID of the Ceros experience this component points at, derived from
+     * the manifest by {@code CerosFlexManifestUrlPostProcessor} when the dialog is
+     * saved. Metadata only — nothing renders it and delivery never reads it; it
+     * exists so authored experiences can be found by ID across the repository.
+     *
+     * <p>Blank for import mode (no experience URL) and for experiences last
+     * published before the manifest carried the field.</p>
+     */
+    @ValueMapValue
+    private String cerosExperienceResourceId;
+
     @SlingObject
     private Resource resource;
 
@@ -80,6 +92,11 @@ public class CerosFlexModel {
 
     public String getPrefetchedAt() {
         return cerosPrefetchedAt;
+    }
+
+    /** Resource ID of the referenced Ceros experience; {@code null} when unknown. */
+    public String getExperienceResourceId() {
+        return StringUtils.trimToNull(cerosExperienceResourceId);
     }
 
     /** Persisted {@code flex-client.js} URL for inline mode (grabbed on save). */

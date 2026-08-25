@@ -33,8 +33,7 @@ manifest, and injects the scripts it references, from a **Ceros-owned** host:
 
 - A URL already on a Ceros-owned domain resolves to its manifest directly.
 - A vanity domain is asked to advertise its canonical, Ceros-hosted manifest URL
-  via the [`x-flex-manifest`](https://github.com/ceros/ceros-spark/pull/9861)
-  response header on the published page. The advertised URL must itself pass the
+  via the `x-flex-manifest` response header on the published page. The advertised URL must itself pass the
   Ceros-owned whitelist before it is fetched, so a spoofed header pointing
   off-Ceros is rejected.
 - Anything that does not resolve to a Ceros-owned manifest is refused.
@@ -69,6 +68,7 @@ entry only.
 | `flexApiKey` | _(empty — disables browse)_ | API token for the Ceros Flex API |
 | `flexApiBaseUrl` | `https://rest.ceros.com` | Base URL for the Flex REST API |
 | `flexViewBaseUrl` | `https://ceros.site` | Base domain for manifest URLs |
+| `flexApiVersion` | `2026-08-06-09-00` | Sent as the `x-ceros-api-version` header on every Flex API request. An empty value falls back to the default — the header is always sent. |
 | `httpTimeoutSeconds` | `30` | HTTP timeout |
 
 Example `.cfg.json`:
@@ -78,6 +78,7 @@ Example `.cfg.json`:
     "flexApiKey": "YOUR_CEROS_API_KEY_HERE",
     "flexApiBaseUrl": "https://rest.ceros.com",
     "flexViewBaseUrl": "https://ceros.site",
+    "flexApiVersion": "2026-08-06-09-00",
     "httpTimeoutSeconds:Integer": 30
 }
 ```

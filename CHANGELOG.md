@@ -5,6 +5,17 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+
+## [1.0.3] - 2026-08-20
+
+### Fixed
+- The **Browse Ceros Experiences** filter now finds matches inside collapsed folders. Filtering tested whether a row was visible, so experiences nested in a folder that hadn't been expanded were treated as non-matching and their folders were hidden; matches are now flagged independently of visibility, and every folder holding a match at any depth is shown and expanded.
+- Typing a folder's name in the filter now lists that folder's experiences, instead of hiding the folder when none of its own experiences match the text.
+- Clearing the filter fully collapses the tree again. Folders the filter had expanded were left open — or worse, collapsed but still showing an open arrow — because the content and the toggle glyph were reset separately; both are now reset together.
+- Pin Ceros API to version 2026-08-06-09-00
+
 ## [1.0.2] - 2026-08-07
 
 ### Added
@@ -23,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.0.8] - 2026-06-26
 
 ### Security
-- Pasted experience URLs are no longer trusted by default. A manifest is only fetched — and the scripts it references only injected — when it is served from a **Ceros-owned** domain (`ceros.site` by default; configurable). Authors may still paste any URL: a customer **vanity domain** is resolved by reading the new [`x-flex-manifest`](https://github.com/ceros/ceros-spark/pull/9861) header off the published page to discover its canonical, Ceros-hosted manifest URL, and the advertised URL must itself pass the Ceros-owned whitelist (so a spoofed header pointing off-Ceros is rejected). Mirrors the WordPress connector's keyless paste hardening ([ceros-plugin-wordpress#3](https://github.com/ceros/ceros-plugin-wordpress/pull/3)).
+- Pasted experience URLs are no longer trusted by default. A manifest is only fetched — and the scripts it references only injected — when it is served from a **Ceros-owned** domain (`ceros.site` by default; configurable). Authors may still paste any URL: a customer **vanity domain** is resolved by reading the new `x-flex-manifest` header off the published page to discover its canonical, Ceros-hosted manifest URL, and the advertised URL must itself pass the Ceros-owned whitelist (so a spoofed header pointing off-Ceros is rejected). Mirrors the WordPress connector's keyless paste hardening.
   - New `CerosManifestService.resolveTrustedManifestUrl` performs the whitelist + `x-flex-manifest` resolution. Pasted URLs are validated **on save for every URL-based delivery mode** (inline, fetch, embed and store): the dialog post-processor resolves the URL and **aborts the save** if it isn't a trusted Ceros experience, so an untrusted or unreachable URL can never be persisted. It also canonicalises the stored `manifestUrl` for the live inline/fetch modes so render trusts the stored URL and makes no extra network call. `fetchPublicManifestFromUrl` enforces the whitelist at render as a defence-in-depth choke point.
   - Authoring dialog validates the pasted URL **on submit** for all modes via the new `/bin/ceros/validate-manifest-url` servlet, surfacing the reason in an error notification before the save — matching the feedback Store mode's **Fetch** button already gave. Client-side validation is UX only; the post-processor gate above is the authoritative, non-bypassable check.
   - New OSGi config on `CerosManifestServiceImpl`: `cerosOwnedDomains` (trusted apex domains; **production domains only by default** so customer installs never reference internal environments — non-production Ceros domains are added per environment via OSGi config for local/dev) and `allowUntrustedManifestHost` (dev/test relaxation so localhost manifests still work; **off** in production). The connector ships **production-safe defaults only** — dev relaxations must be configured by the consuming project.

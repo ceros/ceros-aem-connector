@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.jcr.Node;
+import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 import java.io.IOException;
 import java.io.InputStream;
@@ -83,6 +84,8 @@ public class CerosManifestServiceImpl implements CerosManifestService {
     private static final long MAX_ARCHIVE_UNCOMPRESSED_BYTES = 250L * 1024 * 1024;
 
     private static final String INDEX_MANIFEST_NAME = "index.manifest.v1.json";
+
+    private static final String PROP_EXPERIENCE_RESOURCE_ID = "cerosExperienceResourceId";
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -224,8 +227,8 @@ public class CerosManifestServiceImpl implements CerosManifestService {
     /**
      * Shared bundle-persist used by both store ({@code mode="store"}) and
      * import ({@code mode="import"}) pipelines. Writes the bundle JSON, the
-     * delivery mode, the manifest URL, the fetch timestamp, and the DAM asset
-     * reference list onto the component node.
+     * delivery mode, the manifest URL, the fetch timestamp, the experience
+     * resource ID, and the DAM asset reference list onto the component node.
      */
     private boolean storeBundle(ResourceResolver resolver, String componentPath,
             String manifestUrl, String mode,
@@ -248,6 +251,10 @@ public class CerosManifestServiceImpl implements CerosManifestService {
             node.setProperty("cerosPrefetchedManifestJson", bundleJson);
             node.setProperty("cerosPrefetchedAt", fetchedAt);
 
+            // Derived from the bundle rather than the network: import mode has no
+            // experience URL to re-fetch, and store already holds the manifest here.
+            writeExperienceResourceId(node, bundle);
+
             if (urlMap != null && !urlMap.isEmpty()) {
                 node.setProperty("cerosAssetReferences",
                         urlMap.values().toArray(new String[0]));
@@ -260,6 +267,28 @@ public class CerosManifestServiceImpl implements CerosManifestService {
         } catch (Exception e) {
             log.warn("Could not save manifest bundle to JCR at {}: {}", componentPath, e.getMessage());
             return false;
+        }
+    }
+
+    /**
+     * Persists the primary page's experience resource ID, clearing the property
+     * when the bundle carries none — an experience exported or published before
+     * the manifest included the field. Metadata only; nothing reads it at render
+     * time, so a missing ID is never a reason to fail the store.
+     */
+    private void writeExperienceResourceId(Node node, StoredManifestBundle bundle)
+            throws RepositoryException {
+        CerosManifestV1 primary = bundle.manifestFor(null);
+        CerosManifestV1.Experience experience = primary != null ? primary.getExperience() : null;
+        String id = experience != null ? experience.getExperienceResourceId() : null;
+        if (id != null) {
+            id = id.trim();
+        }
+
+        if (id != null && !id.isEmpty()) {
+            node.setProperty(PROP_EXPERIENCE_RESOURCE_ID, id);
+        } else if (node.hasProperty(PROP_EXPERIENCE_RESOURCE_ID)) {
+            node.getProperty(PROP_EXPERIENCE_RESOURCE_ID).remove();
         }
     }
 

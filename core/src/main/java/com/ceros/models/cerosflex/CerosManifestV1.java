@@ -81,6 +81,13 @@ public class CerosManifestV1 {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Experience {
+        /**
+         * Stable Ceros-side ID for the experience. Absent from manifests
+         * published before the field was introduced, so treat it as optional.
+         */
+        @JsonProperty("experienceResourceId")
+        private String experienceResourceId;
+
         @JsonProperty("slug")
         private String slug;
 
@@ -93,6 +100,7 @@ public class CerosManifestV1 {
         @JsonProperty("pageNumber")
         private int pageNumber;
 
+        public String getExperienceResourceId() { return experienceResourceId; }
         public String getSlug() { return slug; }
         public String getAccountSlug() { return accountSlug; }
         public String getPageSlug() { return pageSlug; }

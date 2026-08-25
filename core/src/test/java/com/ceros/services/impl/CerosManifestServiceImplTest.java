@@ -9,6 +9,9 @@ import org.apache.sling.api.resource.ResourceResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import javax.jcr.Node;
+import javax.jcr.Property;
+import javax.jcr.Session;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.Arrays;
@@ -56,6 +59,68 @@ class CerosManifestServiceImplTest {
 
     private static CerosManifestV1 parse(String json) throws IOException {
         return MAPPER.readValue(json, CerosManifestV1.class);
+    }
+
+    /**
+     * Wires a resolver whose session exposes a single component node, so the
+     * bundle-persist path can be exercised against a mock repository.
+     */
+    private static Node mockComponentNode(ResourceResolver resolver, String path) throws Exception {
+        Session session = mock(Session.class);
+        Node node = mock(Node.class);
+        when(resolver.adaptTo(Session.class)).thenReturn(session);
+        when(session.nodeExists(path)).thenReturn(true);
+        when(session.getNode(path)).thenReturn(node);
+        return node;
+    }
+
+    private static StoredManifestBundle bundleWith(String manifestJson) throws IOException {
+        LinkedHashMap<String, CerosManifestV1> pages = new LinkedHashMap<>();
+        pages.put("page-1", parse(manifestJson));
+        return new StoredManifestBundle("page-1", pages);
+    }
+
+    @Test
+    void storingBundleWritesExperienceResourceIdFromPrimaryManifest() throws Exception {
+        ResourceResolver resolver = mock(ResourceResolver.class);
+        Node node = mockComponentNode(resolver, "/content/x");
+
+        boolean saved = service.storeManifestBundle(resolver, "/content/x",
+                "https://acme.ceros.site/exp/manifest.v1.json",
+                bundleWith("{\"experience\":{\"experienceResourceId\":\"exp-abc-123\",\"slug\":\"exp\"}}"),
+                Map.of());
+
+        assertTrue(saved);
+        verify(node).setProperty("cerosExperienceResourceId", "exp-abc-123");
+    }
+
+    @Test
+    void storingBundleWithoutResourceIdClearsStaleProperty() throws Exception {
+        // An experience exported or published before the manifest carried the field.
+        ResourceResolver resolver = mock(ResourceResolver.class);
+        Node node = mockComponentNode(resolver, "/content/x");
+        when(node.hasProperty("cerosExperienceResourceId")).thenReturn(true);
+        Property stale = mock(Property.class);
+        when(node.getProperty("cerosExperienceResourceId")).thenReturn(stale);
+
+        service.storeManifestBundle(resolver, "/content/x", null,
+                bundleWith("{\"experience\":{\"slug\":\"exp\"}}"), Map.of());
+
+        verify(stale).remove();
+        verify(node, never()).setProperty(eq("cerosExperienceResourceId"), anyString());
+    }
+
+    @Test
+    void storingBundleWithNoResourceIdAndNoStaleValueWritesNothing() throws Exception {
+        ResourceResolver resolver = mock(ResourceResolver.class);
+        Node node = mockComponentNode(resolver, "/content/x");
+        when(node.hasProperty("cerosExperienceResourceId")).thenReturn(false);
+
+        service.storeManifestBundle(resolver, "/content/x", null,
+                bundleWith("{\"experience\":{\"slug\":\"exp\"}}"), Map.of());
+
+        verify(node, never()).setProperty(eq("cerosExperienceResourceId"), anyString());
+        verify(node, never()).getProperty("cerosExperienceResourceId");
     }
 
     @Test

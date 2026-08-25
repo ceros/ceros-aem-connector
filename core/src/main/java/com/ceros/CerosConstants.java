@@ -9,8 +9,7 @@ public final class CerosConstants {
      * pasted URL is on a (possibly attacker-influenced) vanity domain so the
      * connector can discover the real manifest URL without trusting that host.
      *
-     * <p>Set by Flex Shield on standalone HTML page responses; see
-     * {@code ceros-spark} PR #9861.</p>
+     * <p>Set by Ceros on standalone HTML page responses.</p>
      */
     public static final String FLEX_MANIFEST_HEADER = "x-flex-manifest";
 
@@ -26,6 +25,16 @@ public final class CerosConstants {
     public static final String[] DEFAULT_CEROS_OWNED_DOMAINS = {
         "ceros.site"
     };
+
+    /** Request header carrying the Flex API version on every authenticated call. */
+    public static final String FLEX_API_VERSION_HEADER = "x-ceros-api-version";
+
+    /**
+     * Flex API version sent when none is configured. Also the shipped default of
+     * the {@code flexApiVersion} OSGi property; a blank override falls back to
+     * this so the header is never sent empty or omitted.
+     */
+    public static final String DEFAULT_FLEX_API_VERSION = "2026-08-06-09-00";
 
     /** User-facing message when an experience URL can't be reached to verify it. */
     public static final String MSG_UNREACHABLE_EXPERIENCE =

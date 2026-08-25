@@ -54,6 +54,23 @@ class CerosFlexModelTest {
     }
 
     @Test
+    void experienceResourceIdGetterTrims() throws Exception {
+        setField("cerosExperienceResourceId", "  exp-abc-123  ");
+        assertEquals("exp-abc-123", model.getExperienceResourceId());
+    }
+
+    @Test
+    void blankExperienceResourceIdIsNull() throws Exception {
+        setField("cerosExperienceResourceId", "   ");
+        assertNull(model.getExperienceResourceId());
+    }
+
+    @Test
+    void missingExperienceResourceIdIsNull() {
+        assertNull(model.getExperienceResourceId());
+    }
+
+    @Test
     void storeModeFlag() throws Exception {
         setField("cerosMode", "store");
         assertTrue(model.isStoreMode());
