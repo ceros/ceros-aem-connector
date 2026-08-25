@@ -18,6 +18,7 @@ import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.io.InputStream;
 
 import javax.jcr.Node;
 import javax.jcr.Session;
@@ -264,10 +265,23 @@ public class CerosAssetStorageServiceImpl implements CerosAssetStorageService {
     private void handleWebfonts(CerosManifestV1 manifest, AssetManager assetManager,
                                  String basePath, Map<String, String> urlMap,
                                  ResourceResolver resolver) {
+                                    
+        Boolean cleanup = false;
+        String fontsBasePath = basePath + "/fonts";
+
         for (CerosManifestV1.AssetEntry entry : manifest.getAssets()) {
             if ("webfont".equals(entry.getType()) && entry.getSrc() != null
                     && entry.getSrc().getUrl() != null) {
-                uploadWebfont(entry.getSrc().getUrl(), basePath + "/fonts", assetManager, urlMap, resolver);
+
+                //cleanup existing webfonts.css (generic fonts css file) for this page
+                if (!cleanup) {
+                    String cssDamPath = fontsBasePath + "/" + "webfonts.css";
+                    createOrReplaceAsset(assetManager, cssDamPath,
+                                new ByteArrayInputStream("".getBytes(StandardCharsets.UTF_8)), "text/css", resolver);
+                    cleanup = true;
+                }
+
+                uploadWebfont(entry.getSrc().getUrl(), fontsBasePath, assetManager, urlMap, resolver);
                 String damPath = urlMap.get(entry.getSrc().getUrl());
                 if (damPath != null) {
                     entry.getSrc().setUrl(damPath);
@@ -408,7 +422,13 @@ public class CerosAssetStorageServiceImpl implements CerosAssetStorageService {
             String cssFilename = FileUtils.extractFilename(cssUrl);
             if (!cssFilename.endsWith(".css")) {
                 cssFilename = "webfonts.css";
+                InputStream existingCssContent = assetManager.getAsset(fontsBasePath + "/" + cssFilename).getRendition("original").getStream();
+
+                byte[] existingCssBytes = existingCssContent.readAllBytes();
+                String cssContent = new String(existingCssBytes, StandardCharsets.UTF_8);
+                css = cssContent + "\n" + css ;
             }
+
             String cssDamPath = fontsBasePath + "/" + cssFilename;
             createOrReplaceAsset(assetManager, cssDamPath,
                     new ByteArrayInputStream(css.getBytes(StandardCharsets.UTF_8)), "text/css", resolver);

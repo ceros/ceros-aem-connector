@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Renders with correct fonts when content is imported into AEM using the "Server-side (Store)" delivery mode.
 
 ## [1.0.3] - 2026-08-20
 
