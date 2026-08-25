@@ -2,6 +2,7 @@ package com.ceros.models.cerosflex;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -32,6 +33,16 @@ public class CerosManifestV1 {
     @JsonProperty("deliveryModes")
     private Map<String, DeliveryMode> deliveryModes;
 
+    /**
+     * The experience's import map, resolving the bare specifiers its module
+     * scripts import by name (the Flex Experience SDK, runtime assets). Held as
+     * a raw node so it round-trips verbatim — including the {@code integrity}
+     * section, which the connector neither reads nor can reconstruct — through
+     * the re-serialisation that store and import modes perform.
+     */
+    @JsonProperty("importMap")
+    private JsonNode importMap;
+
     @JsonProperty("assets")
     private List<AssetEntry> assets;
 
@@ -46,6 +57,7 @@ public class CerosManifestV1 {
     public Experience getExperience() { return experience; }
     public PageMetadata getPageMetadata() { return pageMetadata; }
     public DisplayMetadata getDisplayMetadata() { return displayMetadata; }
+    public JsonNode getImportMap() { return importMap; }
     public List<AssetEntry> getAssets() { return assets != null ? assets : Collections.emptyList(); }
     public List<MediaEntry> getMedia() { return media != null ? media : Collections.emptyList(); }
     public List<PageRef> getPages() { return pages != null ? pages : Collections.emptyList(); }

@@ -135,15 +135,15 @@ public class CerosFlexView {
     }
 
     /**
-     * Import map resolving the SDK's bare specifier for the injected custom
-     * body HTML. Gated on the same checkbox as the HTML itself — with nothing
+     * Import map resolving the bare specifiers the injected custom body HTML
+     * imports. Gated on the same checkbox as the HTML itself — with nothing
      * injected there is nothing for the map to resolve for.
      */
-    public String getSdkImportMapJson() {
+    public String getImportMapJson() {
         if (model == null || !model.isIncludeCustomHtml()) {
             return null;
         }
-        return result.getSdkImportMapJson();
+        return result.getImportMapJson();
     }
 
     /** Authored {@code data-embed-height} value for the iframe-embed snippet. */

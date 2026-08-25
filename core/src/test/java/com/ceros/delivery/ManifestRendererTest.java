@@ -8,6 +8,7 @@ import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -107,66 +108,75 @@ class ManifestRendererTest {
     private static final String SDK_SCRIPT =
             "<script type=\\\"module\\\">import { connect } from '@ceros/flex-experience-sdk'</script>";
 
+    private static final String IMPORT_MAP = "\"importMap\":{"
+            + "  \"imports\":{"
+            + "    \"@ceros/flex-experience-sdk\":\"https://assets.ceros.site/js/flex-experience-sdk.js\","
+            + "    \"@ceros/flex-runtime/hls\":\"https://assets.ceros.site/js/runtime/hls.js\"},"
+            + "  \"integrity\":{"
+            + "    \"https://assets.ceros.site/js/flex-experience-sdk.js\":\"sha384-abc\"}}";
+
     @Test
-    void sdkImportMapIsDerivedFromTheSsrScriptUrl() throws Exception {
+    void importMapIsEmittedVerbatimIncludingIntegrity() throws Exception {
         String json = "{"
                 + "\"displayMetadata\":{\"customBodyHtml\":\"" + SDK_SCRIPT + "\"},"
-                + "\"deliveryModes\":{\"ssr\":{\"scripts\":"
-                + "  [{\"url\":\"https://assets.ceros.site/js/flex-ssr.js\",\"module\":true}]}}"
+                + IMPORT_MAP
                 + "}";
-        DeliveryResult result = render(json);
+        String emitted = render(json).getImportMapJson();
 
-        assertEquals("{\"imports\":{\"@ceros/flex-experience-sdk\":"
-                        + "\"https://assets.ceros.site/js/flex-experience-sdk.js\"}}",
-                result.getSdkImportMapJson());
+        // Verbatim: the SRI section rides along, so the module keeps its
+        // integrity guarantee rather than being rebuilt without one.
+        assertTrue(emitted.contains("\"sha384-abc\""));
+        assertTrue(emitted.contains(
+                "\"@ceros/flex-experience-sdk\":\"https://assets.ceros.site/js/flex-experience-sdk.js\""));
+        // Every entry is carried, not just the SDK's.
+        assertTrue(emitted.contains("\"@ceros/flex-runtime/hls\""));
     }
 
     @Test
-    void sdkImportMapIgnoresQueryAndFragmentOnTheSsrScriptUrl() throws Exception {
-        String json = "{"
-                + "\"displayMetadata\":{\"customBodyHtml\":\"" + SDK_SCRIPT + "\"},"
-                + "\"deliveryModes\":{\"ssr\":{\"scripts\":"
-                + "  [{\"url\":\"https://assets.ceros.site/js/flex-ssr.js?v=2#x\"}]}}"
-                + "}";
-        assertEquals("{\"imports\":{\"@ceros/flex-experience-sdk\":"
-                        + "\"https://assets.ceros.site/js/flex-experience-sdk.js\"}}",
-                render(json).getSdkImportMapJson());
-    }
-
-    @Test
-    void noImportMapWhenTheCustomHtmlDoesNotImportTheSdk() throws Exception {
+    void importMapIsNotEmittedWhenTheCustomHtmlImportsNothingFromIt() throws Exception {
         // A document may hold only one import map, so one is emitted solely
-        // when the injected HTML actually names the specifier.
+        // when the injected HTML actually names a specifier it declares.
         String json = "{"
                 + "\"displayMetadata\":{\"customBodyHtml\":\"<script>track()</script>\"},"
-                + "\"deliveryModes\":{\"ssr\":{\"scripts\":"
-                + "  [{\"url\":\"https://assets.ceros.site/js/flex-ssr.js\"}]}}"
+                + IMPORT_MAP
                 + "}";
-        assertNull(render(json).getSdkImportMapJson());
+        assertNull(render(json).getImportMapJson());
     }
 
     @Test
-    void noImportMapWhenThereIsNoSsrScriptToDeriveFrom() throws Exception {
-        String json = "{\"displayMetadata\":{\"customBodyHtml\":\"" + SDK_SCRIPT + "\"}}";
-        assertNull(render(json).getSdkImportMapJson());
-    }
-
-    @Test
-    void noImportMapWhenTheDerivedUrlIsNotASafeHttpUrl() throws Exception {
-        // Fails closed rather than escaping: an unsafe URL could close the
-        // inline script element it is interpolated into.
+    void importMapIsEmittedForANonSdkSpecifierToo() throws Exception {
         String json = "{"
-                + "\"displayMetadata\":{\"customBodyHtml\":\"" + SDK_SCRIPT + "\"},"
-                + "\"deliveryModes\":{\"ssr\":{\"scripts\":"
-                + "  [{\"url\":\"javascript:alert(1)/x.js\"}]}}"
+                + "\"displayMetadata\":{\"customBodyHtml\":"
+                + "  \"<script type=\\\"module\\\">import '@ceros/flex-runtime/hls'</script>\"},"
+                + IMPORT_MAP
                 + "}";
-        assertNull(render(json).getSdkImportMapJson());
+        assertNotNull(render(json).getImportMapJson());
+    }
+
+    @Test
+    void noImportMapWhenTheManifestHasNone() throws Exception {
+        // Experiences published before Ceros added the field.
+        String json = "{\"displayMetadata\":{\"customBodyHtml\":\"" + SDK_SCRIPT + "\"}}";
+        assertNull(render(json).getImportMapJson());
     }
 
     @Test
     void noImportMapWhenTheExperienceHasNoCustomBodyHtml() throws Exception {
-        String json = "{\"deliveryModes\":{\"ssr\":{\"scripts\":"
-                + "[{\"url\":\"https://assets.ceros.site/js/flex-ssr.js\"}]}}}";
-        assertNull(render(json).getSdkImportMapJson());
+        assertNull(render("{" + IMPORT_MAP + "}").getImportMapJson());
+    }
+
+    @Test
+    void angleBracketsInTheImportMapAreEscaped() throws Exception {
+        // A "</script>" reaching the inline script element verbatim would end
+        // it early; \u003c is valid JSON that parses back to "<".
+        String json = "{"
+                + "\"displayMetadata\":{\"customBodyHtml\":\"" + SDK_SCRIPT + "\"},"
+                + "\"importMap\":{\"imports\":{"
+                + "  \"@ceros/flex-experience-sdk\":\"https://x.test/</script><b>.js\"}}"
+                + "}";
+        String emitted = render(json).getImportMapJson();
+
+        assertFalse(emitted.contains("</script>"));
+        assertTrue(emitted.contains("\\u003c/script"));
     }
 }
