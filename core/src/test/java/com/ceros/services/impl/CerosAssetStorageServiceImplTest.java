@@ -333,4 +333,91 @@ class CerosAssetStorageServiceImplTest {
         assertTrue(service.uploadAssets(manifest, resolver).isEmpty());
         assertNull(manifest.getImportMap());
     }
+
+    // --- import map tests: HTML Import (archive) ---
+
+    @Test
+    void uploadAssetsFromArchiveRepointsImportMapAtTheArchiveCopy() throws Exception {
+        // An exported bundle addresses the SDK relatively. Left alone, "./assets/..."
+        // would resolve against the AEM page's own URL rather than the DAM.
+        Asset asset = mock(Asset.class);
+        when(resolver.adaptTo(AssetManager.class)).thenReturn(assetManager);
+        lenient().when(resolver.adaptTo(Session.class)).thenReturn(null);
+        when(assetManager.assetExists(anyString())).thenReturn(false);
+        when(assetManager.createAsset(anyString())).thenReturn(asset);
+
+        CerosManifestV1 manifest = MAPPER.readValue(
+                "{\"experience\":{\"slug\":\"exp\",\"pageSlug\":\"page-1\"},"
+                        + "\"importMap\":{\"imports\":{"
+                        + "  \"@ceros/flex-experience-sdk\":\"./assets/scripts/flex-experience-sdk.js\"}}}",
+                CerosManifestV1.class);
+
+        Map<String, byte[]> archive = new LinkedHashMap<>();
+        archive.put("assets/scripts/flex-experience-sdk.js", "export {}".getBytes());
+
+        service.uploadAssetsFromArchive(manifest, archive, resolver);
+
+        assertEquals("/content/dam/ceros/exp/page-1/assets/scripts/flex-experience-sdk.js",
+                manifest.getImportMap().get("imports").get("@ceros/flex-experience-sdk").asText());
+    }
+
+    @Test
+    void uploadAssetsFromArchiveImportsTheSdkModuleExactlyOnce() throws Exception {
+        // The map's "./"-prefixed address is normalised to the archive key, so
+        // the assets/ catch-all does not import the same file a second time.
+        Asset asset = mock(Asset.class);
+        when(resolver.adaptTo(AssetManager.class)).thenReturn(assetManager);
+        lenient().when(resolver.adaptTo(Session.class)).thenReturn(null);
+        when(assetManager.assetExists(anyString())).thenReturn(false);
+        when(assetManager.createAsset(anyString())).thenReturn(asset);
+
+        CerosManifestV1 manifest = MAPPER.readValue(
+                "{\"experience\":{\"slug\":\"exp\",\"pageSlug\":\"page-1\"},"
+                        + "\"importMap\":{\"imports\":{"
+                        + "  \"@ceros/flex-experience-sdk\":\"./assets/scripts/flex-experience-sdk.js\"}}}",
+                CerosManifestV1.class);
+
+        Map<String, byte[]> archive = new LinkedHashMap<>();
+        archive.put("assets/scripts/flex-experience-sdk.js", "export {}".getBytes());
+
+        service.uploadAssetsFromArchive(manifest, archive, resolver);
+
+        verify(assetManager, times(1))
+                .createAsset("/content/dam/ceros/exp/page-1/assets/scripts/flex-experience-sdk.js");
+    }
+
+    @Test
+    void uploadAssetsFromArchiveLeavesAnAbsoluteImportMapAddressAlone() throws Exception {
+        // What the export leaves behind when its own download failed: nothing in
+        // the archive matches, so there is nothing to repoint it at.
+        when(resolver.adaptTo(AssetManager.class)).thenReturn(assetManager);
+
+        CerosManifestV1 manifest = MAPPER.readValue(
+                "{\"experience\":{\"slug\":\"exp\",\"pageSlug\":\"page-1\"},"
+                        + "\"importMap\":{\"imports\":{"
+                        + "  \"@ceros/flex-experience-sdk\":\"https://assets.ceros.site/js/flex-experience-sdk.js\"}}}",
+                CerosManifestV1.class);
+
+        service.uploadAssetsFromArchive(manifest, new LinkedHashMap<>(), resolver);
+
+        assertEquals("https://assets.ceros.site/js/flex-experience-sdk.js",
+                manifest.getImportMap().get("imports").get("@ceros/flex-experience-sdk").asText());
+        verify(assetManager, never()).createAsset(anyString());
+    }
+
+    @Test
+    void uploadAssetsFromArchiveLeavesImportMapEntryAloneWhenTheArchiveLacksTheModule() throws Exception {
+        when(resolver.adaptTo(AssetManager.class)).thenReturn(assetManager);
+
+        CerosManifestV1 manifest = MAPPER.readValue(
+                "{\"experience\":{\"slug\":\"exp\",\"pageSlug\":\"page-1\"},"
+                        + "\"importMap\":{\"imports\":{"
+                        + "  \"@ceros/flex-experience-sdk\":\"./assets/scripts/flex-experience-sdk.js\"}}}",
+                CerosManifestV1.class);
+
+        service.uploadAssetsFromArchive(manifest, new LinkedHashMap<>(), resolver);
+
+        assertEquals("./assets/scripts/flex-experience-sdk.js",
+                manifest.getImportMap().get("imports").get("@ceros/flex-experience-sdk").asText());
+    }
 }
