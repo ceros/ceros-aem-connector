@@ -7,7 +7,9 @@ import com.ceros.services.CerosAssetStorageService;
 import com.ceros.util.ArchiveUtils;
 import com.ceros.util.FileUtils;
 import com.ceros.util.HttpUtils;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.osgi.service.component.annotations.Activate;
@@ -26,8 +28,10 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -90,6 +94,7 @@ public class CerosAssetStorageServiceImpl implements CerosAssetStorageService {
         Map<String, String> urlMap = new LinkedHashMap<>();
 
         handleDeliveryModeAssets(manifest, assetManager, basePath, urlMap, resolver);
+        handleImportMapModules(manifest, assetManager, basePath, urlMap, resolver);
         handleWebfonts(manifest, assetManager, basePath, urlMap, resolver);
         handleMedia(manifest, assetManager, basePath, urlMap, resolver);
 
@@ -258,6 +263,66 @@ public class CerosAssetStorageServiceImpl implements CerosAssetStorageService {
                 if (urlMap.containsKey(script.getUrl())) {
                     script.setUrl(damPath);
                 }
+            }
+        }
+    }
+
+    /**
+     * Uploads the modules the experience's import map resolves to and repoints
+     * the map at the DAM copies.
+     *
+     * <p>Without this a stored page pulls every other asset from DAM but still
+     * reaches the Ceros CDN for the SDK module, which defeats the point of the
+     * offline modes. An entry whose upload fails keeps its original URL rather
+     * than pointing at a module that is not there.</p>
+     *
+     * <p>Integrity entries are re-keyed to the DAM path. The bytes are
+     * unchanged so the hash still holds, but SRI is keyed by resolved URL, and
+     * leaving the old key would silently drop integrity for the module.</p>
+     */
+    private void handleImportMapModules(CerosManifestV1 manifest, AssetManager assetManager,
+                                        String basePath, Map<String, String> urlMap,
+                                        ResourceResolver resolver) {
+        JsonNode importMap = manifest.getImportMap();
+        if (importMap == null || !importMap.isObject()) {
+            return;
+        }
+        JsonNode importsNode = importMap.get("imports");
+        if (importsNode == null || !importsNode.isObject()) {
+            return;
+        }
+        ObjectNode imports = (ObjectNode) importsNode;
+        JsonNode integrityNode = importMap.get("integrity");
+        ObjectNode integrity = integrityNode != null && integrityNode.isObject()
+                ? (ObjectNode) integrityNode
+                : null;
+
+        // Own folder, as webfonts get: these are Ceros runtime modules rather
+        // than page assets, and a flat basePath could collide with an SSR
+        // script that happens to share a filename.
+        String modulesBasePath = basePath + "/modules";
+
+        // Snapshot the specifiers: the loop rewrites values as it goes.
+        List<String> specifiers = new ArrayList<>();
+        imports.fieldNames().forEachRemaining(specifiers::add);
+
+        for (String specifier : specifiers) {
+            JsonNode value = imports.get(specifier);
+            if (value == null || !value.isTextual()) {
+                continue;
+            }
+            String url = value.asText();
+            if (StringUtils.isBlank(url)) {
+                continue;
+            }
+            String damPath = modulesBasePath + "/" + FileUtils.extractFilename(url);
+            uploadFile(url, damPath, "application/javascript", assetManager, urlMap, resolver);
+            if (!urlMap.containsKey(url)) {
+                continue;
+            }
+            imports.put(specifier, damPath);
+            if (integrity != null && integrity.has(url)) {
+                integrity.set(damPath, integrity.remove(url));
             }
         }
     }

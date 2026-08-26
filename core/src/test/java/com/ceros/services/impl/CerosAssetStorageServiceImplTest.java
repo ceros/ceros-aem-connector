@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import javax.jcr.Session;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
@@ -221,4 +222,115 @@ class CerosAssetStorageServiceImplTest {
         }
     }
 
+    // --- import map tests ---
+
+    private static final String IMPORT_MAP_MANIFEST =
+            "{\"experience\":{\"slug\":\"exp\",\"pageSlug\":\"page-1\"},"
+                    + "\"importMap\":{"
+                    + "  \"imports\":{"
+                    + "    \"@ceros/flex-experience-sdk\":\"https://assets.ceros.site/js/flex-experience-sdk.js\","
+                    + "    \"@ceros/flex-runtime/hls\":\"https://assets.ceros.site/js/runtime/hls.js\"},"
+                    + "  \"integrity\":{"
+                    + "    \"https://assets.ceros.site/js/flex-experience-sdk.js\":\"sha384-sdk\","
+                    + "    \"https://assets.ceros.site/js/runtime/hls.js\":\"sha384-hls\"}}}";
+
+    @Test
+    void uploadAssetsRepointsImportMapAtTheDamCopies() throws Exception {
+        Asset asset = mock(Asset.class);
+        when(resolver.adaptTo(AssetManager.class)).thenReturn(assetManager);
+        lenient().when(resolver.adaptTo(Session.class)).thenReturn(null);
+        when(assetManager.assetExists(anyString())).thenReturn(false);
+        when(assetManager.createAsset(anyString())).thenReturn(asset);
+
+        try (MockedStatic<HttpUtils> mockedHttp = mockStatic(HttpUtils.class)) {
+            mockedHttp.when(() -> HttpUtils.downloadStream(anyString(), anyInt()))
+                    .thenAnswer(inv -> new ByteArrayInputStream("export {}".getBytes(StandardCharsets.UTF_8)));
+
+            CerosManifestV1 manifest = MAPPER.readValue(IMPORT_MAP_MANIFEST, CerosManifestV1.class);
+
+            Map<String, String> urlMap = service.uploadAssets(manifest, resolver);
+
+            // A stored page must reach DAM for the SDK, not the Ceros CDN.
+            assertEquals("/content/dam/ceros/exp/page-1/modules/flex-experience-sdk.js",
+                    urlMap.get("https://assets.ceros.site/js/flex-experience-sdk.js"));
+            assertEquals("/content/dam/ceros/exp/page-1/modules/hls.js",
+                    urlMap.get("https://assets.ceros.site/js/runtime/hls.js"));
+
+            var imports = manifest.getImportMap().get("imports");
+            assertEquals("/content/dam/ceros/exp/page-1/modules/flex-experience-sdk.js",
+                    imports.get("@ceros/flex-experience-sdk").asText());
+            assertEquals("/content/dam/ceros/exp/page-1/modules/hls.js",
+                    imports.get("@ceros/flex-runtime/hls").asText());
+        }
+    }
+
+    @Test
+    void uploadAssetsReKeysImportMapIntegrityToTheDamPath() throws Exception {
+        Asset asset = mock(Asset.class);
+        when(resolver.adaptTo(AssetManager.class)).thenReturn(assetManager);
+        lenient().when(resolver.adaptTo(Session.class)).thenReturn(null);
+        when(assetManager.assetExists(anyString())).thenReturn(false);
+        when(assetManager.createAsset(anyString())).thenReturn(asset);
+
+        // SRI is keyed by resolved URL. The bytes are unchanged so the hash
+        // still holds, but leaving the CDN key would silently drop integrity.
+        try (MockedStatic<HttpUtils> mockedHttp = mockStatic(HttpUtils.class)) {
+            mockedHttp.when(() -> HttpUtils.downloadStream(anyString(), anyInt()))
+                    .thenAnswer(inv -> new ByteArrayInputStream("export {}".getBytes(StandardCharsets.UTF_8)));
+
+            CerosManifestV1 manifest = MAPPER.readValue(IMPORT_MAP_MANIFEST, CerosManifestV1.class);
+
+            service.uploadAssets(manifest, resolver);
+
+            var integrity = manifest.getImportMap().get("integrity");
+            assertEquals("sha384-sdk",
+                    integrity.get("/content/dam/ceros/exp/page-1/modules/flex-experience-sdk.js").asText());
+            assertFalse(integrity.has("https://assets.ceros.site/js/flex-experience-sdk.js"),
+                    "stale CDN-keyed integrity entry must not survive the rewrite");
+        }
+    }
+
+    @Test
+    void uploadAssetsLeavesImportMapEntryAloneWhenTheDownloadFails() throws Exception {
+        Asset asset = mock(Asset.class);
+        when(resolver.adaptTo(AssetManager.class)).thenReturn(assetManager);
+        lenient().when(resolver.adaptTo(Session.class)).thenReturn(null);
+        when(assetManager.assetExists(anyString())).thenReturn(false);
+        when(assetManager.createAsset(anyString())).thenReturn(asset);
+
+        // Better to keep fetching that one module from the CDN than to point
+        // the map at a DAM path holding nothing.
+        try (MockedStatic<HttpUtils> mockedHttp = mockStatic(HttpUtils.class)) {
+            mockedHttp.when(() -> HttpUtils.downloadStream(
+                            eq("https://assets.ceros.site/js/flex-experience-sdk.js"), anyInt()))
+                    .thenThrow(new IOException("boom"));
+            mockedHttp.when(() -> HttpUtils.downloadStream(
+                            eq("https://assets.ceros.site/js/runtime/hls.js"), anyInt()))
+                    .thenAnswer(inv -> new ByteArrayInputStream("export {}".getBytes(StandardCharsets.UTF_8)));
+
+            CerosManifestV1 manifest = MAPPER.readValue(IMPORT_MAP_MANIFEST, CerosManifestV1.class);
+
+            service.uploadAssets(manifest, resolver);
+
+            var importMap = manifest.getImportMap();
+            assertEquals("https://assets.ceros.site/js/flex-experience-sdk.js",
+                    importMap.get("imports").get("@ceros/flex-experience-sdk").asText());
+            assertEquals("sha384-sdk",
+                    importMap.get("integrity").get("https://assets.ceros.site/js/flex-experience-sdk.js").asText());
+            // The entry that did upload is still repointed.
+            assertEquals("/content/dam/ceros/exp/page-1/modules/hls.js",
+                    importMap.get("imports").get("@ceros/flex-runtime/hls").asText());
+        }
+    }
+
+    @Test
+    void uploadAssetsHandlesAManifestWithNoImportMap() throws Exception {
+        when(resolver.adaptTo(AssetManager.class)).thenReturn(assetManager);
+
+        CerosManifestV1 manifest = MAPPER.readValue(
+                "{\"experience\":{\"slug\":\"exp\",\"pageSlug\":\"page-1\"}}", CerosManifestV1.class);
+
+        assertTrue(service.uploadAssets(manifest, resolver).isEmpty());
+        assertNull(manifest.getImportMap());
+    }
 }
