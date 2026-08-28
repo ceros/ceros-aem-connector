@@ -5,7 +5,7 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.4] - 2026-08-29
 
 ### Added
 - **Include custom body HTML**: the server-side delivery modes (Always Fetch, Store, HTML Import) now include the experience's custom Body HTML, so experiences built with the Ceros Flex Experience SDK — answer tracking, scoring, page navigation — work without switching to the iframe embed. A new **Include custom body HTML/scripts** checkbox in the component dialog controls it, and is on by default.
