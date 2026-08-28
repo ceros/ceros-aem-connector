@@ -7,6 +7,9 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ManifestRendererTest {
@@ -69,5 +72,111 @@ class ManifestRendererTest {
         // Web font is prepended before the SSR stylesheet.
         assertEquals("https://fonts.example/f.css", result.getCssLinks().get(0).getUrl());
         assertEquals("https://assets.cdn.ceros.site/components.css", result.getCssLinks().get(1).getUrl());
+    }
+
+    @Test
+    void customBodyHtmlIsLiftedFromDisplayMetadata() throws Exception {
+        String json = "{"
+                + "\"assets\":[{\"type\":\"html-body\",\"src\":{\"type\":\"inline\",\"content\":\"<p>x</p>\"}}],"
+                + "\"displayMetadata\":{\"mode\":\"scale\","
+                + "  \"customBodyHtml\":\"<script>window.sdkBoot=1</script>\"}"
+                + "}";
+        DeliveryResult result = render(json);
+
+        assertEquals("<script>window.sdkBoot=1</script>", result.getCustomBodyHtml());
+    }
+
+    @Test
+    void missingDisplayMetadataLeavesCustomBodyHtmlNull() throws Exception {
+        String json = "{"
+                + "\"assets\":[{\"type\":\"html-body\",\"src\":{\"type\":\"inline\",\"content\":\"<p>x</p>\"}}]"
+                + "}";
+        assertNull(render(json).getCustomBodyHtml());
+    }
+
+    @Test
+    void customBodyHtmlAloneDoesNotMakeTheResultRenderable() throws Exception {
+        // An experience with no body and no SSR mode is still not renderable,
+        // even when it carries custom HTML.
+        String json = "{\"displayMetadata\":{\"customBodyHtml\":\"<script>x</script>\"}}";
+        DeliveryResult result = render(json);
+
+        assertEquals("<script>x</script>", result.getCustomBodyHtml());
+        assertFalse(result.isHasContent());
+    }
+
+    private static final String SDK_SCRIPT =
+            "<script type=\\\"module\\\">import { connect } from '@ceros/flex-experience-sdk'</script>";
+
+    private static final String IMPORT_MAP = "\"importMap\":{"
+            + "  \"imports\":{"
+            + "    \"@ceros/flex-experience-sdk\":\"https://assets.ceros.site/js/flex-experience-sdk.js\","
+            + "    \"@ceros/flex-runtime/hls\":\"https://assets.ceros.site/js/runtime/hls.js\"},"
+            + "  \"integrity\":{"
+            + "    \"https://assets.ceros.site/js/flex-experience-sdk.js\":\"sha384-abc\"}}";
+
+    @Test
+    void importMapIsEmittedVerbatimIncludingIntegrity() throws Exception {
+        String json = "{"
+                + "\"displayMetadata\":{\"customBodyHtml\":\"" + SDK_SCRIPT + "\"},"
+                + IMPORT_MAP
+                + "}";
+        String emitted = render(json).getImportMapJson();
+
+        // Verbatim: the SRI section rides along, so the module keeps its
+        // integrity guarantee rather than being rebuilt without one.
+        assertTrue(emitted.contains("\"sha384-abc\""));
+        assertTrue(emitted.contains(
+                "\"@ceros/flex-experience-sdk\":\"https://assets.ceros.site/js/flex-experience-sdk.js\""));
+        // Every entry is carried, not just the SDK's.
+        assertTrue(emitted.contains("\"@ceros/flex-runtime/hls\""));
+    }
+
+    @Test
+    void importMapIsNotEmittedWhenTheCustomHtmlImportsNothingFromIt() throws Exception {
+        // A document may hold only one import map, so one is emitted solely
+        // when the injected HTML actually names a specifier it declares.
+        String json = "{"
+                + "\"displayMetadata\":{\"customBodyHtml\":\"<script>track()</script>\"},"
+                + IMPORT_MAP
+                + "}";
+        assertNull(render(json).getImportMapJson());
+    }
+
+    @Test
+    void importMapIsEmittedForANonSdkSpecifierToo() throws Exception {
+        String json = "{"
+                + "\"displayMetadata\":{\"customBodyHtml\":"
+                + "  \"<script type=\\\"module\\\">import '@ceros/flex-runtime/hls'</script>\"},"
+                + IMPORT_MAP
+                + "}";
+        assertNotNull(render(json).getImportMapJson());
+    }
+
+    @Test
+    void noImportMapWhenTheManifestHasNone() throws Exception {
+        // Experiences published before Ceros added the field.
+        String json = "{\"displayMetadata\":{\"customBodyHtml\":\"" + SDK_SCRIPT + "\"}}";
+        assertNull(render(json).getImportMapJson());
+    }
+
+    @Test
+    void noImportMapWhenTheExperienceHasNoCustomBodyHtml() throws Exception {
+        assertNull(render("{" + IMPORT_MAP + "}").getImportMapJson());
+    }
+
+    @Test
+    void angleBracketsInTheImportMapAreEscaped() throws Exception {
+        // A "</script>" reaching the inline script element verbatim would end
+        // it early; \u003c is valid JSON that parses back to "<".
+        String json = "{"
+                + "\"displayMetadata\":{\"customBodyHtml\":\"" + SDK_SCRIPT + "\"},"
+                + "\"importMap\":{\"imports\":{"
+                + "  \"@ceros/flex-experience-sdk\":\"https://x.test/</script><b>.js\"}}"
+                + "}";
+        String emitted = render(json).getImportMapJson();
+
+        assertFalse(emitted.contains("</script>"));
+        assertTrue(emitted.contains("\\u003c/script"));
     }
 }

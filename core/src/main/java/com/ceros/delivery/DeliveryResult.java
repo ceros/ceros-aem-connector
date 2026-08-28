@@ -44,6 +44,8 @@ public final class DeliveryResult {
     private final String embedTitle;
     private final String embedScriptUrl;
     private final String inlineScriptUrl;
+    private final String customBodyHtml;
+    private final String importMapJson;
     private final boolean hasContent;
 
     private DeliveryResult(Builder b) {
@@ -57,6 +59,8 @@ public final class DeliveryResult {
         this.embedTitle = b.embedTitle;
         this.embedScriptUrl = b.embedScriptUrl;
         this.inlineScriptUrl = b.inlineScriptUrl;
+        this.customBodyHtml = b.customBodyHtml;
+        this.importMapJson = b.importMapJson;
         this.hasContent = b.hasContent;
     }
 
@@ -70,6 +74,22 @@ public final class DeliveryResult {
     public String getEmbedTitle() { return embedTitle; }
     public String getEmbedScriptUrl() { return embedScriptUrl; }
     public String getInlineScriptUrl() { return inlineScriptUrl; }
+
+    /**
+     * The experience's authored custom Body HTML, straight from
+     * {@code displayMetadata.customBodyHtml}. Null when the experience has
+     * none. Whether it is actually emitted is the view's decision, not the
+     * handler's.
+     */
+    public String getCustomBodyHtml() { return customBodyHtml; }
+
+    /**
+     * Inline JSON for a {@code <script type="importmap">} resolving the bare
+     * specifiers the injected custom body HTML imports, or null when the page
+     * needs no map. Built verbatim from the manifest by {@link ManifestRenderer}.
+     */
+    public String getImportMapJson() { return importMapJson; }
+
     public boolean isHasContent() { return hasContent; }
 
     /**
@@ -119,6 +139,8 @@ public final class DeliveryResult {
         private String embedTitle;
         private String embedScriptUrl;
         private String inlineScriptUrl;
+        private String customBodyHtml;
+        private String importMapJson;
         private boolean hasContent;
 
         public Builder manifestUrl(String v) { this.manifestUrl = v; return this; }
@@ -131,6 +153,8 @@ public final class DeliveryResult {
         public Builder embedTitle(String v) { this.embedTitle = v; return this; }
         public Builder embedScriptUrl(String v) { this.embedScriptUrl = v; return this; }
         public Builder inlineScriptUrl(String v) { this.inlineScriptUrl = v; return this; }
+        public Builder customBodyHtml(String v) { this.customBodyHtml = v; return this; }
+        public Builder importMapJson(String v) { this.importMapJson = v; return this; }
         public Builder hasContent(boolean v) { this.hasContent = v; return this; }
 
         public DeliveryResult build() {

@@ -170,4 +170,35 @@ class CerosFlexModelTest {
         setField("cerosInlineHeight", "600px");
         assertEquals("height:600px;", model.getInlineHeightAttribute());
     }
+
+    @Test
+    void customHtmlIsIncludedWhenThePropertyIsAbsent() {
+        // Legacy components predate the checkbox and must default to on.
+        assertTrue(model.isIncludeCustomHtml());
+    }
+
+    @Test
+    void customHtmlIsIncludedWhenThePropertyIsBlank() throws Exception {
+        setField("cerosIncludeCustomHtml", "  ");
+        assertTrue(model.isIncludeCustomHtml());
+    }
+
+    @Test
+    void customHtmlIsIncludedWhenChecked() throws Exception {
+        setField("cerosIncludeCustomHtml", "true");
+        assertTrue(model.isIncludeCustomHtml());
+    }
+
+    @Test
+    void customHtmlIsExcludedWhenUnchecked() throws Exception {
+        setField("cerosIncludeCustomHtml", "false");
+        assertFalse(model.isIncludeCustomHtml());
+    }
+
+    @Test
+    void customHtmlUncheckedValueIsCaseInsensitive() throws Exception {
+        // ValueMap coercion of a Boolean property can surface either casing.
+        setField("cerosIncludeCustomHtml", "FALSE");
+        assertFalse(model.isIncludeCustomHtml());
+    }
 }

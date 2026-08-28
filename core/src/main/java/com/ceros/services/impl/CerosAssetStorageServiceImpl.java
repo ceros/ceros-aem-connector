@@ -7,7 +7,9 @@ import com.ceros.services.CerosAssetStorageService;
 import com.ceros.util.ArchiveUtils;
 import com.ceros.util.FileUtils;
 import com.ceros.util.HttpUtils;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.osgi.service.component.annotations.Activate;
@@ -26,8 +28,10 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -90,6 +94,7 @@ public class CerosAssetStorageServiceImpl implements CerosAssetStorageService {
         Map<String, String> urlMap = new LinkedHashMap<>();
 
         handleDeliveryModeAssets(manifest, assetManager, basePath, urlMap, resolver);
+        handleImportMapModules(manifest, assetManager, basePath, urlMap, resolver);
         handleWebfonts(manifest, assetManager, basePath, urlMap, resolver);
         handleMedia(manifest, assetManager, basePath, urlMap, resolver);
 
@@ -163,6 +168,8 @@ public class CerosAssetStorageServiceImpl implements CerosAssetStorageService {
                     StringUtils.defaultIfBlank(entry.getMimeType(), "application/octet-stream"),
                     assetManager, urlMap, resolver);
         }
+
+        handleArchiveImportMapModules(manifest, archive, assetManager, basePath, urlMap, resolver);
 
         // Catch-all: import every remaining file under assets/ (fonts, icons,
         // images, videos, …), mirroring the archive layout. Assets referenced
@@ -258,6 +265,132 @@ public class CerosAssetStorageServiceImpl implements CerosAssetStorageService {
                 if (urlMap.containsKey(script.getUrl())) {
                     script.setUrl(damPath);
                 }
+            }
+        }
+    }
+
+    /** The mutable {@code imports} object of the manifest's import map, or null. */
+    private static ObjectNode importMapImports(CerosManifestV1 manifest) {
+        JsonNode importMap = manifest.getImportMap();
+        if (importMap == null || !importMap.isObject()) {
+            return null;
+        }
+        JsonNode imports = importMap.get("imports");
+        return imports != null && imports.isObject() ? (ObjectNode) imports : null;
+    }
+
+    /** The mutable {@code integrity} object, or null when the map carries none. */
+    private static ObjectNode importMapIntegrity(CerosManifestV1 manifest) {
+        JsonNode importMap = manifest.getImportMap();
+        if (importMap == null || !importMap.isObject()) {
+            return null;
+        }
+        JsonNode integrity = importMap.get("integrity");
+        return integrity != null && integrity.isObject() ? (ObjectNode) integrity : null;
+    }
+
+    /** Snapshot of the specifiers, so a caller can rewrite values while iterating. */
+    private static List<String> importMapSpecifiers(ObjectNode imports) {
+        List<String> specifiers = new ArrayList<>();
+        imports.fieldNames().forEachRemaining(specifiers::add);
+        return specifiers;
+    }
+
+    /** The address for {@code specifier}, or null when it is missing or not a string. */
+    private static String importMapAddress(ObjectNode imports, String specifier) {
+        JsonNode value = imports.get(specifier);
+        if (value == null || !value.isTextual() || StringUtils.isBlank(value.asText())) {
+            return null;
+        }
+        return value.asText();
+    }
+
+    /**
+     * Repoints one specifier at its DAM copy, carrying any integrity entry over.
+     *
+     * <p>SRI is keyed by resolved URL, so the hash has to move with the address.
+     * The bytes are unchanged, so it still holds; leaving the old key would
+     * silently drop integrity for the module.</p>
+     */
+    private static void repointImportMapEntry(ObjectNode imports, ObjectNode integrity,
+                                              String specifier, String oldAddress, String damPath) {
+        imports.put(specifier, damPath);
+        if (integrity != null && integrity.has(oldAddress)) {
+            integrity.set(damPath, integrity.remove(oldAddress));
+        }
+    }
+
+    /**
+     * Downloads the modules the import map resolves to and repoints the map at
+     * the DAM copies.
+     *
+     * <p>Without this a stored page pulls every other asset from DAM but still
+     * reaches the Ceros CDN for the SDK module, which defeats the point of the
+     * mode. An entry whose download fails keeps its original URL rather than
+     * pointing at a module that is not there.</p>
+     */
+    private void handleImportMapModules(CerosManifestV1 manifest, AssetManager assetManager,
+                                        String basePath, Map<String, String> urlMap,
+                                        ResourceResolver resolver) {
+        ObjectNode imports = importMapImports(manifest);
+        if (imports == null) {
+            return;
+        }
+        ObjectNode integrity = importMapIntegrity(manifest);
+
+        // Own folder, as webfonts get: these are Ceros runtime modules rather
+        // than page assets, and a flat basePath could collide with an SSR
+        // script that happens to share a filename.
+        String modulesBasePath = basePath + "/modules";
+
+        for (String specifier : importMapSpecifiers(imports)) {
+            String url = importMapAddress(imports, specifier);
+            if (url == null) {
+                continue;
+            }
+            String damPath = modulesBasePath + "/" + FileUtils.extractFilename(url);
+            uploadFile(url, damPath, "application/javascript", assetManager, urlMap, resolver);
+            if (urlMap.containsKey(url)) {
+                repointImportMapEntry(imports, integrity, specifier, url, damPath);
+            }
+        }
+    }
+
+    /**
+     * Repoints the import map at the archive's own copies of the modules.
+     *
+     * <p>An exported bundle carries the SDK module and addresses it relatively
+     * ({@code ./assets/scripts/flex-experience-sdk.js}), so its entries resolve
+     * against the archive exactly like the SSR script and style URLs do —
+     * {@link ArchiveUtils#normalizeLookup} absorbs the {@code ./} prefix.
+     * Without the rewrite the address would resolve against the AEM page's own
+     * URL rather than the DAM, and 404.</p>
+     *
+     * <p>An absolute address is what the export leaves behind when its own
+     * download failed. Nothing in the archive matches it, so it is left alone
+     * rather than logged as a missing entry.</p>
+     */
+    private void handleArchiveImportMapModules(CerosManifestV1 manifest, Map<String, byte[]> archive,
+                                               AssetManager assetManager, String basePath,
+                                               Map<String, String> urlMap, ResourceResolver resolver) {
+        ObjectNode imports = importMapImports(manifest);
+        if (imports == null) {
+            return;
+        }
+        ObjectNode integrity = importMapIntegrity(manifest);
+
+        for (String specifier : importMapSpecifiers(imports)) {
+            String address = importMapAddress(imports, specifier);
+            if (address == null || ABSOLUTE_URL_PATTERN.matcher(address).find()) {
+                continue;
+            }
+            // Normalised so the key matches the archive's, which keeps the
+            // catch-all below from importing the same file a second time.
+            String archiveKey = ArchiveUtils.normalizeLookup(address);
+            String damPath = storeArchiveEntry(archiveKey, archive, basePath,
+                    "application/javascript", assetManager, urlMap, resolver);
+            if (damPath != null) {
+                repointImportMapEntry(imports, integrity, specifier, address, damPath);
             }
         }
     }
@@ -394,6 +527,10 @@ public class CerosAssetStorageServiceImpl implements CerosAssetStorageService {
             log.warn("Failed to upload {}: {}", url, e.getMessage());
         }
     }
+
+    /** A scheme-qualified or protocol-relative URL, i.e. not archive-relative. */
+    private static final Pattern ABSOLUTE_URL_PATTERN =
+            Pattern.compile("^(?:[A-Za-z][A-Za-z0-9+.-]*:|//)");
 
     private static final Pattern FONT_URL_PATTERN = Pattern.compile("url\\(([^)]+)\\)");
     private static final String WOFF2_USER_AGENT =

@@ -63,4 +63,28 @@ class StoredManifestBundleTest {
         assertTrue(bundle.isEmpty());
         assertNull(bundle.manifestFor("anything"));
     }
+
+    @Test
+    void importMapSurvivesTheStoreRoundTrip() throws Exception {
+        // Store and import modes persist the bundle by re-serialising the
+        // parsed model, so a field the model does not carry is silently lost.
+        // Without importMap on CerosManifestV1 the map would reach fetch mode
+        // and vanish in the offline modes.
+        LinkedHashMap<String, CerosManifestV1> pages = new LinkedHashMap<>();
+        pages.put("page-1", parse("{\"displayMetadata\":{\"customBodyHtml\":\"<p>1</p>\"},"
+                + "\"importMap\":{"
+                + "  \"imports\":{\"@ceros/flex-experience-sdk\":\"https://assets.ceros.site/js/sdk.js\"},"
+                + "  \"integrity\":{\"https://assets.ceros.site/js/sdk.js\":\"sha384-abc\"}}}"));
+
+        StoredManifestBundle restored =
+                StoredManifestBundle.parse(new StoredManifestBundle("page-1", pages).toJson());
+        CerosManifestV1 manifest = restored.manifestFor("page-1");
+
+        assertEquals("https://assets.ceros.site/js/sdk.js",
+                manifest.getImportMap().get("imports").get("@ceros/flex-experience-sdk").asText());
+        // The SRI section round-trips too, so stored deliveries keep integrity.
+        assertEquals("sha384-abc",
+                manifest.getImportMap().get("integrity")
+                        .get("https://assets.ceros.site/js/sdk.js").asText());
+    }
 }

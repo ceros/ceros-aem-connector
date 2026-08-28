@@ -121,6 +121,31 @@ public class CerosFlexView {
         return result.getInlineScriptUrl();
     }
 
+    /**
+     * The experience's custom Body HTML, or null when the author unchecked
+     * "Include custom body HTML/scripts". Mode gating is structural — the HTL
+     * only reads this inside the server-side publish block — so inline and
+     * iframe deliveries never see it.
+     */
+    public String getCustomBodyHtml() {
+        if (model == null || !model.isIncludeCustomHtml()) {
+            return null;
+        }
+        return result.getCustomBodyHtml();
+    }
+
+    /**
+     * Import map resolving the bare specifiers the injected custom body HTML
+     * imports. Gated on the same checkbox as the HTML itself — with nothing
+     * injected there is nothing for the map to resolve for.
+     */
+    public String getImportMapJson() {
+        if (model == null || !model.isIncludeCustomHtml()) {
+            return null;
+        }
+        return result.getImportMapJson();
+    }
+
     /** Authored {@code data-embed-height} value for the iframe-embed snippet. */
     public String getEmbedHeightAttribute() {
         return model != null ? model.getEmbedHeightAttribute() : "auto";

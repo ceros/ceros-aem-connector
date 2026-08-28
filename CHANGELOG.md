@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Include custom body HTML**: the server-side delivery modes (Always Fetch, Store, HTML Import) now include the experience's custom Body HTML, so experiences built with the Ceros Flex Experience SDK — answer tracking, scoring, page navigation — work without switching to the iframe embed. A new **Include custom body HTML/scripts** checkbox in the component dialog controls it, and is on by default.
+  - Experiences published before this release need republishing in Ceros before their custom scripts will run.
+  - Store and HTML Import still serve everything from the DAM, so they make no requests to the Ceros CDN.
+
 ### Fixed
 - Renders with correct fonts when content is imported into AEM using the "Server-side (Store)" delivery mode.
 

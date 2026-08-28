@@ -122,6 +122,17 @@
     <!--/* Publish/preview mode: full render with all scripts */-->
     <sly data-sly-test="${model.configured && model.hasContent && !model.embedMode && !model.inlineMode && wcmmode.disabled}">
 
+        <!--/* The experience's import map, resolving the bare specifiers
+               module scripts in the injected custom body HTML import by name
+               (SPA-7334). Ceros renders one only on the standalone page — SSR
+               deliveries get none — so the connector supplies it. MUST come
+               before the deferred module scripts further down: their fetch
+               starts at parse time, and a browser rejects an import map added
+               after any module load has begun. */-->
+        <sly data-sly-test.importMap="${model.importMapJson}">
+            <script type="importmap">${importMap @ context='unsafe'}</script>
+        </sly>
+
         <sly data-sly-repeat.css="${model.cssLinks}">
             <link data-sly-test="${!css.sameOrigin}" rel="stylesheet"
                   href="${css.url}"
@@ -164,6 +175,15 @@
                     src="${script.url}"
                     defer></script>
         </sly>
+
+        <!--/* Author custom Body HTML from the experience's Ceros settings
+               (SPA-7334). Server-rendered into the response, so any <script>
+               inside it is parsed and executed by the browser normally.
+               Emitted last so the experience markup and the SSR runtime
+               precede it, matching the standalone published page where the
+               custom body HTML sits after <ceros-experience-viewer>. Content
+               is whatever the author wrote — no filtering, by decision. */-->
+        <sly data-sly-test="${model.customBodyHtml}">${model.customBodyHtml @ context='unsafe'}</sly>
 
     </sly>
 

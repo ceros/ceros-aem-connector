@@ -75,6 +75,16 @@ public class CerosFlexModel {
     @ValueMapValue
     private String cerosExperienceResourceId;
 
+    /**
+     * Whether the experience's custom Body HTML is injected alongside the
+     * server-side render (SPA-7334). Read as a String rather than a boolean so
+     * an absent property — every component authored before this shipped — means
+     * "on", matching the decided default. Also tolerates the value being stored
+     * as a Boolean, which ValueMap coerces to "true"/"false".
+     */
+    @ValueMapValue
+    private String cerosIncludeCustomHtml;
+
     @SlingObject
     private Resource resource;
 
@@ -102,6 +112,15 @@ public class CerosFlexModel {
     /** Persisted {@code flex-client.js} URL for inline mode (grabbed on save). */
     public String getInlineScriptUrl() {
         return StringUtils.trimToNull(cerosInlineScriptUrl);
+    }
+
+    /**
+     * True unless the author explicitly unchecked "Include custom body
+     * HTML/scripts". Absent, blank, or any value other than {@code "false"}
+     * means on.
+     */
+    public boolean isIncludeCustomHtml() {
+        return !"false".equalsIgnoreCase(StringUtils.trimToEmpty(cerosIncludeCustomHtml));
     }
 
     public boolean isConfigured() {
