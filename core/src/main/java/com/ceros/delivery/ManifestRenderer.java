@@ -7,7 +7,6 @@ import com.ceros.models.cerosflex.CerosManifestV1;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -39,7 +38,7 @@ public final class ManifestRenderer {
         CerosManifestV1.DisplayMetadata display = manifest.getDisplayMetadata();
         String customBodyHtml = display != null ? display.getCustomBodyHtml() : null;
         builder.customBodyHtml(customBodyHtml);
-        builder.importMapJson(importMapJsonFor(manifest, customBodyHtml));
+        builder.importMapJson(importMapJsonFor(manifest));
 
         List<CssLink> css = new ArrayList<>();
         List<ScriptRef> bodyScripts = new ArrayList<>();
@@ -112,38 +111,26 @@ public final class ManifestRenderer {
 
     /**
      * The experience's import map, serialised for an inline
-     * {@code <script type="importmap">}, or null when the page needs none.
+     * {@code <script type="importmap">}, or null when the manifest carries
+     * none.
      *
      * <p>Emitted verbatim from the manifest so the {@code integrity} section
      * rides along and the SDK module keeps its SRI. Ceros renders an import map
      * only on the standalone published page — flex-player's
      * {@code getImportMap} documents that SSR deliveries get none — so without
-     * this a module script in the injected custom body HTML cannot resolve the
-     * specifiers it imports by name.</p>
+     * this a module script cannot resolve the specifiers it imports by name.</p>
      *
-     * <p>Emitted only when the custom body HTML actually imports one of the
-     * map's specifiers. A document may carry a single import map, so an
-     * experience that needs none stays out of the way of any the host AEM page
-     * defines for itself.</p>
+     * <p>Emitted for every experience whose manifest declares one, whether or
+     * not the custom body HTML names a specifier: modules loaded by the
+     * experience itself, or later at runtime, need the same resolution.</p>
      */
-    private static String importMapJsonFor(CerosManifestV1 manifest, String customBodyHtml) {
+    private static String importMapJsonFor(CerosManifestV1 manifest) {
         JsonNode importMap = manifest.getImportMap();
-        if (customBodyHtml == null || importMap == null || !importMap.isObject()) {
+        if (importMap == null || !importMap.isObject()) {
             return null;
         }
         JsonNode imports = importMap.get("imports");
-        if (imports == null || !imports.isObject()) {
-            return null;
-        }
-
-        boolean used = false;
-        for (Iterator<String> it = imports.fieldNames(); it.hasNext(); ) {
-            if (customBodyHtml.contains(it.next())) {
-                used = true;
-                break;
-            }
-        }
-        if (!used) {
+        if (imports == null || !imports.isObject() || imports.isEmpty()) {
             return null;
         }
 
