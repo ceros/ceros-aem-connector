@@ -133,21 +133,11 @@ class ManifestRendererTest {
     }
 
     @Test
-    void importMapIsNotEmittedWhenTheCustomHtmlImportsNothingFromIt() throws Exception {
-        // A document may hold only one import map, so one is emitted solely
-        // when the injected HTML actually names a specifier it declares.
+    void importMapIsEmittedEvenWhenTheCustomHtmlImportsNothingFromIt() throws Exception {
+        // The experience's own modules resolve through the same map, so it is
+        // emitted whether or not the injected HTML names one of its specifiers.
         String json = "{"
                 + "\"displayMetadata\":{\"customBodyHtml\":\"<script>track()</script>\"},"
-                + IMPORT_MAP
-                + "}";
-        assertNull(render(json).getImportMapJson());
-    }
-
-    @Test
-    void importMapIsEmittedForANonSdkSpecifierToo() throws Exception {
-        String json = "{"
-                + "\"displayMetadata\":{\"customBodyHtml\":"
-                + "  \"<script type=\\\"module\\\">import '@ceros/flex-runtime/hls'</script>\"},"
                 + IMPORT_MAP
                 + "}";
         assertNotNull(render(json).getImportMapJson());
@@ -161,8 +151,17 @@ class ManifestRendererTest {
     }
 
     @Test
-    void noImportMapWhenTheExperienceHasNoCustomBodyHtml() throws Exception {
-        assertNull(render("{" + IMPORT_MAP + "}").getImportMapJson());
+    void importMapIsEmittedWhenTheExperienceHasNoCustomBodyHtml() throws Exception {
+        assertNotNull(render("{" + IMPORT_MAP + "}").getImportMapJson());
+    }
+
+    @Test
+    void noImportMapWhenTheMapDeclaresNoImports() throws Exception {
+        // An "integrity"-only map resolves nothing, and a document may hold
+        // only one import map — leave the host page's own free.
+        String json = "{\"importMap\":{\"imports\":{},"
+                + "\"integrity\":{\"https://x.test/a.js\":\"sha384-abc\"}}}";
+        assertNull(render(json).getImportMapJson());
     }
 
     @Test

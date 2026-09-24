@@ -135,14 +135,12 @@ public class CerosFlexView {
     }
 
     /**
-     * Import map resolving the bare specifiers the injected custom body HTML
-     * imports. Gated on the same checkbox as the HTML itself — with nothing
-     * injected there is nothing for the map to resolve for.
+     * Import map resolving the bare specifiers the experience's module scripts
+     * import by name. Emitted for every experience that declares one — not
+     * only those whose custom body HTML is injected — since the experience's
+     * own modules need the same resolution.
      */
     public String getImportMapJson() {
-        if (model == null || !model.isIncludeCustomHtml()) {
-            return null;
-        }
         return result.getImportMapJson();
     }
 

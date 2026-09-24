@@ -217,9 +217,9 @@ class CerosFlexViewTest {
     }
 
     @Test
-    void uncheckedCustomHtmlSuppressesTheImportMapToo() throws Exception {
-        // No injected HTML means nothing for the map to resolve for, so the
-        // page keeps its single allowed import map free.
+    void uncheckedCustomHtmlStillEmitsTheImportMap() throws Exception {
+        // The map serves every module the experience loads, not just those in
+        // the injected HTML, so it survives the checkbox being off.
         setModelField("manifestUrl", "https://example.ceros.site/exp/manifest.v1.json");
         setModelField("cerosIncludeCustomHtml", "false");
         when(manifestService.fetchPublicManifestFromUrl(anyString()))
@@ -227,6 +227,9 @@ class CerosFlexViewTest {
 
         initView();
 
-        assertNull(view.getImportMapJson());
+        assertNull(view.getCustomBodyHtml());
+        assertEquals("{\"imports\":{\"@ceros/flex-experience-sdk\":"
+                        + "\"https://assets.ceros.site/js/sdk.js\"}}",
+                view.getImportMapJson());
     }
 }
