@@ -150,9 +150,12 @@
                     id="${script.scriptId}">${script.content @ context='unsafe'}</script>
         </sly>
 
+        <!--/* flex-ssr.js reads data-ceros-analytics off the viewer's
+               immediate parent, which is this wrapper. */-->
         <div class="cmp-cerosflex__content"
              data-sly-test="${model.htmlContent}"
              data-flex-manifest-url="${model.manifestUrl}"
+             data-ceros-analytics="${model.cerosAnalytics}"
              data-sly-text="${model.htmlContent @ context='unsafe'}"></div>
 
         <!--/* Brand-kit styles — after the html-body so the theme's font rules
@@ -217,6 +220,7 @@
         <div data-embed-width="100%"
              data-embed-height="${model.embedHeightAttribute}"
              data-ceros-experience="${model.experienceUrl}"
+             data-ceros-analytics="${model.cerosAnalytics}"
              data-embed-title="${model.embedTitle}"></div>
         <script data-sly-test="${model.embedScriptUrl}" src="${model.embedScriptUrl}"></script>
         <script data-sly-test="${!model.embedScriptUrl}" src="https://assets.ceros.site/js/embed.v1.js"></script>
@@ -272,7 +276,8 @@
     <sly data-sly-test="${model.configured && model.inlineMode && model.hasContent && wcmmode.disabled}">
         <div data-flex-inline 
              style="${model.inlineHeightAttribute @ context='styleString'}"
-             data-flex-manifest-url="${model.manifestUrl}"></div>
+             data-flex-manifest-url="${model.manifestUrl}"
+             data-ceros-analytics="${model.cerosAnalytics}"></div>
         <script data-sly-test="${model.inlineScriptUrl}" src="${model.inlineScriptUrl}"></script>
     </sly>
 

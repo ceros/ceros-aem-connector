@@ -201,4 +201,30 @@ class CerosFlexModelTest {
         setField("cerosIncludeCustomHtml", "FALSE");
         assertFalse(model.isIncludeCustomHtml());
     }
+
+    // ---- isCerosAnalytics ----
+
+    @Test
+    void analyticsIsOnWhenThePropertyIsAbsent() {
+        // Every component authored before the switch existed.
+        assertTrue(model.isCerosAnalytics());
+    }
+
+    @Test
+    void analyticsIsOnWhenChecked() throws Exception {
+        setField("cerosAnalytics", "true");
+        assertTrue(model.isCerosAnalytics());
+    }
+
+    @Test
+    void analyticsIsOffWhenUnchecked() throws Exception {
+        setField("cerosAnalytics", "false");
+        assertFalse(model.isCerosAnalytics());
+    }
+
+    @Test
+    void analyticsUncheckedValueIsCaseInsensitive() throws Exception {
+        setField("cerosAnalytics", "FALSE");
+        assertFalse(model.isCerosAnalytics());
+    }
 }

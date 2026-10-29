@@ -85,6 +85,16 @@ public class CerosFlexModel {
     @ValueMapValue
     private String cerosIncludeCustomHtml;
 
+    /**
+     * Whether the experience reports to Ceros Analytics. Read as a String for
+     * the same reason as {@link #cerosIncludeCustomHtml}: every component
+     * authored before the switch existed has no property, and that means "on".
+     * The author's choice is only one input; {@code CerosFlexView} turns it off
+     * for previews and stored copies.
+     */
+    @ValueMapValue
+    private String cerosAnalytics;
+
     @SlingObject
     private Resource resource;
 
@@ -121,6 +131,14 @@ public class CerosFlexModel {
      */
     public boolean isIncludeCustomHtml() {
         return !"false".equalsIgnoreCase(StringUtils.trimToEmpty(cerosIncludeCustomHtml));
+    }
+
+    /**
+     * True unless the author explicitly unchecked "Ceros analytics tracking".
+     * Absent, blank, or any value other than {@code "false"} means on.
+     */
+    public boolean isCerosAnalytics() {
+        return !"false".equalsIgnoreCase(StringUtils.trimToEmpty(cerosAnalytics));
     }
 
     public boolean isConfigured() {

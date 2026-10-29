@@ -103,3 +103,29 @@ Example `.cfg.json`:
     "damBasePath": "/content/dam/ceros"
 }
 ```
+
+---
+
+## Delivery Service (`CerosFlexDeliveryServiceImpl`)
+
+Renders the Ceros Flex component in its configured delivery mode.
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `analyticsEnabled` | `true` (`false` on `author` and `preview`) | Lets experiences on this instance report to Ceros Analytics. When `false`, no component reports, whatever its **Ceros analytics tracking** checkbox says. |
+
+The connector ships `config.author` and `config.preview` overrides that turn
+reporting off, because every visitor there is an author checking a page. Turn it
+off for any other environment real visitors don't use, for example
+`config.publish.stage/com.ceros.services.impl.CerosFlexDeliveryServiceImpl.cfg.json`:
+
+```json
+{
+    "analyticsEnabled:Boolean": false
+}
+```
+
+Where it is on, each component writes `data-ceros-analytics="enabled"` or
+`"disabled"` on its embed container. A component reports only when its checkbox
+is on, the page renders with `wcmmode=disabled`, and it uses Always Fetch,
+Inline embed or Iframe embed. Store and HTML Import never report.

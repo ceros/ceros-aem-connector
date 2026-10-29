@@ -23,7 +23,7 @@
                         <granite:data
                             jcr:primaryType="nt:unstructured"
                             cq-dialog-dropdown-showhide-target=".cerosflex-mode-toggle"
-                            cerosflex-showhide-target=".cerosflex-serverside-toggle"/>
+                            cerosflex-showhide-target=".cerosflex-serverside-toggle, .cerosflex-analytics-toggle"/>
                         <items jcr:primaryType="nt:unstructured">
                             <fetch
                                 jcr:primaryType="nt:unstructured"
@@ -200,6 +200,45 @@
                                 checked="{Boolean}true"/>
                         </items>
                     </serverSideSection>
+
+                    <!-- Ceros analytics, for the modes that can report. Hidden
+                         rather than cleared in Store and HTML Import, so the
+                         saved choice comes back when the author switches to a
+                         live mode. Same multi-mode showhide as serverSideSection. -->
+                    <analyticsSection
+                        granite:class="cerosflex-analytics-toggle hidden"
+                        jcr:primaryType="nt:unstructured"
+                        sling:resourceType="granite/ui/components/coral/foundation/container">
+                        <granite:data
+                            jcr:primaryType="nt:unstructured"
+                            showhidetargetvalue="fetch,inline,embed"/>
+                        <items jcr:primaryType="nt:unstructured">
+                            <cerosAnalytics
+                                jcr:primaryType="nt:unstructured"
+                                sling:resourceType="granite/ui/components/coral/foundation/form/checkbox"
+                                fieldDescription="Reports views and interactions to Ceros Analytics, as the published experience does. Turn it off to report nothing to Ceros; your own analytics still receives the experience's events. Author and preview pages are never tracked."
+                                text="Ceros analytics tracking"
+                                name="./cerosAnalytics"
+                                value="true"
+                                uncheckedValue="false"
+                                checked="{Boolean}true"/>
+                        </items>
+                    </analyticsSection>
+
+                    <storedAnalyticsSection
+                        granite:class="cerosflex-analytics-toggle hidden"
+                        jcr:primaryType="nt:unstructured"
+                        sling:resourceType="granite/ui/components/coral/foundation/container">
+                        <granite:data
+                            jcr:primaryType="nt:unstructured"
+                            showhidetargetvalue="store,import"/>
+                        <items jcr:primaryType="nt:unstructured">
+                            <storedAnalyticsNote
+                                jcr:primaryType="nt:unstructured"
+                                sling:resourceType="granite/ui/components/coral/foundation/text"
+                                text="Stored copies don't report to Ceros Analytics. Switch to Always Fetch, Inline embed or Iframe embed to use Ceros Analytics."/>
+                        </items>
+                    </storedAnalyticsSection>
 
                 </items>
             </column>

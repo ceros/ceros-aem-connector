@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Ceros analytics tracking.** The component dialog has a **Ceros analytics tracking** checkbox for the Always Fetch, Inline embed and Iframe embed modes. It is on by default, so a server-side or inline experience now reports to Ceros Analytics the way the published experience and the iframe embed do. Uncheck it and the experience reports nothing to Ceros; the experience's analytics events still reach the page, so your own analytics keeps working.
+  - Author and preview never report, whatever the checkbox says. This covers the editor, **View as Published** and the AEM as a Cloud Service preview tier. Turn reporting off for other environments, such as stage, with the new `analyticsEnabled` property on `CerosFlexDeliveryServiceImpl`.
+  - Store and HTML Import never report. A stored copy doesn't keep up with Ceros, and Ceros analytics events aren't versioned, so it could report events Ceros no longer reads. The checkbox is hidden in those modes and its value is kept, so it applies again if you switch back to a live mode.
+  - Server-side and inline reporting needs an experience published after Ceros added analytics to the manifest, and Ceros Analytics turned on for the account.
+
 
 ## [1.0.4] - 2026-08-29
 
