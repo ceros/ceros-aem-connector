@@ -123,9 +123,10 @@
     <sly data-sly-test="${model.configured && model.hasContent && !model.embedMode && !model.inlineMode && wcmmode.disabled}">
 
         <!--/* The experience's import map, resolving the bare specifiers
-               module scripts in the injected custom body HTML import by name
-               (SPA-7334). Ceros renders one only on the standalone page — SSR
-               deliveries get none — so the connector supplies it. MUST come
+               module scripts import by name, whether the experience's own or
+               those in the injected custom body HTML (SPA-7334). Ceros renders
+               one only on the standalone page — SSR deliveries get none — so
+               the connector supplies it. MUST come
                before the deferred module scripts further down: their fetch
                starts at parse time, and a browser rejects an import map added
                after any module load has begun. */-->
@@ -155,11 +156,15 @@
                with a CSS `scale` transform that reserves no layout space, so
                flex-ssr sizes this wrapper to the scaled height. It must sit on
                the same element as data-flex-manifest-url. flex-ssr skips
-               fluid experiences, which flow at their natural height. */-->
+               fluid experiences, which flow at their natural height.
+               data-embed-height="auto" is the legacy name: each manifest pins
+               the flex-ssr release current at publish, and releases before
+               the data-flex-height rename read only the legacy one. */-->
         <div class="cmp-cerosflex__content"
              data-sly-test="${model.htmlContent}"
              data-flex-manifest-url="${model.manifestUrl}"
              data-flex-height="auto"
+             data-embed-height="auto"
              data-sly-text="${model.htmlContent @ context='unsafe'}"></div>
 
         <!--/* Brand-kit styles — after the html-body so the theme's font rules
@@ -275,10 +280,13 @@
 
     <!--/* Client-side inline embed: publish/preview mode — inject the Ceros
            inline marker + flex-client.js runtime, which fetches the manifest
-           in the browser and renders into a Shadow Root. */-->
+           in the browser and renders into a Shadow Root. Full Height opts
+           into flex-client's auto-height (SPA-8224), which sizes the host to
+           the scaled experience height; Scrolling keeps its fixed height. */-->
     <sly data-sly-test="${model.configured && model.inlineMode && model.hasContent && wcmmode.disabled}">
-        <div data-flex-inline 
+        <div data-flex-inline
              style="${model.inlineHeightAttribute @ context='styleString'}"
+             data-flex-height="${model.inlineHeightAttribute ? '' : 'auto'}"
              data-flex-manifest-url="${model.manifestUrl}"></div>
         <script data-sly-test="${model.inlineScriptUrl}" src="${model.inlineScriptUrl}"></script>
     </sly>

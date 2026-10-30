@@ -75,7 +75,11 @@ public class CerosFlexPreviewServlet extends SlingSafeMethodsServlet {
         out.println("</head><body>");
 
         if (StringUtils.isNotBlank(view.getHtmlContent())) {
-            out.printf("<div class=\"cmp-cerosflex__content\" data-flex-manifest-url=\"%s\">%n",
+            // Same wrapper contract as the publish render in cerosflex.html:
+            // auto-height (current and legacy attribute names) so flex-ssr
+            // sizes scale-mode experiences to their scaled height.
+            out.printf("<div class=\"cmp-cerosflex__content\" data-flex-manifest-url=\"%s\""
+                            + " data-flex-height=\"auto\" data-embed-height=\"auto\">%n",
                     escAttr(view.getManifestUrl()));
             // Manifest body content is trusted Ceros HTML — already emitted
             // unescaped by the main HTL via @context='unsafe'.
