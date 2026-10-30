@@ -85,6 +85,17 @@ public class CerosFlexModel {
     @ValueMapValue
     private String cerosIncludeCustomHtml;
 
+    /**
+     * Whether the experience reports to Ceros Analytics. Read as a String so an
+     * absent property, which every component authored before the switch
+     * existed has, can keep that component's earlier behaviour (see
+     * {@link #isCerosAnalytics()}). New components get {@code true} from the
+     * component's {@code cq:template}. The author's choice is only one input;
+     * {@code CerosFlexView} turns it off for previews and stored copies.
+     */
+    @ValueMapValue
+    private String cerosAnalytics;
+
     @SlingObject
     private Resource resource;
 
@@ -121,6 +132,30 @@ public class CerosFlexModel {
      */
     public boolean isIncludeCustomHtml() {
         return !"false".equalsIgnoreCase(StringUtils.trimToEmpty(cerosIncludeCustomHtml));
+    }
+
+    /**
+     * The author's "Ceros analytics tracking" choice, see
+     * {@link #resolveCerosAnalytics(String, String)}.
+     */
+    public boolean isCerosAnalytics() {
+        return resolveCerosAnalytics(cerosAnalytics, cerosMode);
+    }
+
+    /**
+     * Resolves a stored {@code cerosAnalytics} value the way the dialog's
+     * checkbox reads it, so the page and the dialog agree. When the property
+     * is absent, the component predates the switch and keeps what it did
+     * before: the iframe embed reported, while Always Fetch and Inline didn't.
+     * Turning reporting on for those without anyone editing the page could
+     * break a site's cookie consent setup. Any stored value other than
+     * {@code "true"}, blank included, is off, as an unchecked box is.
+     */
+    public static boolean resolveCerosAnalytics(String storedChoice, String mode) {
+        if (storedChoice == null) {
+            return MODE_EMBED.equals(mode);
+        }
+        return "true".equalsIgnoreCase(storedChoice.trim());
     }
 
     public boolean isConfigured() {

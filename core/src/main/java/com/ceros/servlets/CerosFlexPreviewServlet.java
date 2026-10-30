@@ -75,7 +75,9 @@ public class CerosFlexPreviewServlet extends SlingSafeMethodsServlet {
         out.println("</head><body>");
 
         if (StringUtils.isNotBlank(view.getHtmlContent())) {
-            out.printf("<div class=\"cmp-cerosflex__content\" data-flex-manifest-url=\"%s\">%n",
+            // An author preview, so it never reports to Ceros Analytics.
+            out.printf("<div class=\"cmp-cerosflex__content\" data-flex-manifest-url=\"%s\""
+                            + " data-ceros-analytics=\"disabled\">%n",
                     escAttr(view.getManifestUrl()));
             // Manifest body content is trusted Ceros HTML — already emitted
             // unescaped by the main HTL via @context='unsafe'.

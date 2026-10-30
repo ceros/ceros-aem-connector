@@ -15,4 +15,15 @@ public interface CerosFlexDeliveryService {
     DeliveryResult deliver(CerosFlexModel model,
                            SlingHttpServletRequest request,
                            Resource resource);
+
+    /**
+     * Whether this instance lets Ceros Flex experiences report to Ceros
+     * Analytics at all. Off unless configured on, which the connector does for
+     * publish only: on author and preview every visitor is an author checking
+     * their own page. When off, no component reports, whatever its own setting
+     * says.
+     */
+    default boolean isAnalyticsEnabled() {
+        return false;
+    }
 }

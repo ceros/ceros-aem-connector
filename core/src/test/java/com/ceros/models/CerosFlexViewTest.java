@@ -4,6 +4,7 @@ import com.ceros.models.cerosflex.CerosManifestV1;
 import com.ceros.services.CerosFlexDeliveryService;
 import com.ceros.services.CerosManifestService;
 import com.ceros.services.impl.CerosFlexDeliveryServiceImpl;
+import com.day.cq.wcm.api.WCMMode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.sling.api.SlingHttpServletRequest;
 import org.apache.sling.api.resource.Resource;
@@ -18,6 +19,7 @@ import java.lang.reflect.Method;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
@@ -231,5 +233,90 @@ class CerosFlexViewTest {
         assertEquals("{\"imports\":{\"@ceros/flex-experience-sdk\":"
                         + "\"https://assets.ceros.site/js/sdk.js\"}}",
                 view.getImportMapJson());
+    }
+
+    // ---- Ceros analytics ----
+
+    private void useDeliveryService(boolean analyticsEnabled) throws Exception {
+        CerosFlexDeliveryService service = mock(CerosFlexDeliveryService.class);
+        when(service.isAnalyticsEnabled()).thenReturn(analyticsEnabled);
+        setViewField("model", model);
+        setViewField("request", request);
+        setViewField("deliveryService", service);
+    }
+
+    @Test
+    void analyticsIsEnabledWhenCheckedOnAPublishedPage() throws Exception {
+        setModelField("cerosMode", "inline");
+        setModelField("cerosAnalytics", "true");
+        useDeliveryService(true);
+        assertTrue(view.isCerosAnalyticsEnabled());
+        assertEquals("enabled", view.getCerosAnalytics());
+    }
+
+    @Test
+    void analyticsIsEnabledForEveryLiveMode() throws Exception {
+        setModelField("cerosAnalytics", "true");
+        useDeliveryService(true);
+        for (String mode : new String[] {"fetch", "inline", "embed", null}) {
+            setModelField("cerosMode", mode);
+            assertEquals("enabled", view.getCerosAnalytics(), "mode " + mode);
+        }
+    }
+
+    @Test
+    void analyticsIsDisabledWhenTheAuthorTurnsItOff() throws Exception {
+        setModelField("cerosMode", "embed");
+        setModelField("cerosAnalytics", "false");
+        useDeliveryService(true);
+        assertEquals("disabled", view.getCerosAnalytics());
+    }
+
+    @Test
+    void analyticsIsDisabledWhenTheInstanceDoesNotAllowIt() throws Exception {
+        // Author and preview ship with analyticsEnabled=false, so a
+        // wcmmode=disabled view on author still doesn't report.
+        setModelField("cerosMode", "inline");
+        setModelField("cerosAnalytics", "true");
+        useDeliveryService(false);
+        assertEquals("disabled", view.getCerosAnalytics());
+    }
+
+    @Test
+    void analyticsKeepsTheEarlierBehaviourForComponentsWithoutAChoice() throws Exception {
+        useDeliveryService(true);
+        setModelField("cerosMode", "embed");
+        assertEquals("enabled", view.getCerosAnalytics());
+        for (String mode : new String[] {"fetch", "inline"}) {
+            setModelField("cerosMode", mode);
+            assertEquals("disabled", view.getCerosAnalytics(), "mode " + mode);
+        }
+    }
+
+    @Test
+    void analyticsIsDisabledInAnEditorMode() throws Exception {
+        setModelField("cerosMode", "inline");
+        setModelField("cerosAnalytics", "true");
+        useDeliveryService(true);
+        when(request.getAttribute(WCMMode.REQUEST_ATTRIBUTE_NAME)).thenReturn(WCMMode.EDIT);
+        assertEquals("disabled", view.getCerosAnalytics());
+    }
+
+    @Test
+    void analyticsIsAlwaysDisabledForStoredCopies() throws Exception {
+        useDeliveryService(true);
+        for (String mode : new String[] {"store", "import"}) {
+            setModelField("cerosMode", mode);
+            for (String choice : new String[] {null, "true", "false"}) {
+                setModelField("cerosAnalytics", choice);
+                assertEquals("disabled", view.getCerosAnalytics(), mode + " with " + choice);
+            }
+        }
+    }
+
+    @Test
+    void analyticsIsDisabledWithoutADeliveryService() throws Exception {
+        setViewField("model", model);
+        assertEquals("disabled", view.getCerosAnalytics());
     }
 }
