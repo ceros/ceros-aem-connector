@@ -2,6 +2,7 @@ package com.ceros.models;
 
 import com.ceros.delivery.DeliveryResult;
 import com.ceros.services.CerosFlexDeliveryService;
+import com.day.cq.wcm.api.WCMMode;
 import org.apache.sling.api.SlingHttpServletRequest;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.models.annotations.DefaultInjectionStrategy;
@@ -142,6 +143,44 @@ public class CerosFlexView {
      */
     public String getImportMapJson() {
         return result.getImportMapJson();
+    }
+
+    /**
+     * Whether the experience reports to Ceros Analytics. Follows the author's
+     * choice ({@link CerosFlexModel#isCerosAnalytics()}), but is off whatever
+     * they chose when:
+     * <ul>
+     *   <li>the instance doesn't allow it (only publish ships with it on,
+     *       see {@link CerosFlexDeliveryService#isAnalyticsEnabled()});</li>
+     *   <li>the page renders in an editor mode, which is a preview;</li>
+     *   <li>the experience is a stored copy (Store or HTML Import). A stored
+     *       runtime that falls behind could report events the Ceros pipeline
+     *       no longer reads, since analytics events aren't versioned, and Ceros
+     *       exports have never carried analytics.</li>
+     * </ul>
+     */
+    public boolean isCerosAnalyticsEnabled() {
+        if (model == null || deliveryService == null || !deliveryService.isAnalyticsEnabled()) {
+            return false;
+        }
+        if (request != null && WCMMode.fromRequest(request) != WCMMode.DISABLED) {
+            return false;
+        }
+        if (model.isStoreMode() || model.isImportMode()) {
+            return false;
+        }
+        return model.isCerosAnalytics();
+    }
+
+    /**
+     * The {@code data-ceros-analytics} value, always written as
+     * {@code enabled} or {@code disabled}. Its absence means opposite things
+     * per delivery: the iframe embed reports unless told {@code disabled},
+     * while Inline and SSR report only when told {@code enabled}. Writing it
+     * out keeps the component's choice independent of those defaults.
+     */
+    public String getCerosAnalytics() {
+        return isCerosAnalyticsEnabled() ? "enabled" : "disabled";
     }
 
     /** Authored {@code data-embed-height} value for the iframe-embed snippet. */

@@ -92,3 +92,12 @@
 @keyframes cerosflex-spin {
     to { transform: rotate(360deg); }
 }
+
+/* Room below the analytics checkbox, the dialog's last field. Coral keeps a
+   field's help tooltip inside the dialog's scrolling content, so without it
+   the tooltip is pushed up and its arrow, drawn at the tooltip's middle, no
+   longer points at the info icon. Applied to the Store/Import note too, so
+   the dialog keeps the same height across modes. */
+.cerosflex-analytics-toggle {
+    padding-bottom: 32px;
+}

@@ -159,12 +159,15 @@
                fluid experiences, which flow at their natural height.
                data-embed-height="auto" is the legacy name: each manifest pins
                the flex-ssr release current at publish, and releases before
-               the data-flex-height rename read only the legacy one. */-->
+               the data-flex-height rename read only the legacy one. flex-ssr.js
+               also reads data-ceros-analytics off this wrapper, the viewer's
+               immediate parent. */-->
         <div class="cmp-cerosflex__content"
              data-sly-test="${model.htmlContent}"
              data-flex-manifest-url="${model.manifestUrl}"
              data-flex-height="auto"
              data-embed-height="auto"
+             data-ceros-analytics="${model.cerosAnalytics}"
              data-sly-text="${model.htmlContent @ context='unsafe'}"></div>
 
         <!--/* Brand-kit styles — after the html-body so the theme's font rules
@@ -229,6 +232,7 @@
         <div data-embed-width="100%"
              data-embed-height="${model.embedHeightAttribute}"
              data-ceros-experience="${model.experienceUrl}"
+             data-ceros-analytics="${model.cerosAnalytics}"
              data-embed-title="${model.embedTitle}"></div>
         <script data-sly-test="${model.embedScriptUrl}" src="${model.embedScriptUrl}"></script>
         <script data-sly-test="${!model.embedScriptUrl}" src="https://assets.ceros.site/js/embed.v1.js"></script>
@@ -287,7 +291,8 @@
         <div data-flex-inline
              style="${model.inlineHeightAttribute @ context='styleString'}"
              data-flex-height="${model.inlineHeightAttribute ? '' : 'auto'}"
-             data-flex-manifest-url="${model.manifestUrl}"></div>
+             data-flex-manifest-url="${model.manifestUrl}"
+             data-ceros-analytics="${model.cerosAnalytics}"></div>
         <script data-sly-test="${model.inlineScriptUrl}" src="${model.inlineScriptUrl}"></script>
     </sly>
 

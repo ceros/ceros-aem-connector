@@ -201,4 +201,45 @@ class CerosFlexModelTest {
         setField("cerosIncludeCustomHtml", "FALSE");
         assertFalse(model.isIncludeCustomHtml());
     }
+
+    // ---- isCerosAnalytics ----
+
+    @Test
+    void analyticsKeepsTheEarlierBehaviourWhenThePropertyIsAbsent() throws Exception {
+        // Every component authored before the switch existed: only the
+        // iframe embed reported then.
+        setField("cerosMode", "embed");
+        assertTrue(model.isCerosAnalytics());
+        for (String mode : new String[] {"fetch", "inline", null}) {
+            setField("cerosMode", mode);
+            assertFalse(model.isCerosAnalytics(), "mode " + mode);
+        }
+    }
+
+    @Test
+    void analyticsTreatsABlankPropertyAsOffLikeTheCheckboxDoes() throws Exception {
+        // The dialog opens a blank value unchecked, so the page mustn't
+        // report it either, even for an embed.
+        setField("cerosMode", "embed");
+        setField("cerosAnalytics", " ");
+        assertFalse(model.isCerosAnalytics());
+    }
+
+    @Test
+    void analyticsIsOnWhenChecked() throws Exception {
+        setField("cerosAnalytics", "true");
+        assertTrue(model.isCerosAnalytics());
+    }
+
+    @Test
+    void analyticsIsOffWhenUnchecked() throws Exception {
+        setField("cerosAnalytics", "false");
+        assertFalse(model.isCerosAnalytics());
+    }
+
+    @Test
+    void analyticsUncheckedValueIsCaseInsensitive() throws Exception {
+        setField("cerosAnalytics", "FALSE");
+        assertFalse(model.isCerosAnalytics());
+    }
 }
