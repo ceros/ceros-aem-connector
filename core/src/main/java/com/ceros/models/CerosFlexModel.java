@@ -135,18 +135,27 @@ public class CerosFlexModel {
     }
 
     /**
-     * The author's "Ceros analytics tracking" choice. When the property is
-     * absent or blank, the component predates the switch and keeps what it
-     * did before: the iframe embed reported, while Always Fetch and Inline
-     * didn't. Turning reporting on for those without anyone editing the page
-     * could break a site's cookie consent setup.
+     * The author's "Ceros analytics tracking" choice, see
+     * {@link #resolveCerosAnalytics(String, String)}.
      */
     public boolean isCerosAnalytics() {
-        String choice = StringUtils.trimToEmpty(cerosAnalytics);
-        if (choice.isEmpty()) {
-            return isEmbedMode();
+        return resolveCerosAnalytics(cerosAnalytics, cerosMode);
+    }
+
+    /**
+     * Resolves a stored {@code cerosAnalytics} value the way the dialog's
+     * checkbox reads it, so the page and the dialog agree. When the property
+     * is absent, the component predates the switch and keeps what it did
+     * before: the iframe embed reported, while Always Fetch and Inline didn't.
+     * Turning reporting on for those without anyone editing the page could
+     * break a site's cookie consent setup. Any stored value other than
+     * {@code "true"}, blank included, is off, as an unchecked box is.
+     */
+    public static boolean resolveCerosAnalytics(String storedChoice, String mode) {
+        if (storedChoice == null) {
+            return MODE_EMBED.equals(mode);
         }
-        return !"false".equalsIgnoreCase(choice);
+        return "true".equalsIgnoreCase(storedChoice.trim());
     }
 
     public boolean isConfigured() {

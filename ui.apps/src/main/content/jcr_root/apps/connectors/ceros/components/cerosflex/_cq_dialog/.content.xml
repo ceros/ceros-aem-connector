@@ -196,7 +196,8 @@
                                 text="Include custom body HTML/scripts"
                                 name="./cerosIncludeCustomHtml"
                                 value="true"
-                                uncheckedValue="false"/>
+                                uncheckedValue="false"
+                                checked="{Boolean}true"/>
                         </items>
                     </serverSideSection>
 
@@ -212,9 +213,13 @@
                             jcr:primaryType="nt:unstructured"
                             showhidetargetvalue="fetch,inline,embed"/>
                         <items jcr:primaryType="nt:unstructured">
+                            <!-- A Granite checkbox whose default comes from the
+                                 component's stored properties, so a component
+                                 authored before this switch opens the way it
+                                 renders (CerosAnalyticsCheckboxServlet). -->
                             <cerosAnalytics
                                 jcr:primaryType="nt:unstructured"
-                                sling:resourceType="granite/ui/components/coral/foundation/form/checkbox"
+                                sling:resourceType="connectors/ceros/components/cerosflex/analyticscheckbox"
                                 fieldDescription="Reports views and interactions to Ceros Analytics, as the published experience does. Turn it off to report nothing to Ceros; your own analytics still receives the experience's events. Author and preview pages are never tracked."
                                 text="Ceros analytics tracking"
                                 name="./cerosAnalytics"

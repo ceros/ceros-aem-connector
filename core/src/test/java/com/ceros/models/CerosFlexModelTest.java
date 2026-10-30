@@ -217,8 +217,10 @@ class CerosFlexModelTest {
     }
 
     @Test
-    void analyticsTreatsABlankPropertyAsAbsent() throws Exception {
-        setField("cerosMode", "inline");
+    void analyticsTreatsABlankPropertyAsOffLikeTheCheckboxDoes() throws Exception {
+        // The dialog opens a blank value unchecked, so the page mustn't
+        // report it either, even for an embed.
+        setField("cerosMode", "embed");
         setField("cerosAnalytics", " ");
         assertFalse(model.isCerosAnalytics());
     }

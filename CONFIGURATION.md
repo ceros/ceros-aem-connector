@@ -118,9 +118,17 @@ Reporting is off unless a config turns it on, so an instance the connector's
 run-mode configs don't reach never reports author traffic. The connector ships
 a `config.publish` config that turns it on and a `config.preview` one that keeps
 it off, because every visitor to author and preview is an author checking a
-page. If you deploy `core` and `ui.apps` without `ui.config`, or use custom run
-modes, set it on your publish instances yourself. Turn it off for any other
-publish environment real visitors don't use, for example
+page.
+
+> **Upgrading:** if the connector's `config.publish` config doesn't reach your
+> publish instances, set `analyticsEnabled` to `true` there yourself. That
+> covers custom run modes (for example on AEM 6.5 or AMS) and deployments that
+> install `core` and `ui.apps` without `ui.config`. Until you do, no component
+> there reports, including existing Iframe embeds, which reported before this
+> switch existed.
+
+Turn it off for any other publish environment real visitors don't use, for
+example
 `config.publish.stage/com.ceros.services.impl.CerosFlexDeliveryServiceImpl.cfg.json`:
 
 ```json
@@ -135,3 +143,4 @@ is on, the page renders with `wcmmode=disabled`, and it uses Always Fetch,
 Inline embed or Iframe embed. Store and HTML Import never report. A component
 added before the checkbox existed keeps what it did before until an author
 saves its dialog: an Iframe embed reports, Always Fetch and Inline embed don't.
+The dialog opens such a component in that state.

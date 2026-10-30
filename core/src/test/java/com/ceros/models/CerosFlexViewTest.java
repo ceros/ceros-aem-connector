@@ -19,6 +19,7 @@ import java.lang.reflect.Method;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
@@ -237,13 +238,11 @@ class CerosFlexViewTest {
     // ---- Ceros analytics ----
 
     private void useDeliveryService(boolean analyticsEnabled) throws Exception {
-        CerosFlexDeliveryServiceImpl service = new CerosFlexDeliveryServiceImpl();
-        Field f = CerosFlexDeliveryServiceImpl.class.getDeclaredField("analyticsEnabled");
-        f.setAccessible(true);
-        f.set(service, analyticsEnabled);
+        CerosFlexDeliveryService service = mock(CerosFlexDeliveryService.class);
+        when(service.isAnalyticsEnabled()).thenReturn(analyticsEnabled);
         setViewField("model", model);
         setViewField("request", request);
-        setViewField("deliveryService", (CerosFlexDeliveryService) service);
+        setViewField("deliveryService", service);
     }
 
     @Test
