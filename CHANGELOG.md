@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Scale-mode experiences in the server-side **Always Fetch**, **Store**, and **HTML Import** modes now take up exactly their scaled height on the page. The component kept the experience's unscaled height, so on wide layouts the experience ran into the content below it (such as the page footer), and on narrow ones it left empty space underneath. Fluid experiences are unchanged.
+- HLS video now plays in the server-side modes. The experience's import map, which also resolves the video player, is now included for every server-side experience, not only when its custom Body HTML imports a module from it.
 
 ## [1.0.4] - 2026-08-29
 

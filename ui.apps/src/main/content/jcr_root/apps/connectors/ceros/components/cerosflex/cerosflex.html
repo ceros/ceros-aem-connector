@@ -150,9 +150,16 @@
                     id="${script.scriptId}">${script.content @ context='unsafe'}</script>
         </sly>
 
+        <!--/* data-flex-height="auto" opts the wrapper into flex-ssr's
+               auto-height (SPA-8224): in scale mode the experience is drawn
+               with a CSS `scale` transform that reserves no layout space, so
+               flex-ssr sizes this wrapper to the scaled height. It must sit on
+               the same element as data-flex-manifest-url. flex-ssr skips
+               fluid experiences, which flow at their natural height. */-->
         <div class="cmp-cerosflex__content"
              data-sly-test="${model.htmlContent}"
              data-flex-manifest-url="${model.manifestUrl}"
+             data-flex-height="auto"
              data-sly-text="${model.htmlContent @ context='unsafe'}"></div>
 
         <!--/* Brand-kit styles — after the html-body so the theme's font rules
