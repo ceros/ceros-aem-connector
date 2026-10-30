@@ -75,8 +75,12 @@ public class CerosFlexPreviewServlet extends SlingSafeMethodsServlet {
         out.println("</head><body>");
 
         if (StringUtils.isNotBlank(view.getHtmlContent())) {
-            // An author preview, so it never reports to Ceros Analytics.
+            // Same wrapper contract as the publish render in cerosflex.html:
+            // auto-height (current and legacy attribute names) so flex-ssr
+            // sizes scale-mode experiences to their scaled height. An author
+            // preview, so it never reports to Ceros Analytics.
             out.printf("<div class=\"cmp-cerosflex__content\" data-flex-manifest-url=\"%s\""
+                            + " data-flex-height=\"auto\" data-embed-height=\"auto\""
                             + " data-ceros-analytics=\"disabled\">%n",
                     escAttr(view.getManifestUrl()));
             // Manifest body content is trusted Ceros HTML — already emitted

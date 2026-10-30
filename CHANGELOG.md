@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Store and HTML Import never report. A stored copy doesn't keep up with Ceros, and Ceros analytics events aren't versioned, so it could report events Ceros no longer reads. The checkbox is hidden in those modes and its value is kept, so it applies again if you switch back to a live mode.
   - Server-side and inline reporting needs an experience published after Ceros added analytics to the manifest, and Ceros Analytics turned on for the account.
 
+### Fixed
+- Scale-mode experiences in the server-side **Always Fetch**, **Store**, and **HTML Import** modes now take up exactly their scaled height on the page. The component kept the experience's unscaled height, so on wide layouts the experience ran into the content below it (such as the page footer), and on narrow ones it left empty space underneath. Fluid experiences are unchanged. The same applies to the **Inline** mode's Full Height option.
+  - Experiences last published in Ceros before auto-height support need republishing, and Store and HTML Import components then need a new **Fetch** or **Import**, because each one keeps the Ceros runtime version it was published with.
+- The experience's import map is now included for every server-side experience, not only when its custom Body HTML imports a module from it, so modules the experience loads itself (such as the video player) can resolve. With more than one Ceros component on a page, or a page that defines its own import map, browsers that don't merge import maps apply only the first.
 
 ## [1.0.4] - 2026-08-29
 

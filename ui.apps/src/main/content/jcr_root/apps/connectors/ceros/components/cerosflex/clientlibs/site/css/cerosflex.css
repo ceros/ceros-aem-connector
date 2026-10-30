@@ -1,7 +1,13 @@
-.cmp-cerosflex__content,
-.cmp-cerosflex__content .cml-experience-viewer,
-.cmp-cerosflex__content .cml-experience-viewer--window,
-.cmp-cerosflex__content #experience-canvas-container {
+/* Fluid experiences only: let the experience flow at its natural height in the
+   host page instead of the viewer's standalone 100dvh window with an internal
+   scrollbar. flex-ssr leaves fluid experiences untouched, so nothing else does
+   this for them.
+
+   Scale mode is deliberately excluded (SPA-8224): flex-ssr sizes the
+   `data-flex-height="auto"` wrapper to the scaled height with an inline style,
+   and an !important height here would cancel it and let the content overflow
+   into the host page. */
+.cmp-cerosflex__content .cml-experience-viewer--fluid#experience-canvas-container {
     height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
