@@ -25,9 +25,10 @@ public class CerosFlexDeliveryServiceImpl implements CerosFlexDeliveryService {
     @interface Config {
         @AttributeDefinition(name = "Ceros analytics",
                 description = "Let Ceros Flex experiences on this instance report to Ceros Analytics. "
-                        + "Shipped off for author and preview; turn it off for any other environment "
-                        + "that real visitors don't use, such as stage.")
-        boolean analyticsEnabled() default true;
+                        + "Off unless configured; the connector turns it on for publish, but not "
+                        + "for preview. Turn it off for any other publish environment that real "
+                        + "visitors don't use, such as stage.")
+        boolean analyticsEnabled() default false;
     }
 
     @Reference
@@ -36,7 +37,7 @@ public class CerosFlexDeliveryServiceImpl implements CerosFlexDeliveryService {
     @Reference
     private CerosAssetStorageService assetStorageService;
 
-    private boolean analyticsEnabled = true;
+    private boolean analyticsEnabled;
 
     @Activate
     @Modified

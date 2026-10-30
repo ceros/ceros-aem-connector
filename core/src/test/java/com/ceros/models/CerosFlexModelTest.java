@@ -205,9 +205,22 @@ class CerosFlexModelTest {
     // ---- isCerosAnalytics ----
 
     @Test
-    void analyticsIsOnWhenThePropertyIsAbsent() {
-        // Every component authored before the switch existed.
+    void analyticsKeepsTheEarlierBehaviourWhenThePropertyIsAbsent() throws Exception {
+        // Every component authored before the switch existed: only the
+        // iframe embed reported then.
+        setField("cerosMode", "embed");
         assertTrue(model.isCerosAnalytics());
+        for (String mode : new String[] {"fetch", "inline", null}) {
+            setField("cerosMode", mode);
+            assertFalse(model.isCerosAnalytics(), "mode " + mode);
+        }
+    }
+
+    @Test
+    void analyticsTreatsABlankPropertyAsAbsent() throws Exception {
+        setField("cerosMode", "inline");
+        setField("cerosAnalytics", " ");
+        assertFalse(model.isCerosAnalytics());
     }
 
     @Test

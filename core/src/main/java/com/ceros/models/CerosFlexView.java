@@ -146,11 +146,12 @@ public class CerosFlexView {
     }
 
     /**
-     * Whether the experience reports to Ceros Analytics. On by default, and
-     * off whatever the author chose when:
+     * Whether the experience reports to Ceros Analytics. Follows the author's
+     * choice ({@link CerosFlexModel#isCerosAnalytics()}), but is off whatever
+     * they chose when:
      * <ul>
-     *   <li>the instance doesn't allow it (author and preview ship with it
-     *       off, see {@link CerosFlexDeliveryService#isAnalyticsEnabled()});</li>
+     *   <li>the instance doesn't allow it (only publish ships with it on,
+     *       see {@link CerosFlexDeliveryService#isAnalyticsEnabled()});</li>
      *   <li>the page renders in an editor mode, which is a preview;</li>
      *   <li>the experience is a stored copy (Store or HTML Import). A stored
      *       runtime that falls behind could report events the Ceros pipeline

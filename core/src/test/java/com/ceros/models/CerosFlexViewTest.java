@@ -247,8 +247,9 @@ class CerosFlexViewTest {
     }
 
     @Test
-    void analyticsIsEnabledByDefaultOnAPublishedPage() throws Exception {
+    void analyticsIsEnabledWhenCheckedOnAPublishedPage() throws Exception {
         setModelField("cerosMode", "inline");
+        setModelField("cerosAnalytics", "true");
         useDeliveryService(true);
         assertTrue(view.isCerosAnalyticsEnabled());
         assertEquals("enabled", view.getCerosAnalytics());
@@ -256,6 +257,7 @@ class CerosFlexViewTest {
 
     @Test
     void analyticsIsEnabledForEveryLiveMode() throws Exception {
+        setModelField("cerosAnalytics", "true");
         useDeliveryService(true);
         for (String mode : new String[] {"fetch", "inline", "embed", null}) {
             setModelField("cerosMode", mode);
@@ -282,8 +284,20 @@ class CerosFlexViewTest {
     }
 
     @Test
+    void analyticsKeepsTheEarlierBehaviourForComponentsWithoutAChoice() throws Exception {
+        useDeliveryService(true);
+        setModelField("cerosMode", "embed");
+        assertEquals("enabled", view.getCerosAnalytics());
+        for (String mode : new String[] {"fetch", "inline"}) {
+            setModelField("cerosMode", mode);
+            assertEquals("disabled", view.getCerosAnalytics(), "mode " + mode);
+        }
+    }
+
+    @Test
     void analyticsIsDisabledInAnEditorMode() throws Exception {
         setModelField("cerosMode", "inline");
+        setModelField("cerosAnalytics", "true");
         useDeliveryService(true);
         when(request.getAttribute(WCMMode.REQUEST_ATTRIBUTE_NAME)).thenReturn(WCMMode.EDIT);
         assertEquals("disabled", view.getCerosAnalytics());

@@ -86,11 +86,12 @@ public class CerosFlexModel {
     private String cerosIncludeCustomHtml;
 
     /**
-     * Whether the experience reports to Ceros Analytics. Read as a String for
-     * the same reason as {@link #cerosIncludeCustomHtml}: every component
-     * authored before the switch existed has no property, and that means "on".
-     * The author's choice is only one input; {@code CerosFlexView} turns it off
-     * for previews and stored copies.
+     * Whether the experience reports to Ceros Analytics. Read as a String so an
+     * absent property, which every component authored before the switch
+     * existed has, can keep that component's earlier behaviour (see
+     * {@link #isCerosAnalytics()}). New components get {@code true} from the
+     * component's {@code cq:template}. The author's choice is only one input;
+     * {@code CerosFlexView} turns it off for previews and stored copies.
      */
     @ValueMapValue
     private String cerosAnalytics;
@@ -134,11 +135,18 @@ public class CerosFlexModel {
     }
 
     /**
-     * True unless the author explicitly unchecked "Ceros analytics tracking".
-     * Absent, blank, or any value other than {@code "false"} means on.
+     * The author's "Ceros analytics tracking" choice. When the property is
+     * absent or blank, the component predates the switch and keeps what it
+     * did before: the iframe embed reported, while Always Fetch and Inline
+     * didn't. Turning reporting on for those without anyone editing the page
+     * could break a site's cookie consent setup.
      */
     public boolean isCerosAnalytics() {
-        return !"false".equalsIgnoreCase(StringUtils.trimToEmpty(cerosAnalytics));
+        String choice = StringUtils.trimToEmpty(cerosAnalytics);
+        if (choice.isEmpty()) {
+            return isEmbedMode();
+        }
+        return !"false".equalsIgnoreCase(choice);
     }
 
     public boolean isConfigured() {

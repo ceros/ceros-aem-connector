@@ -196,8 +196,7 @@
                                 text="Include custom body HTML/scripts"
                                 name="./cerosIncludeCustomHtml"
                                 value="true"
-                                uncheckedValue="false"
-                                checked="{Boolean}true"/>
+                                uncheckedValue="false"/>
                         </items>
                     </serverSideSection>
 
@@ -220,8 +219,7 @@
                                 text="Ceros analytics tracking"
                                 name="./cerosAnalytics"
                                 value="true"
-                                uncheckedValue="false"
-                                checked="{Boolean}true"/>
+                                uncheckedValue="false"/>
                         </items>
                     </analyticsSection>
 

@@ -10,8 +10,8 @@ import static org.mockito.Mockito.when;
 class CerosFlexDeliveryServiceImplTest {
 
     @Test
-    void analyticsIsAllowedBeforeActivation() {
-        assertTrue(new CerosFlexDeliveryServiceImpl().isAnalyticsEnabled());
+    void analyticsIsOffBeforeActivation() {
+        assertFalse(new CerosFlexDeliveryServiceImpl().isAnalyticsEnabled());
     }
 
     @Test
