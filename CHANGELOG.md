@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-11-02
+
 ### Added
 - **Ceros analytics tracking.** The component dialog has a **Ceros analytics tracking** checkbox for the Always Fetch, Inline embed and Iframe embed modes. It is on for new components, so a new server-side or inline experience reports to Ceros Analytics the way the published experience and the iframe embed do. Uncheck it and the experience reports nothing to Ceros; the experience's analytics events still reach the page, so your own analytics keeps working.
   - Components added before this release keep what they did: on publish, an Iframe embed still reports, and Always Fetch and Inline embed still don't. The dialog shows that state, and saving it records the author's choice.
@@ -141,7 +143,12 @@ Initial release.
 - OSGi configuration support (timeouts, HTTP scheme allowlist, local-address allowlist) via `CerosManifestServiceImpl.cfg.json`.
 - Authenticated browsing of Ceros Flex experiences in the authoring dialog via `CerosAuthenticatedApiService`.
 
-[Unreleased]: https://github.com/ceros/ceros-aem-connector/compare/release-1.0.0...HEAD
+[Unreleased]: https://github.com/ceros/ceros-aem-connector/compare/release-1.0.5...HEAD
+[1.0.5]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-1.0.5
+[1.0.4]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-1.0.4
+[1.0.3]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-1.0.3
+[1.0.2]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-1.0.2
+[1.0.1]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-1.0.1
 [1.0.0]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-1.0.0
 [0.0.8]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-0.0.8
 [0.0.3]: https://github.com/ceros/ceros-aem-connector/releases/tag/release-0.0.3
